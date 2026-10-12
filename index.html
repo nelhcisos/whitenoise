@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Симулятор ортодонта</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+  /* Layout: one screen at a time, centered on a black arcade monitor */
+  :root {
+    --bg: #000000;
+    --fg: #f2f2f2;
+    --enamel: #fffbe8;
+    --gold: #ffcc33;
+    --blood: #ff3b3b;
+    --dim: #8a8a8a;
+    --pixel: "Press Start 2P", "Courier New", monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--pixel);
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+    overflow-x: hidden;
+  }
+  .screen {
+    box-sizing: border-box;
+    min-height: 100%;
+    padding-inline: 16px;
+    padding-block: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .screen[hidden] { display: none !important; }
+  .wrap { max-width: 760px; width: 100%; display: flex; flex-direction: column; gap: 22px; align-items: center; }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(16px, 4.2vw, 30px);
+    line-height: 1.5;
+    color: var(--enamel);
+    text-shadow: 3px 3px 0 var(--blood);
+    text-wrap: balance;
+  }
+  .tagline {
+    margin: 0;
+    font-size: clamp(11px, 2.4vw, 16px);
+    line-height: 1.8;
+    color: var(--gold);
+    text-wrap: balance;
+  }
+  .fine {
+    margin: 0;
+    max-width: 62ch;
+    font-size: clamp(9px, 1.7vw, 12px);
+    line-height: 2;
+    color: var(--fg);
+  }
+  .star { color: var(--gold); }
+  .footnote {
+    margin: 0;
+    font-size: clamp(8px, 1.4vw, 10px);
+    line-height: 2;
+    color: var(--dim);
+  }
+  .footnote button {
+    font: inherit;
+    color: var(--gold);
+    background: none;
+    border: 0;
+    padding: 0;
+    text-decoration: underline dotted;
+    cursor: pointer;
+  }
+  .conditions {
+    margin: 0;
+    max-width: 56ch;
+    font-size: clamp(8px, 1.4vw, 10px);
+    line-height: 2;
+    color: var(--dim);
+    border: 2px dashed var(--dim);
+    padding: 12px;
+  }
+  .blink {
+    margin: 0;
+    font-size: clamp(10px, 2vw, 14px);
+    color: var(--fg);
+    animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Tooth logo above the title */
+  .tooth { width: 48px; height: 48px; image-rendering: pixelated; }
+
+  /* Screen 2 */
+  #throne {
+    width: min(100%, 480px);
+    aspect-ratio: 4 / 3;
+    max-width: 100%;
+    image-rendering: pixelated;
+    border: 4px solid var(--fg);
+    box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood);
+  }
+  .bubble {
+    position: relative;
+    box-sizing: border-box;
+    width: min(100%, 560px);
+    min-height: 9em;
+    padding: 16px;
+    background: var(--fg);
+    color: var(--bg);
+    text-align: left;
+    font-size: clamp(9px, 1.8vw, 12px);
+    line-height: 2;
+    box-shadow: -4px 0 0 0 var(--fg), 4px 0 0 0 var(--fg), 0 -4px 0 0 var(--fg), 0 4px 0 0 var(--fg);
+  }
+  .bubble::before {
+    content: "";
+    position: absolute;
+    top: -20px;
+    left: calc(50% - 8px);
+    border: 8px solid transparent;
+    border-bottom-color: var(--fg);
+    border-width: 0 8px 16px 8px;
+  }
+  .speaker { color: var(--blood); }
+  .cursor { animation: blink .6s steps(1) infinite; }
+  .btn {
+    font: inherit;
+    font-size: clamp(10px, 2vw, 14px);
+    color: var(--bg);
+    background: var(--gold);
+    border: 0;
+    padding: 14px 18px;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 var(--blood);
+  }
+  .btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--blood); }
+  .btn:focus-visible, .footnote button:focus-visible, .screen:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .blink, .cursor { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<section class="screen" id="s1" tabindex="0" aria-label="Нажми, чтобы продолжить">
+  <div class="wrap">
+    <canvas class="tooth" id="tooth" width="12" height="12" aria-hidden="true"></canvas>
+    <h1>ДОБРО ПОЖАЛОВАТЬ<br>В СИМУЛЯТОР ОРТОДОНТА</h1>
+    <p class="tagline">Научись зарабатывать миллиард денег на этой профессии</p>
+    <p class="fine">
+      После прохождения симулятора ортодонта вы получаете сертификат о прохождении игры.
+      Он даёт преимущество в рабочих часах в реальной профессии ортодонта
+      и может расцениваться как подлинный сертификат в реальной врачебной деятельности<span class="star">*</span>
+    </p>
+    <p class="footnote"><span class="star">*</span> смотреть пункт <button type="button" id="condBtn">«Специальные условия»</button></p>
+    <p class="conditions" id="conditions" hidden>
+      Специальные условия: сертификат действителен только внутри игры.
+      Миллиард тоже игровой. Лечить людей он не разрешает.
+    </p>
+    <p class="blink">▶ НАЖМИ, ЧТОБЫ ПРОДОЛЖИТЬ</p>
+  </div>
+</section>
+
+<section class="screen" id="s2" hidden>
+  <div class="wrap">
+    <canvas id="throne" width="160" height="120" aria-label="Пиксельный котик на адском троне"></canvas>
+    <div class="bubble" aria-live="polite"><span class="speaker">КОТ:</span> <span id="speech"></span><span class="cursor" id="cursor">█</span></div>
+    <button class="btn" id="assistBtn" type="button" hidden>СТАТЬ АССИСТЕНТОМ</button>
+  </div>
+</section>
+
+<section class="screen" id="s3" hidden>
+  <div class="wrap">
+    <h1>СМЕНА АССИСТЕНТА</h1>
+    <p class="tagline">Боты уже моют руки. Продолжение следует…</p>
+    <p class="blink">▶ НАЖМИ, ЧТОБЫ ВЕРНУТЬСЯ К КОТУ</p>
+  </div>
+</section>
+
+<script>
+(() => {
+  const SPEECH = "Так, ну смотри. Симулятор ортодонта — это серьёзная игра. " +
+    "Сначала тебе нужно поассистировать ботам, которые играют в симулятор ортодонта, " +
+    "и посмотреть, как они это делают. Только после этого мы сможем допустить тебя " +
+    "к игровому процессу. Для начала ты будешь ассистентом.";
+
+  const screens = ["s1", "s2", "s3"].map(id => document.getElementById(id));
+  let current = 0;
+
+  // ---------- Tooth logo ----------
+  const TOOTH = [
+    "..KKKK.KKKK.",
+    ".KWWWWKWWWWK",
+    "KWWWWWWWWWWK",
+    "KWWWWWWWWWWK",
+    "KWWWWWWWWWWK",
+    ".KWWWWWWWWK.",
+    ".KWWWWWWWWK.",
+    ".KWWWKKWWWK.",
+    ".KWWK..KWWK.",
+    ".KWWK..KWWK.",
+    "..KWK..KWK..",
+    "...K....K...",
+  ];
+  const tctx = document.getElementById("tooth").getContext("2d");
+  drawSprite(tctx, TOOTH, 0, 0, { K: "#ff3b3b", W: "#fffbe8" });
+
+  function drawSprite(ctx, rows, x0, y0, pal) {
+    rows.forEach((row, y) => {
+      [...row].forEach((ch, x) => {
+        if (pal[ch]) { ctx.fillStyle = pal[ch]; ctx.fillRect(x0 + x, y0 + y, 1, 1); }
+      });
+    });
+  }
+
+  // ---------- Cat on the throne of hell ----------
+  const CAT = [
+    "....K..............K....",
+    "...KOK............KOK...",
+    "...KOPK..........KPOK...",
+    "..KOOPOK........KOPOOK..",
+    "..KOOOOOKKKKKKKKOOOOOK..",
+    "..KOOoOOOOOOOOOOOOoOOK..",
+    ".KOOOOOOOoOOOOoOOOOOOOK.",
+    ".KOOOKKKOOOOOOOOKKKOOOK.",
+    ".KOOKYYKKOOOOOOKKYYKOOK.",
+    ".KOOKYKYKOOOOOOKYKYKOOK.",
+    ".KOOOKKKOOOOOOOOKKKOOOK.",
+    ".KWWOOOOOOOKPKOOOOOOWWK.",
+    ".KWWWOOOOOOOKOOOOOOWWWK.",
+    "..KWWWOOOOKOKOKOOOWWWK..",
+    "...KKWWWWWWWWWWWWWWKK...",
+    "....KOOOWWWWWWWWOOOK....",
+    "...KOOOOWWWWWWWWOOOOK...",
+    "..KOOoOOWWWWWWWWOOoOOK..",
+    "..KOOOoOWWWWWWWWOoOOOK..",
+    ".KOOOOOOOWWWWWWOOOOOOOK.",
+    ".KOoOOOOOOWWWWOOOOOOoOK.",
+    ".KOOoOOOOOOOOOOOOOOoOOK.",
+    ".KOOOOKWWKOOOOKWWKOOOOK.",
+    ".KKKKKKKKKKKKKKKKKKKKKK.",
+  ];
+  const CAT_PAL = { K: "#120808", O: "#f28c28", o: "#b85a12", W: "#fff4e0", Y: "#ffe94d", P: "#ff8fa8" };
+
+  const SKULL = [
+    ".BBB.",
+    "BKBKB",
+    "BBBBB",
+    ".BKB.",
+  ];
+
+  const canvas = document.getElementById("throne");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+
+  const FIRE = ["#fff6a0", "#ffd23a", "#ff8a1c", "#e8361a", "#8f1010", "#3d0606"];
+  let particles = [];
+  function spawn() {
+    const x = Math.random() * W;
+    particles.push({ x, y: H - 8 + Math.random() * 4, vy: 0.5 + Math.random() * 0.9, life: 0, max: 40 + Math.random() * 60, w: 2 + (Math.random() * 3 | 0) });
+  }
+
+  function drawThrone() {
+    const dark = "#2a0508", mid = "#5c0d14", hi = "#9e1b26", gold = "#d9a520";
+    // back
+    ctx.fillStyle = dark; ctx.fillRect(58, 28, 44, 70);
+    ctx.fillStyle = mid; ctx.fillRect(61, 31, 38, 64);
+    ctx.fillStyle = hi; ctx.fillRect(61, 31, 2, 64); ctx.fillRect(97, 31, 2, 64);
+    // spikes along the top
+    for (let i = 0; i < 5; i++) {
+      const sx = 59 + i * 9;
+      for (let h = 0; h < 10; h++) {
+        const half = Math.max(0, 4 - (h >> 1));
+        ctx.fillStyle = h < 2 ? gold : dark;
+        ctx.fillRect(sx + 4 - half, 28 - h, half * 2 + 1, 1);
+      }
+    }
+    // horns
+    for (let i = 0; i < 12; i++) {
+      ctx.fillStyle = i > 8 ? "#e9e2c8" : "#bfb89c";
+      ctx.fillRect(55 - (i >> 1), 34 - i, 3, 2);
+      ctx.fillRect(103 + (i >> 1), 34 - i, 3, 2);
+    }
+    // gold trim + glowing gem
+    ctx.fillStyle = gold; ctx.fillRect(58, 28, 44, 2);
+    ctx.fillStyle = "#ff3b3b"; ctx.fillRect(78, 36, 4, 4);
+    ctx.fillStyle = "#ffb0b0"; ctx.fillRect(78, 36, 1, 1);
+    // armrests
+    ctx.fillStyle = dark; ctx.fillRect(50, 72, 14, 10); ctx.fillRect(96, 72, 14, 10);
+    ctx.fillStyle = hi; ctx.fillRect(50, 72, 14, 2); ctx.fillRect(96, 72, 14, 2);
+    drawSprite(ctx, SKULL, 52, 66, { B: "#e9e2c8", K: "#120808" });
+    drawSprite(ctx, SKULL, 103, 66, { B: "#e9e2c8", K: "#120808" });
+    // seat and legs
+    ctx.fillStyle = dark; ctx.fillRect(54, 92, 52, 8);
+    ctx.fillStyle = hi; ctx.fillRect(54, 92, 52, 2);
+    ctx.fillStyle = dark; ctx.fillRect(56, 100, 6, 12); ctx.fillRect(98, 100, 6, 12);
+    ctx.fillStyle = gold; ctx.fillRect(56, 110, 6, 2); ctx.fillRect(98, 110, 6, 2);
+  }
+
+  let t = 0;
+  function frame() {
+    t++;
+    // hell sky
+    for (let y = 0; y < H; y++) {
+      const k = y / H;
+      ctx.fillStyle = `rgb(${Math.round(10 + 90 * k * k)}, ${Math.round(2 + 6 * k)}, ${Math.round(4 + 4 * k)})`;
+      ctx.fillRect(0, y, W, 1);
+    }
+    // fire behind the throne
+    for (let i = 0; i < 6; i++) spawn();
+    particles = particles.filter(p => p.life < p.max);
+    for (const p of particles) {
+      p.life++; p.y -= p.vy; p.x += Math.sin((p.life + p.x) * 0.15) * 0.3;
+      const idx = Math.min(FIRE.length - 1, Math.floor((p.life / p.max) * FIRE.length));
+      ctx.fillStyle = FIRE[idx];
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.w, p.w);
+    }
+    drawThrone();
+    // cat breathes a little
+    const bob = (t >> 4) % 2;
+    drawSprite(ctx, CAT, 68, 69 + bob, CAT_PAL);
+    // blink eyes occasionally
+    if (t % 180 < 6) {
+      ctx.fillStyle = CAT_PAL.O;
+      ctx.fillRect(68 + 4, 69 + bob + 8, 4, 2);
+      ctx.fillRect(68 + 16, 69 + bob + 8, 4, 2);
+    }
+    // lava floor
+    for (let x = 0; x < W; x++) {
+      const h = 6 + Math.round(Math.sin((x + t * 0.6) * 0.18) * 2);
+      ctx.fillStyle = "#ff5a1f"; ctx.fillRect(x, H - h, 1, h);
+      ctx.fillStyle = "#ffd23a"; ctx.fillRect(x, H - h, 1, 1);
+    }
+    if (current === 1) requestAnimationFrame(frame);
+  }
+
+  // ---------- Typewriter ----------
+  const speechEl = document.getElementById("speech");
+  const cursorEl = document.getElementById("cursor");
+  const assistBtn = document.getElementById("assistBtn");
+  let typed = 0, typer = null;
+  function startTyping() {
+    clearInterval(typer);
+    typed = 0; speechEl.textContent = ""; assistBtn.hidden = true; cursorEl.hidden = false;
+    typer = setInterval(() => {
+      typed++;
+      speechEl.textContent = SPEECH.slice(0, typed);
+      if (typed >= SPEECH.length) finishTyping();
+    }, 35);
+  }
+  function finishTyping() {
+    clearInterval(typer); typer = null;
+    speechEl.textContent = SPEECH;
+    typed = SPEECH.length;
+    cursorEl.hidden = true;
+    assistBtn.hidden = false;
+  }
+
+  // ---------- Screen flow ----------
+  function show(i) {
+    current = i;
+    screens.forEach((s, j) => { s.hidden = j !== i; });
+    if (i === 1) { startTyping(); requestAnimationFrame(frame); }
+  }
+
+  screens[0].addEventListener("click", () => show(1));
+  screens[0].addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(1); } });
+  screens[1].addEventListener("click", () => { if (typer) finishTyping(); });
+  screens[2].addEventListener("click", () => show(1));
+  assistBtn.addEventListener("click", e => { e.stopPropagation(); show(2); });
+
+  const condBtn = document.getElementById("condBtn");
+  condBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    const c = document.getElementById("conditions");
+    c.hidden = !c.hidden;
+  });
+
+  document.addEventListener("keydown", e => {
+    if (current === 0 && e.target === document.body) show(1);
+    else if (current === 1 && typer) finishTyping();
+  });
+
+  window.claude?.hot?.snapshot?.(() => ({ screen: current }));
+  const start = (data) => show(data?.screen ?? 0);
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
