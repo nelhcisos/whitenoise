@@ -16,6 +16,9 @@
     --gold: #ffcc33;
     --blood: #ff3b3b;
     --dim: #8a8a8a;
+    --panel: #141414;
+    --line: #3a3a3a;
+    --ok: #3ddc84;
     --pixel: "Press Start 2P", "Courier New", monospace;
     color-scheme: dark;
   }
@@ -150,8 +153,47 @@
   .btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--blood); }
   .btn:focus-visible, .footnote button:focus-visible, .screen:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
 
+  /* Screen 3: assistant shift */
+  .game { cursor: default; justify-content: flex-start; }
+  .game .wrap { gap: 14px; }
+  .hud {
+    display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: center;
+    font-size: clamp(9px, 1.8vw, 12px); color: var(--dim);
+  }
+  .hud b { color: var(--gold); font-weight: normal; font-variant-numeric: tabular-nums; }
+  #mouth {
+    width: min(100%, 560px); aspect-ratio: 16 / 9; max-width: 100%;
+    image-rendering: pixelated; border: 4px solid var(--fg);
+  }
+  .patient { margin: 0; min-height: 2em; font-size: clamp(8px, 1.5vw, 11px); line-height: 2; color: var(--dim); }
+  .botrow { display: flex; gap: 12px; align-items: flex-start; width: min(100%, 560px); text-align: left; }
+  #bot { width: 48px; height: 48px; flex: none; image-rendering: pixelated; }
+  .botsay { flex: 1; min-width: 0; min-height: 4em; font-size: clamp(9px, 1.8vw, 12px); line-height: 2; }
+  .timer { width: min(100%, 560px); height: 8px; background: var(--line); }
+  #timerFill { height: 100%; width: 100%; background: var(--gold); }
+  #timerFill.low { background: var(--blood); }
+  .tray {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 8px; width: min(100%, 560px);
+  }
+  .tool {
+    font: inherit; font-size: 8px; line-height: 1.6; color: var(--fg);
+    background: var(--panel); border: 2px solid var(--line); padding: 8px 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+  }
+  .tool canvas { width: 36px; height: 36px; image-rendering: pixelated; }
+  .tool:hover { border-color: var(--gold); }
+  .tool:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .tool.ok { border-color: var(--ok); }
+  .tool.bad { border-color: var(--blood); animation: shake .3s; }
+  @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+  /* Screen 4: cat's verdict */
+  .cat-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
+  #s4 { cursor: default; }
+
   @media (prefers-reduced-motion: reduce) {
-    .blink, .cursor { animation: none; }
+    .blink, .cursor, .tool.bad { animation: none; }
   }
 </style>
 </head>
@@ -184,11 +226,30 @@
   </div>
 </section>
 
-<section class="screen" id="s3" hidden>
+<section class="screen game" id="s3" hidden>
   <div class="wrap">
-    <h1>СМЕНА АССИСТЕНТА</h1>
-    <p class="tagline">Боты уже моют руки. Продолжение следует…</p>
-    <p class="blink">▶ НАЖМИ, ЧТОБЫ ВЕРНУТЬСЯ К КОТУ</p>
+    <div class="hud">
+      <span>ПАЦИЕНТ <b id="hudPatient">1/3</b></span>
+      <span>ЧАСЫ <b id="hudHours">0,0</b></span>
+      <span>₽ <b id="hudMoney">0</b></span>
+    </div>
+    <canvas id="mouth" width="160" height="90" aria-label="Рот пациента крупным планом"></canvas>
+    <p class="patient" id="patientLine"></p>
+    <div class="botrow">
+      <canvas id="bot" width="16" height="16" aria-hidden="true"></canvas>
+      <div class="botsay" aria-live="polite"><span class="speaker">БОТ-ОРТОДОНТ:</span> <span id="botText"></span></div>
+    </div>
+    <div class="timer" aria-hidden="true"><div id="timerFill"></div></div>
+    <div class="tray" id="tray" aria-label="Лоток с инструментами"></div>
+    <p class="footnote">До миллиарда осталось <span id="toBillion">1 000 000 000</span> ₽</p>
+  </div>
+</section>
+
+<section class="screen" id="s4" hidden>
+  <div class="wrap">
+    <img id="catImg" class="cat-small" alt="Котик с бантиком на адском троне">
+    <div class="bubble"><span class="speaker">КОТ:</span> <span id="catVerdict"></span></div>
+    <button class="btn" id="againBtn" type="button">ЕЩЁ СМЕНА</button>
   </div>
 </section>
 
@@ -199,7 +260,7 @@
     "и посмотреть, как они это делают. Только после этого мы сможем допустить тебя " +
     "к игровому процессу. Для начала ты будешь ассистентом.";
 
-  const screens = ["s1", "s2", "s3"].map(id => document.getElementById(id));
+  const screens = ["s1", "s2", "s3", "s4"].map(id => document.getElementById(id));
   let current = 0;
 
   // ---------- Tooth logo ----------
@@ -286,18 +347,321 @@
     assistBtn.hidden = false;
   }
 
+  // ---------- Assistant shift ----------
+  // Real order of bonding braces; the bot asks for each instrument in turn.
+  const STEPS = [
+    { id: "retractor", name: "Ретрактор", ask: "Подай ретрактор. Нужно открыть доступ к зубам." },
+    { id: "suction", name: "Слюноотсос", ask: "Слюноотсос. Зубы должны быть сухими." },
+    { id: "gel", name: "Протравочный гель", ask: "Протравочный гель. Наносим на эмаль." },
+    { id: "bond", name: "Адгезив", ask: "Адгезив, чтобы брекеты держались." },
+    { id: "brackets", name: "Брекеты", ask: "Брекеты. Клеим на каждый зуб." },
+    { id: "lamp", name: "Лампа", ask: "Полимеризационную лампу. Засвечиваем клей." },
+    { id: "arch", name: "Дуга", ask: "Дугу. Это она будет двигать зубы." },
+    { id: "ligatures", name: "Лигатуры", ask: "Лигатуры. Закрепляем дугу в брекетах." },
+    { id: "mirror", name: "Зеркало", ask: "Зеркало. Проверяю работу." },
+  ];
+  const DISTRACTORS = [
+    { id: "drill", name: "Бормашина", wrong: "Бормашина? Мы не сверлим. Мы двигаем зубы." },
+    { id: "forceps", name: "Щипцы", wrong: "Щипцы? Мы зубы не удаляем, мы их выравниваем." },
+    { id: "anesthesia", name: "Анестезия", wrong: "Анестезия? Брекеты ставят без укола." },
+  ];
+  const TOOL_PAL = { S: "#c8cdd6", K: "#20242c", W: "#bfe8ff", B: "#4aa8ff", G: "#7a8090", Y: "#ffd23a", R: "#ff3b3b", P: "#ff7ad9" };
+  const ICONS = {
+    retractor: ["............", ".BBBBBBBBBB.", "B..........B", "B.BBBBBBBB.B", "B.B......B.B", "B.B......B.B", "B.B......B.B", "B.B......B.B", "B.BBBBBBBB.B", "B..........B", ".BBBBBBBBBB.", "............"],
+    suction: ["..........WW", ".........WW.", "........WW..", ".......WW...", "......WW....", ".....WW.....", "....WW......", "...BB.......", "...BB.......", "...BB.......", "...BB.......", "...BB......."],
+    gel: [".....GG.....", ".....GG.....", "....GGGG....", "....SSSS....", "....SBBS....", "....SBBS....", "....SBBS....", "....SBBS....", "....SSSS....", ".....SS.....", ".....S......", ".....S......"],
+    bond: ["....KKKK....", "....KKKK....", ".....SS.....", "...YYYYYY...", "..YYYYYYYY..", "..YWWYYYYY..", "..YWYYYYYY..", "..YYYYYYYY..", "..YYYYYYYY..", "..YYYYYYYY..", "..YYYYYYYY..", "...YYYYYY..."],
+    brackets: ["............", ".SSS....SSS.", ".SKS....SKS.", ".SSS....SSS.", "............", "............", "............", "............", ".SSS....SSS.", ".SKS....SKS.", ".SSS....SSS.", "............"],
+    lamp: ["............", ".GGGGGGGGBB.", ".GGGGGGGGBBB", ".GGGGGGGGBB.", "....GG......", "....GG......", "...GGG......", "...GGG......", "...GGG......", "...GGG......", "............", "............"],
+    arch: ["............", "............", "S..........S", "S..........S", "S..........S", ".S........S.", ".S........S.", "..S......S..", "...S....S...", "....SSSS....", "............", "............"],
+    ligatures: ["............", ".RRR...BBB..", "R...R.B...B.", "R...R.B...B.", ".RRR...BBB..", "............", "...PPP......", "..P...P.....", "..P...P.....", "...PPP......", "............", "............"],
+    mirror: [".......SSSS.", "......SWWWWS", "......SWBWWS", "......SWWWWS", ".......SSSS.", "......G.....", ".....G......", "....G.......", "...G........", "..G.........", ".G..........", "G..........."],
+    drill: ["...........S", "..........S.", ".GGGGGGGGG..", "GGGGGGGGGG..", ".GGGGGGGG...", "........G...", "........G...", "........G...", "........G...", "........G...", "........G...", "............"],
+    anesthesia: ["............", "............", "............", "G...........", "GSSSSSSSSS..", "GSWWWWWWWSSS", "GSSSSSSSSS..", "G...........", "............", "............", "............", "............"],
+    forceps: ["S..........S", ".S........S.", "..S......S..", "...S....S...", "....S..S....", ".....SS.....", ".....SS.....", "....S..S....", "...S....S...", "..S......S..", ".SS......SS.", ".SS......SS."],
+  };
+  const BOT = [
+    ".......RR.......", ".......KK.......", "...KKKKKKKKKK...", "..KSSSSSSSSSSK..",
+    "..KSKKSSSSKKSK..", "..KSKBSSSSKBSK..", "..KSSSSSSSSSSK..", "..KSSKKKKKKSSK..",
+    "..KSSKWWWWKSSK..", "..KSSKKKKKKSSK..", "..KSSSSSSSSSSK..", "...KKKKKKKKKK...",
+    ".....KSSSSK.....", "...KKKKKKKKKK...", "..KSSSSSSSSSSK..", "..KSSSSSSSSSSK..",
+  ];
+  drawSprite(document.getElementById("bot").getContext("2d"), BOT, 0, 0, TOOL_PAL);
+
+  const PATIENT_POOL = [
+    "Вася, 12 лет. Скученность нижних резцов.",
+    "Алина, 15 лет. Глубокий прикус.",
+    "Геннадий Петрович, 47 лет. Решил, что пора.",
+    "Соня, 13 лет. Хочет брекеты как у подруги.",
+    "Бот-пациент №404. Прикус не найден.",
+    "Марк, 16 лет. Щель между зубами, но он с ней смирился.",
+  ];
+  const LIG_COLORS = ["#ff3b3b", "#4aa8ff", "#3ddc84", "#ff7ad9", "#ffd23a", "#a46bff"];
+  const PRAISE = ["Спасибо.", "Отлично.", "Да, это оно.", "Быстро. Хвалю."];
+  const PER_STEP_RUB = 150, PER_PATIENT_HOURS = 1.5, PATIENTS_PER_SHIFT = 3, MAX_MISTAKES = 3;
+
+  const $ = id => document.getElementById(id);
+  const botText = $("botText"), patientLine = $("patientLine"), tray = $("tray"), timerFill = $("timerFill");
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  const rub = n => n.toLocaleString("ru-RU");
+  const allTools = [...STEPS, ...DISTRACTORS];
+  const toolName = id => allTools.find(t => t.id === id).name;
+
+  // build the tray once, in shuffled order so it can't be clicked left to right
+  const toolButtons = {};
+  [...allTools].sort(() => Math.random() - 0.5).forEach(t => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tool"; b.dataset.id = t.id;
+    const c = document.createElement("canvas"); c.width = 12; c.height = 12;
+    drawSprite(c.getContext("2d"), ICONS[t.id], 0, 0, TOOL_PAL);
+    b.append(c, document.createTextNode(t.name));
+    b.addEventListener("click", () => onTool(t.id, b));
+    tray.append(b);
+    toolButtons[t.id] = b;
+  });
+
+  let game = null;
+  let timer = null; // { deadline, dur }
+  let pending = null;
+  function later(fn, ms) { clearTimeout(pending); pending = setTimeout(fn, ms); }
+
+  function startGame() {
+    const pool = [...PATIENT_POOL].sort(() => Math.random() - 0.5);
+    game = { idx: 0, pool, hours: 0, money: 0, mistakesTotal: 0 };
+    startPatient();
+  }
+
+  function isExam() { return game.idx === PATIENTS_PER_SHIFT - 1; }
+
+  function startPatient() {
+    game.step = 0; game.mistakes = 0;
+    pat = newPatientLook();
+    stage = 0; straight = 0; flash = 0;
+    updateHud();
+    patientLine.textContent = "Пациент: " + game.pool[game.idx % game.pool.length];
+    botText.textContent = isExam()
+      ? "Экзамен. Теперь я молчу, а ты подаёшь инструменты сам, по порядку."
+      : "Новый пациент. Подавай, что я прошу.";
+    timer = null;
+    later(askStep, isExam() ? 2600 : 1600);
+  }
+
+  function askStep() {
+    const s = STEPS[game.step];
+    botText.textContent = isExam() ? "…" : s.ask;
+    const dur = isExam() ? 9000 : 10000;
+    timer = { deadline: performance.now() + dur, dur };
+  }
+
+  function onTool(id, btn) {
+    if (!timer) return;
+    const want = STEPS[game.step];
+    if (id === want.id) {
+      timer = null;
+      flashBtn(btn, "ok");
+      game.money += PER_STEP_RUB;
+      game.step++; stage = game.step;
+      if (id === "lamp") flash = 30;
+      updateHud();
+      if (game.step >= STEPS.length) return finishPatient();
+      botText.textContent = pick(PRAISE);
+      later(askStep, 700);
+    } else {
+      flashBtn(btn, "bad");
+      const d = DISTRACTORS.find(x => x.id === id);
+      let msg = d ? d.wrong : `Это ${toolName(id).toLowerCase()}.`;
+      msg += isExam() ? ` Подсказка: ${want.name.toLowerCase()}.` : ` А я просил: ${want.name.toLowerCase()}.`;
+      mistake(msg);
+    }
+  }
+
+  function mistake(msg) {
+    game.mistakes++; game.mistakesTotal++;
+    if (game.mistakes >= MAX_MISTAKES) {
+      timer = null;
+      botText.textContent = "Пациент устал ждать и ушёл к другому ортодонту. Зовём следующего.";
+      game.pool.push(game.pool.splice(game.idx % game.pool.length, 1)[0]);
+      later(startPatient, 2600);
+      return;
+    }
+    botText.textContent = msg + ` (ошибок: ${game.mistakes}/${MAX_MISTAKES})`;
+    if (timer) timer.deadline = performance.now() + timer.dur;
+  }
+
+  function finishPatient() {
+    botText.textContent = "Готово. Увидимся через 2 года.";
+    later(() => {
+      patientLine.textContent = "…прошло 2 года…";
+      straight = 0.001;
+      game.hours += PER_PATIENT_HOURS;
+      updateHud();
+      later(() => {
+        game.idx++;
+        if (game.idx >= PATIENTS_PER_SHIFT) show(3);
+        else startPatient();
+      }, 2600);
+    }, 1400);
+  }
+
+  function flashBtn(btn, cls) {
+    btn.classList.remove("ok", "bad");
+    void btn.offsetWidth;
+    btn.classList.add(cls);
+    setTimeout(() => btn.classList.remove(cls), 500);
+  }
+
+  function updateHud() {
+    $("hudPatient").textContent = `${Math.min(game.idx + 1, PATIENTS_PER_SHIFT)}/${PATIENTS_PER_SHIFT}${isExam() ? " ЭКЗАМЕН" : ""}`;
+    $("hudHours").textContent = game.hours.toFixed(1).replace(".", ",");
+    $("hudMoney").textContent = rub(game.money);
+    $("toBillion").textContent = rub(1e9 - game.money);
+  }
+
+  // ---------- Mouth close-up ----------
+  const mouth = $("mouth"), mctx = mouth.getContext("2d");
+  const MW = mouth.width, MH = mouth.height;
+  let pat = null, stage = 0, flash = 0, straight = 0;
+
+  function newPatientLook() {
+    const teeth = [];
+    for (let i = 0; i < 16; i++) teeth.push({ dx: rnd(-1, 1), dy: rnd(-3, 3) });
+    const bubbles = [];
+    for (let i = 0; i < 7; i++) bubbles.push({ x: rnd(30, 130), y: rnd(56, 66) });
+    return { teeth, bubbles, lig: pick(LIG_COLORS) };
+  }
+
+  function ellipseFill(c, cx, cy, rx, ry, color) {
+    c.fillStyle = color;
+    for (let y = -ry; y <= ry; y++) {
+      const w = Math.round(rx * Math.sqrt(1 - (y / ry) ** 2));
+      c.fillRect(cx - w, cy + y, w * 2, 1);
+    }
+  }
+
+  function line(c, x0, y0, x1, y1) {
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy;
+    for (;;) {
+      c.fillRect(x0, y0, 1, 1);
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x0 += sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+  }
+
+  function drawMouth() {
+    const c = mctx;
+    c.fillStyle = "#d98a6a"; c.fillRect(0, 0, MW, MH);
+    c.fillStyle = "#c97a5c"; c.fillRect(0, MH - 6, MW, 6);
+    const open = stage >= 1;
+    const cx = 80, cy = 45, rx = open ? 66 : 58, ry = open ? 36 : 14;
+    if (open) { ellipseFill(c, cx, cy, rx + 5, ry + 5, "#9fd8ff"); ellipseFill(c, cx, cy, rx + 3, ry + 3, "#c9ecff"); }
+    else ellipseFill(c, cx, cy, rx + 4, ry + 6, "#b8475a");
+    ellipseFill(c, cx, cy, rx, ry, "#4a0b16");
+
+    c.save();
+    c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.clip();
+    c.fillStyle = "#e06a7a"; c.fillRect(0, 0, MW, 24); c.fillRect(0, 66, MW, MH - 66);
+    const k = 1 - straight;
+    const rows = [[], []];
+    for (let r = 0; r < 2; r++) {
+      for (let i = 0; i < 8; i++) {
+        const t = pat.teeth[r * 8 + i];
+        const h = (i === 3 || i === 4) ? 20 : (i === 2 || i === 5) ? 18 : 16;
+        const x = 24 + i * 14 + Math.round(t.dx * k);
+        const y = (r === 0 ? 24 : 66 - h) + Math.round(t.dy * k);
+        c.fillStyle = "#f4efe0"; c.fillRect(x, y, 13, h);
+        c.fillStyle = "#d8d0b8"; c.fillRect(x, y, 1, h); c.fillRect(x + 12, y, 1, h);
+        c.fillStyle = "#ffffff"; c.fillRect(x + 3, r === 0 ? y + h - 4 : y + 2, 2, 2);
+        rows[r].push({ x: x + 6, y: r === 0 ? y + h - 8 : y + 8 });
+      }
+    }
+    for (const row of rows) for (const p of row) {
+      if (stage === 3) { c.fillStyle = "#4aa8ff"; c.fillRect(p.x - 2, p.y - 2, 5, 5); }
+      if (stage === 4) { c.fillStyle = "#fff3b0"; c.fillRect(p.x - 2, p.y - 2, 5, 5); }
+      if (stage >= 5) {
+        c.fillStyle = "#aab2bf"; c.fillRect(p.x - 2, p.y - 2, 5, 5);
+        c.fillStyle = "#4b5260"; c.fillRect(p.x - 2, p.y, 5, 1);
+        c.fillStyle = "#eef3fa"; c.fillRect(p.x - 2, p.y - 2, 1, 1);
+      }
+      if (stage >= 8) {
+        c.fillStyle = pat.lig;
+        c.fillRect(p.x - 3, p.y - 3, 7, 1); c.fillRect(p.x - 3, p.y + 3, 7, 1);
+        c.fillRect(p.x - 3, p.y - 3, 1, 7); c.fillRect(p.x + 3, p.y - 3, 1, 7);
+      }
+    }
+    if (stage >= 7) {
+      c.fillStyle = "#dfe6ef";
+      for (const row of rows) {
+        line(c, 14, row[0].y, row[0].x, row[0].y);
+        for (let i = 1; i < row.length; i++) line(c, row[i - 1].x, row[i - 1].y, row[i].x, row[i].y);
+        line(c, row[7].x, row[7].y, 146, row[7].y);
+      }
+    }
+    if (stage < 2) {
+      for (const b of pat.bubbles) {
+        c.fillStyle = "#d8f0ff"; c.fillRect(b.x, b.y, 3, 3);
+        c.fillStyle = "#ffffff"; c.fillRect(b.x, b.y, 1, 1);
+      }
+    }
+    c.restore();
+
+    if (stage >= 2 && straight === 0) {
+      c.fillStyle = "#cfd6e0";
+      for (let i = 0; i < 3; i++) line(c, 156 + i, 89, 132 + i, 62);
+      c.fillStyle = "#8a93a3"; c.fillRect(131, 60, 4, 3);
+    }
+    if (flash > 0) {
+      c.fillStyle = `rgba(80, 160, 255, ${(flash / 30) * 0.6})`;
+      c.fillRect(0, 0, MW, MH);
+      flash--;
+    }
+    if (straight > 0 && straight < 1) straight = Math.min(1, straight + 1 / 90);
+  }
+
+  function gameLoop(now) {
+    if (current !== 2) return;
+    drawMouth();
+    if (timer) {
+      const left = (timer.deadline - now) / timer.dur;
+      timerFill.style.width = Math.max(0, left) * 100 + "%";
+      timerFill.classList.toggle("low", left < 0.3);
+      if (left <= 0) mistake("Время! Пациент ёрзает в кресле.");
+    } else {
+      timerFill.style.width = "100%";
+      timerFill.classList.remove("low");
+    }
+    requestAnimationFrame(gameLoop);
+  }
+
+  function showVerdict() {
+    $("catImg").src = THRONE_SRC;
+    const clean = game.mistakesTotal === 0;
+    $("catVerdict").textContent =
+      `Так. ${PATIENTS_PER_SHIFT} пациента, ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, ` +
+      `заработано ${rub(game.money)} ₽. До миллиарда осталось совсем чуть-чуть: ${rub(1e9 - game.money)} ₽. ` +
+      (clean ? "Ни одной ошибки. Я впечатлён, а я кот на адском троне. " : `Ошибок: ${game.mistakesTotal}. Боты всё записали. `) +
+      "Экзамен сдан, поэтому я допускаю тебя… к следующей смене ассистентом.";
+  }
+
   // ---------- Screen flow ----------
   function show(i) {
     current = i;
+    clearTimeout(pending);
     screens.forEach((s, j) => { s.hidden = j !== i; });
     if (i === 1) { startTyping(); requestAnimationFrame(frame); }
+    if (i === 2) { startGame(); requestAnimationFrame(gameLoop); }
+    if (i === 3) showVerdict();
   }
 
   screens[0].addEventListener("click", () => show(1));
   screens[0].addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(1); } });
   screens[1].addEventListener("click", () => { if (typer) finishTyping(); });
-  screens[2].addEventListener("click", () => show(1));
   assistBtn.addEventListener("click", e => { e.stopPropagation(); show(2); });
+  $("againBtn").addEventListener("click", () => show(2));
 
   const condBtn = document.getElementById("condBtn");
   condBtn.addEventListener("click", e => {
@@ -311,7 +675,7 @@
     else if (current === 1 && typer) finishTyping();
   });
 
-  window.claude?.hot?.snapshot?.(() => ({ screen: current }));
+  window.claude?.hot?.snapshot?.(() => ({ screen: Math.min(current, 2) }));
   const start = (data) => show(data?.screen ?? 0);
   window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
