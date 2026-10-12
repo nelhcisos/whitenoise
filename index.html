@@ -367,26 +367,45 @@
   }
 
   // ---------- Assistant shift ----------
-  // Real order of bonding braces; the bot asks for each instrument in turn.
+  // Real order of bonding braces; the bot asks for each instrument in turn
+  // and keeps the field dry with the saliva ejector after almost every action.
+  const TOOLS = [
+    { id: "optragate", name: "Оптрагейт" },
+    { id: "suction", name: "Слюноотсос" },
+    { id: "vacuum", name: "Пылесос" },
+    { id: "gel", name: "Протравочный гель" },
+    { id: "bond", name: "Адгезив" },
+    { id: "brackets", name: "Брекеты" },
+    { id: "lamp", name: "Лампа" },
+    { id: "arch", name: "Дуга" },
+    { id: "ligatures", name: "Лигатуры" },
+    { id: "mirror", name: "Зеркало" },
+  ];
   const STEPS = [
-    { id: "retractor", name: "Ретрактор", ask: "Подай ретрактор. Нужно открыть доступ к зубам." },
-    { id: "suction", name: "Слюноотсос", ask: "Слюноотсос. Зубы должны быть сухими." },
-    { id: "gel", name: "Протравочный гель", ask: "Протравочный гель. Наносим на эмаль." },
-    { id: "bond", name: "Адгезив", ask: "Адгезив, чтобы брекеты держались." },
-    { id: "brackets", name: "Брекеты", ask: "Брекеты. Клеим на каждый зуб." },
-    { id: "lamp", name: "Лампа", ask: "Полимеризационную лампу. Засвечиваем клей." },
-    { id: "arch", name: "Дуга", ask: "Дугу. Это она будет двигать зубы." },
-    { id: "ligatures", name: "Лигатуры", ask: "Лигатуры. Закрепляем дугу в брекетах." },
-    { id: "mirror", name: "Зеркало", ask: "Зеркало. Проверяю работу." },
+    { id: "optragate", key: "open", ask: "Подай оптрагейт. Нужно открыть доступ к зубам." },
+    { id: "suction", key: "dry", ask: "Слюноотсос. Поле должно быть сухим." },
+    { id: "gel", key: "gel", ask: "Протравочный гель. Наносим на эмаль." },
+    { id: "vacuum", key: "rinse", ask: "Смываю протравку водой. Пылесос, быстро!" },
+    { id: "suction", key: "dry", ask: "Слюноотсос. Подсушиваем перед бондом." },
+    { id: "bond", key: "bond", ask: "Адгезив. Наносим бонд." },
+    { id: "lamp", key: "cureBond", ask: "Лампу. Засвечиваем бонд." },
+    { id: "suction", key: "dry", ask: "Слюноотсос. Опять слюна." },
+    { id: "brackets", key: "brackets", ask: "Брекеты. Клеим на каждый зуб." },
+    { id: "lamp", key: "cureBrackets", ask: "Лампу ещё раз. Засвечиваем брекеты." },
+    { id: "suction", key: "dry", ask: "Слюноотсос, пожалуйста." },
+    { id: "arch", key: "arch", ask: "Дугу. Это она будет двигать зубы." },
+    { id: "ligatures", key: "ligatures", ask: "Лигатуры. Закрепляем дугу в брекетах." },
+    { id: "suction", key: "dry", ask: "Слюноотсос, и заканчиваем." },
+    { id: "mirror", key: "mirror", ask: "Зеркало. Проверяю работу." },
   ];
   const DISTRACTORS = [
     { id: "drill", name: "Бормашина", wrong: "Бормашина? Мы не сверлим. Мы двигаем зубы." },
-    { id: "forceps", name: "Щипцы", wrong: "Щипцы? Мы зубы не удаляем, мы их выравниваем." },
     { id: "anesthesia", name: "Анестезия", wrong: "Анестезия? Брекеты ставят без укола." },
   ];
   const TOOL_PAL = { S: "#c8cdd6", K: "#20242c", W: "#bfe8ff", B: "#4aa8ff", G: "#7a8090", Y: "#ffd23a", R: "#ff3b3b", P: "#ff7ad9" };
   const ICONS = {
-    retractor: ["............", ".BBBBBBBBBB.", "B..........B", "B.BBBBBBBB.B", "B.B......B.B", "B.B......B.B", "B.B......B.B", "B.B......B.B", "B.BBBBBBBB.B", "B..........B", ".BBBBBBBBBB.", "............"],
+    optragate: ["............", ".BBBBBBBBBB.", "B..........B", "B.BBBBBBBB.B", "B.B......B.B", "B.B......B.B", "B.B......B.B", "B.B......B.B", "B.BBBBBBBB.B", "B..........B", ".BBBBBBBBBB.", "............"],
+    vacuum: [".........SSS", "........SWWS", ".......SWWS.", "......SWWS..", ".....SWWS...", "....SWWS....", "...GGGG.....", "...GGGG.....", "...GGGG.....", "...GGGG.....", "...GGGG.....", "...GGGG....."],
     suction: ["..........WW", ".........WW.", "........WW..", ".......WW...", "......WW....", ".....WW.....", "....WW......", "...BB.......", "...BB.......", "...BB.......", "...BB.......", "...BB......."],
     gel: [".....GG.....", ".....GG.....", "....GGGG....", "....SSSS....", "....SBBS....", "....SBBS....", "....SBBS....", "....SBBS....", "....SSSS....", ".....SS.....", ".....S......", ".....S......"],
     bond: ["....KKKK....", "....KKKK....", ".....SS.....", "...YYYYYY...", "..YYYYYYYY..", "..YWWYYYYY..", "..YWYYYYYY..", "..YYYYYYYY..", "..YYYYYYYY..", "..YYYYYYYY..", "..YYYYYYYY..", "...YYYYYY..."],
@@ -424,7 +443,7 @@
   const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   const rub = n => n.toLocaleString("ru-RU");
-  const allTools = [...STEPS, ...DISTRACTORS];
+  const allTools = [...TOOLS, ...DISTRACTORS];
   const toolName = id => allTools.find(t => t.id === id).name;
 
   // build the tray once, in shuffled order so it can't be clicked left to right
@@ -490,7 +509,7 @@
       flashBtn(btn, "bad");
       const d = DISTRACTORS.find(x => x.id === id);
       let msg = d ? d.wrong : `Это ${toolName(id).toLowerCase()}.`;
-      msg += isExam() ? ` Подсказка: ${want.name.toLowerCase()}.` : ` А я просил: ${want.name.toLowerCase()}.`;
+      msg += isExam() ? ` Подсказка: ${toolName(want.id).toLowerCase()}.` : ` А я просил: ${toolName(want.id).toLowerCase()}.`;
       mistake(msg);
     }
   }
@@ -575,7 +594,9 @@
     const c = mctx;
     c.fillStyle = "#d98a6a"; c.fillRect(0, 0, MW, MH);
     c.fillStyle = "#c97a5c"; c.fillRect(0, MH - 6, MW, 6);
-    const open = stage >= 1;
+    const done = new Set(STEPS.slice(0, stage).map(s => s.key));
+    const last = stage > 0 ? STEPS[stage - 1].id : null;
+    const open = done.has("open");
     const cx = 80, cy = 45, rx = open ? 66 : 58, ry = open ? 36 : 14;
     if (open) { ellipseFill(c, cx, cy, rx + 5, ry + 5, "#9fd8ff"); ellipseFill(c, cx, cy, rx + 3, ry + 3, "#c9ecff"); }
     else ellipseFill(c, cx, cy, rx + 4, ry + 6, "#b8475a");
@@ -599,20 +620,23 @@
       }
     }
     for (const row of rows) for (const p of row) {
-      if (stage === 3) { c.fillStyle = "#4aa8ff"; c.fillRect(p.x - 2, p.y - 2, 5, 5); }
-      if (stage === 4) { c.fillStyle = "#fff3b0"; c.fillRect(p.x - 2, p.y - 2, 5, 5); }
-      if (stage >= 5) {
+      if (done.has("gel") && !done.has("rinse")) { c.fillStyle = "#4aa8ff"; c.fillRect(p.x - 2, p.y - 2, 5, 5); }
+      if (done.has("rinse") && !done.has("bond")) { c.fillStyle = "#ffffff"; c.fillRect(p.x - 2, p.y - 2, 5, 5); }
+      if (done.has("bond") && !done.has("brackets")) {
+        c.fillStyle = done.has("cureBond") ? "#ffe680" : "#fff3b0"; c.fillRect(p.x - 2, p.y - 2, 5, 5);
+      }
+      if (done.has("brackets")) {
         c.fillStyle = "#aab2bf"; c.fillRect(p.x - 2, p.y - 2, 5, 5);
         c.fillStyle = "#4b5260"; c.fillRect(p.x - 2, p.y, 5, 1);
         c.fillStyle = "#eef3fa"; c.fillRect(p.x - 2, p.y - 2, 1, 1);
       }
-      if (stage >= 8) {
+      if (done.has("ligatures")) {
         c.fillStyle = pat.lig;
         c.fillRect(p.x - 3, p.y - 3, 7, 1); c.fillRect(p.x - 3, p.y + 3, 7, 1);
         c.fillRect(p.x - 3, p.y - 3, 1, 7); c.fillRect(p.x + 3, p.y - 3, 1, 7);
       }
     }
-    if (stage >= 7) {
+    if (done.has("arch")) {
       c.fillStyle = "#dfe6ef";
       for (const row of rows) {
         line(c, 14, row[0].y, row[0].x, row[0].y);
@@ -620,7 +644,8 @@
         line(c, row[7].x, row[7].y, 146, row[7].y);
       }
     }
-    if (stage < 2) {
+    const wet = straight === 0 && last !== "suction" && last !== "vacuum";
+    if (wet) {
       for (const b of pat.bubbles) {
         c.fillStyle = "#d8f0ff"; c.fillRect(b.x, b.y, 3, 3);
         c.fillStyle = "#ffffff"; c.fillRect(b.x, b.y, 1, 1);
@@ -628,10 +653,11 @@
     }
     c.restore();
 
-    if (stage >= 2 && straight === 0) {
-      c.fillStyle = "#cfd6e0";
-      for (let i = 0; i < 3; i++) line(c, 156 + i, 89, 132 + i, 62);
-      c.fillStyle = "#8a93a3"; c.fillRect(131, 60, 4, 3);
+    if ((last === "suction" || last === "vacuum") && straight === 0) {
+      const big = last === "vacuum";
+      c.fillStyle = big ? "#7a8090" : "#cfd6e0";
+      for (let i = 0; i < (big ? 6 : 3); i++) line(c, 156 + i, 89, 132 + i, 62);
+      c.fillStyle = "#8a93a3"; c.fillRect(131, 60, big ? 7 : 4, big ? 4 : 3);
     }
     if (flash > 0) {
       c.fillStyle = `rgba(80, 160, 255, ${(flash / 30) * 0.6})`;
