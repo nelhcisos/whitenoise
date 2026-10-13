@@ -1146,6 +1146,10 @@
   // { img: "data:image/...", q: "Какой диагноз?", options: ["…", "…"], answer: 0, explain: "…" }
   const DIAG = [];
   let aa = null; // { stage: "hello" | "thanked" | "quiz" | "done", q, right }
+  // While we build chapter 2, the game opens straight on the first diagnosis case.
+  // Set to false to play from the title screen again.
+  const SKIP_TO_DIAGNOSTICS = true;
+
   function startAssistant() {
     aa = { stage: "hello", q: 0, right: 0 };
     $("quiz").hidden = true;
@@ -1155,6 +1159,11 @@
     $("aaBtn").hidden = false;
     $("aaBtn").textContent = "СКАЗАТЬ СПАСИБО";
     $("aaText").textContent = "…А? Ты ко мне? Обычно сюда заходят только за перчатками.";
+    if (SKIP_TO_DIAGNOSTICS && !game) {
+      aa.stage = "causes";
+      $("aaBtn").hidden = true;
+      startCauses(CASES[0]);
+    }
   }
   $("aaBtn").addEventListener("click", () => {
     if (aa.stage === "hello") {
@@ -1183,7 +1192,7 @@
   // The assistant's assistant juggles a pile of answers; you pick causes one by one until
   // every group from the textbook is named. Each correct pick is answered with the full wording.
   const CASES = [{
-    intro: "Стоп, смотри. У пациента открытый прикус — передние зубы не смыкаются. Из-за чего это могло быть?",
+    intro: "Стоп, смотри. Пришёл пациент: первый класс, открытый прикус — передние зубы не смыкаются. Из-за чего это могло быть?",
     groups: [
       { full: "Вредные привычки: сосание пальца, прикусывание языка, прикусывание губы, аномальное глотание и т.д.",
         labels: ["Сосание пальца", "Прикусывание языка", "Аномальное глотание"] },
@@ -1373,7 +1382,7 @@
   $("catImg").addEventListener("click", toggleMusic);
 
   window.claude?.hot?.snapshot?.(() => ({ screen: current >= 3 ? 2 : current }));
-  const start = (data) => show(data?.screen ?? 0);
+  const start = (data) => show(SKIP_TO_DIAGNOSTICS ? 7 : data?.screen ?? 0);
   window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
 </script>
