@@ -161,28 +161,9 @@
     font-size: clamp(9px, 1.8vw, 12px); color: var(--dim);
   }
   .hud b { color: var(--gold); font-weight: normal; font-variant-numeric: tabular-nums; }
-  .chair {
-    display: grid; grid-template-columns: 1fr 3.4fr 1fr; gap: 10px;
-    align-items: center; width: 100%;
-  }
   #mouth {
-    width: 100%; aspect-ratio: 16 / 9; max-width: 100%; min-width: 0;
+    width: min(100%, 560px); aspect-ratio: 16 / 9; max-width: 100%;
     image-rendering: pixelated; border: 4px solid var(--fg); box-sizing: border-box;
-  }
-  .photo { margin: 0; display: flex; flex-direction: column; gap: 6px; align-items: center; min-width: 0; }
-  .photo img, .photo-empty {
-    width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: top;
-    image-rendering: pixelated; border: 3px solid var(--fg); box-sizing: border-box;
-  }
-  .photo-empty {
-    display: flex; align-items: center; justify-content: center;
-    background: var(--panel); color: var(--dim); font-size: 20px;
-  }
-  .photo figcaption { font-size: 8px; color: var(--dim); }
-  @media (max-width: 560px) {
-    .chair { grid-template-columns: 1fr 1fr; }
-    #mouth { grid-column: 1 / -1; order: -1; }
-    .photo img, .photo-empty { aspect-ratio: 1; }
   }
   .patient { margin: 0; min-height: 2em; font-size: clamp(8px, 1.5vw, 11px); line-height: 2; color: var(--dim); }
   .botrow { display: flex; gap: 12px; align-items: flex-start; width: min(100%, 560px); text-align: left; }
@@ -222,6 +203,7 @@
   @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
 
   /* Screen 4: cat's verdict */
+  #door { width: min(60vw, 256px); aspect-ratio: 1; image-rendering: pixelated; border: 4px solid var(--fg); }
   .cat-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
   #s4 { cursor: default; }
 
@@ -268,18 +250,7 @@
       <span>ЧАСЫ <b id="hudHours">0,0</b></span>
       <span>₽ <b id="hudMoney">0</b></span>
     </div>
-    <div class="chair">
-      <figure class="photo">
-        <img id="photoBefore" alt="Пациент до лечения">
-        <figcaption>ДО</figcaption>
-      </figure>
-      <canvas id="mouth" width="160" height="90" aria-label="Рот пациента крупным планом"></canvas>
-      <figure class="photo">
-        <img id="photoAfter" alt="Пациент после лечения" hidden>
-        <div class="photo-empty" id="photoAfterEmpty">?</div>
-        <figcaption>ПОСЛЕ</figcaption>
-      </figure>
-    </div>
+    <canvas id="mouth" width="160" height="90" aria-label="Рот пациента крупным планом"></canvas>
     <p class="patient" id="patientLine"></p>
     <div class="botrow">
       <canvas id="bot" class="botface" width="16" height="16" aria-hidden="true"></canvas>
@@ -313,6 +284,18 @@
   </div>
 </section>
 
+<section class="screen game" id="s6" hidden>
+  <div class="wrap">
+    <p class="tagline">КАБИНЕТ ФУНКЦИОНАЛЬНОЙ ДИАГНОСТИКИ</p>
+    <canvas id="door" width="64" height="64" aria-label="Дверь кабинета"></canvas>
+    <div class="botrow">
+      <canvas id="bot4" class="botface" width="16" height="16" aria-hidden="true"></canvas>
+      <div class="botsay" aria-live="polite"><span class="speaker">БОТ-ОРТОДОНТ:</span> <span id="condyText"></span></div>
+    </div>
+    <button class="btn" id="leaveBtn" type="button">ВЫЙТИ ИЗ КАБИНЕТА</button>
+  </div>
+</section>
+
 <section class="screen" id="s4" hidden>
   <div class="wrap">
     <img id="catImg" class="cat-small" alt="Котик с бантиком на адском троне">
@@ -333,7 +316,7 @@
     "и посмотреть, как они это делают. Только после этого мы сможем допустить тебя " +
     "к игровому процессу. Для начала ты будешь ассистентом.";
 
-  const screens = ["s1", "s2", "s3", "s4", "s5"].map(id => document.getElementById(id));
+  const screens = ["s1", "s2", "s3", "s4", "s5", "s6"].map(id => document.getElementById(id));
   let current = 0;
 
   // ---------- Tooth logo ----------
@@ -421,37 +404,22 @@
   }
 
   // ---------- Assistant shift ----------
-  // Real order of bonding braces; the bot asks for each instrument in turn
-  // and keeps the field dry with the saliva ejector after almost every action.
-  const TOOLS = [
-    { id: "optragate", name: "Оптрагейт" },
-    { id: "suction", name: "Слюноотсос" },
-    { id: "vacuum", name: "Пылесос" },
-    { id: "gel", name: "Протравочный гель" },
-    { id: "bond", name: "Адгезив" },
-    { id: "brackets", name: "Брекеты" },
-    { id: "lamp", name: "Лампа" },
-    { id: "arch", name: "Дуга" },
-    { id: "ligatures", name: "Лигатуры" },
-    { id: "mirror", name: "Зеркало" },
-  ];
+  // Real order of bonding braces; the bot asks for each instrument in turn.
+  // The saliva ejector is not a step: the player must use it on their own at least
+  // once every DRY_EVERY moves, or the mouth floods.
   const STEPS = [
     { id: "optragate", key: "open", ask: "Подай оптрагейт. Нужно открыть доступ к зубам." },
-    { id: "suction", key: "dry", ask: "Слюноотсос. Поле должно быть сухим." },
     { id: "gel", key: "gel", ask: "Протравочный гель. Наносим на эмаль." },
     { id: "vacuum", key: "rinse", ask: "Смываю протравку водой. Пылесос, быстро!" },
-    { id: "suction", key: "dry", ask: "Слюноотсос. Подсушиваем перед бондом." },
     { id: "bond", key: "bond", ask: "Адгезив. Наносим бонд." },
     { id: "lamp", key: "cureBond", ask: "Лампу. Засвечиваем бонд." },
-    { id: "suction", key: "dry", ask: "Слюноотсос. Опять слюна." },
     { id: "brackets", key: "brackets", ask: "Брекеты. Клеим на каждый зуб." },
     { id: "lamp", key: "cureBrackets", ask: "Лампу ещё раз. Засвечиваем брекеты." },
-    { id: "suction", key: "dry", ask: "Слюноотсос, пожалуйста." },
     { id: "arch", key: "arch", ask: "Дугу. Это она будет двигать зубы." },
     { id: "ligatures", key: "ligatures", ask: "Лигатуры. Закрепляем дугу в брекетах." },
-    { id: "suction", key: "dry", ask: "Слюноотсос, и заканчиваем." },
     { id: "mirror", key: "mirror", ask: "Зеркало. Проверяю работу." },
   ];
+  const DRY_EVERY = 3;
   const DISTRACTORS = [
     { id: "drill", name: "Бормашина", wrong: "Бормашина? Мы не сверлим. Мы двигаем зубы." },
     { id: "anesthesia", name: "Анестезия", wrong: "Анестезия? Брекеты ставят без укола." },
@@ -556,13 +524,13 @@
   }
 
   function isExam() { return game.idx === PATIENTS_PER_SHIFT - 1; }
-  // Patient 1: the bot names every instrument. Patient 2: it names only some and
-  // otherwise waits for you to remember. Patient 3 (exam): it stays silent.
+  // Shift: patient 1 (the bot names every instrument) -> bending MPD loops with the pliers ->
+  // patient 2 (the bot names only some) -> condylography, you're sent out -> patient 3 (exam, silent).
   function isGuided() { return game.idx === 0; }
   const NUDGES = ["Ну давай, подавай, что дальше.", "Дальше?", "Что теперь?", "Жду. Ты же помнишь порядок."];
 
   function startPatient() {
-    game.step = 0; game.mistakes = 0;
+    game.step = 0; game.mistakes = 0; game.wet = 0; game.flooded = false; lastTool = null;
     pat = newPatientLook();
     stage = 0; straight = 0; flash = 0;
     updateHud();
@@ -570,13 +538,11 @@
     const p = PATIENTS[game.pool[game.next++ % game.pool.length]];
     game.patient = p;
     patientLine.textContent = "Пациент: " + p.note;
-    $("photoBefore").src = p.before;
-    $("photoAfter").hidden = true; $("photoAfterEmpty").hidden = false;
     intro = { t0: performance.now(), img: p.beforeImg, from: faceRect(p.bs, p.bm), to: teethRect(p.bm), hold: 900 };
     botText.textContent = isExam()
       ? "Экзамен. Теперь я молчу, а ты подаёшь инструменты сам, по порядку."
       : isGuided()
-        ? "Новый пациент. Подавай, что я прошу."
+        ? "Новый пациент. Подавай, что я прошу. И следи сам за слюной: слюноотсос хотя бы раз в три хода."
         : "Порядок ты уже видел. Теперь я иногда буду молчать, подавай сам.";
     timer = null;
     later(askStep, INTRO_MS + (isGuided() ? 300 : 1200));
@@ -591,15 +557,38 @@
 
   function onTool(id, btn) {
     if (!timer) return;
+    if (id === "suction") {
+      // always allowed; it's how the field stays dry
+      game.wet = 0; lastTool = "suction";
+      flashBtn(btn, "ok");
+      if (game.flooded) {
+        game.flooded = false;
+        timer = null;
+        botText.textContent = "Фух, сухо. Продолжаем.";
+        later(askStep, 700);
+      }
+      return;
+    }
+    if (game.flooded) {
+      flashBtn(btn, "bad");
+      return mistake("Рот залит водой! Сначала слюноотсос.");
+    }
     const want = STEPS[game.step];
     if (id === want.id) {
       timer = null;
       flashBtn(btn, "ok");
       game.money += PER_STEP_RUB;
       game.step++; stage = game.step;
+      lastTool = id;
+      game.wet = id === "vacuum" ? 0 : game.wet + 1;
       if (id === "lamp") flash = 30;
       updateHud();
       if (game.step >= STEPS.length) return finishPatient();
+      if (game.wet >= DRY_EVERY) {
+        game.flooded = true;
+        timer = { deadline: performance.now() + 10000, dur: 10000 };
+        return mistake(`Весь рот залило водой! ${DRY_EVERY} хода без слюноотсоса. Нужен слюноотсос!`);
+      }
       botText.textContent = pick(PRAISE);
       later(askStep, 700);
     } else {
@@ -631,15 +620,15 @@
       game.hours += PER_PATIENT_HOURS;
       updateHud();
       later(() => {
-        // zoom back out from the straight teeth to the "after" photo, which also appears on the right
+        // zoom back out from the straight teeth on the "after" photo
         const p = game.patient;
         intro = { t0: performance.now(), img: p.afterImg, from: teethRect(p.am), to: faceRect(p.as, p.am), hold: 300, keep: true };
-        $("photoAfter").src = p.after;
-        $("photoAfter").hidden = false; $("photoAfterEmpty").hidden = true;
-        patientLine.textContent = "Пациент уходит довольный. Сравни: было и стало.";
+        patientLine.textContent = "Пациент уходит довольный.";
         later(() => {
           game.idx++;
-          if (game.idx >= PATIENTS_PER_SHIFT) show(4);
+          if (game.idx === 1) show(4);        // MPD loops with the pliers
+          else if (game.idx === 2) show(5);   // condylography: you're sent out
+          else if (game.idx >= PATIENTS_PER_SHIFT) show(3);
           else startPatient();
         }, 3400);
       }, 1800);
@@ -663,13 +652,13 @@
   // ---------- Mouth close-up ----------
   const mouth = $("mouth"), mctx = mouth.getContext("2d");
   const MW = mouth.width, MH = mouth.height;
-  let pat = null, stage = 0, flash = 0, straight = 0;
+  let pat = null, stage = 0, flash = 0, straight = 0, lastTool = null;
 
   function newPatientLook() {
     const teeth = [];
     for (let i = 0; i < 16; i++) teeth.push({ dx: rnd(-1, 1), dy: rnd(-3, 3) });
     const bubbles = [];
-    for (let i = 0; i < 7; i++) bubbles.push({ x: rnd(30, 130), y: rnd(56, 66) });
+    for (let i = 0; i < 10; i++) bubbles.push({ x: rnd(30, 130), y: rnd(54, 66) });
     return { teeth, bubbles, lig: pick(LIG_COLORS) };
   }
 
@@ -701,7 +690,7 @@
     const w = size[0], h = w * 9 / 16;
     return [0, Math.min(Math.max(0, m[1] - h * 0.65), size[1] - h), w, h];
   }
-  function teethRect(m) { return [m[0] - 22, m[1] - 12.4, 44, 24.75]; }
+  function teethRect(m) { return [m[0] - 18, m[1] - 10.1, 36, 20.25]; }
   function drawIntro(now) {
     const t = Math.min(1, Math.max(0, (now - intro.t0 - intro.hold) / 1600));
     const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
@@ -719,7 +708,7 @@
     c.fillStyle = "#d98a6a"; c.fillRect(0, 0, MW, MH);
     c.fillStyle = "#c97a5c"; c.fillRect(0, MH - 6, MW, 6);
     const done = new Set(STEPS.slice(0, stage).map(s => s.key));
-    const last = stage > 0 ? STEPS[stage - 1].id : null;
+    const last = lastTool;
     const open = done.has("open");
     const cx = 80, cy = 45, rx = open ? 66 : 58, ry = open ? 36 : 14;
     if (open) { ellipseFill(c, cx, cy, rx + 5, ry + 5, "#9fd8ff"); ellipseFill(c, cx, cy, rx + 3, ry + 3, "#c9ecff"); }
@@ -768,11 +757,14 @@
         line(c, row[7].x, row[7].y, 146, row[7].y);
       }
     }
-    const wet = straight === 0 && last !== "suction" && last !== "vacuum";
-    if (wet) {
-      for (const b of pat.bubbles) {
+    if (straight === 0) {
+      // more saliva with every move since the last suction; a flood fills the mouth with water
+      for (const b of pat.bubbles.slice(0, Math.min(pat.bubbles.length, game.wet * 3 + (stage === 0 ? 3 : 0)))) {
         c.fillStyle = "#d8f0ff"; c.fillRect(b.x, b.y, 3, 3);
         c.fillStyle = "#ffffff"; c.fillRect(b.x, b.y, 1, 1);
+      }
+      if (game.flooded) {
+        c.fillStyle = "rgba(120, 190, 255, 0.6)"; c.fillRect(0, 46 + Math.round(Math.sin(performance.now() / 300) * 2), MW, MH);
       }
     }
     c.restore();
@@ -914,7 +906,7 @@
 
   let tools = null; // { task, mistakes, money, hover, selected, mark: {id, color, until}, waiting }
   function startTools() {
-    tools = { task: 0, mistakes: game ? game.mistakesTotal : 0, money: game ? game.money : 0, hover: 0, selected: 0, mark: null, waiting: false, roseGiven: false };
+    tools = { task: 0, hover: 0, selected: 0, mark: null, waiting: false, roseGiven: false };
     drawBot($("bot2"), false);
     $("botRose").hidden = true;
     askTool();
@@ -933,7 +925,7 @@
     tools.mark = null;
     select(0);
     $("toolTask").textContent = `${tools.task + 1}/${TOOL_TASKS.length}`;
-    $("toolMoney").textContent = rub(tools.money);
+    $("toolMoney").textContent = rub(game.money);
     tools.ask = pick(t.asks);
     toolBotText.textContent = tools.ask;
   }
@@ -972,20 +964,20 @@
     if (id === TOOL_TASKS[tools.task].tool) {
       tools.waiting = false;
       giveBtn.disabled = true;
-      tools.money += PER_STEP_RUB;
-      $("toolMoney").textContent = rub(tools.money);
+      game.money += PER_STEP_RUB;
+      $("toolMoney").textContent = rub(game.money);
       tools.mark = { id, color: "#3ddc84", until: Infinity };
       toolBotText.textContent = "Да, это они. Спасибо.";
       later(() => {
         tools.task++;
         if (tools.task < TOOL_TASKS.length) askTool();
         else {
-          toolBotText.textContent = "Дуга стоит. Смена окончена, иди к коту.";
-          later(() => show(3), 1800);
+          toolBotText.textContent = "Петли для МПД готовы. Возвращаемся к пациентам.";
+          later(() => show(2, true), 1800);
         }
       }, 1400);
     } else {
-      tools.mistakes++;
+      game.mistakesTotal++;
       tools.mark = { id, color: "#ff3b3b", until: performance.now() + 700 };
       toolBotText.textContent = (id === ROSE ? "Это роза. Очень мило, но мне нужны щипцы. " : "Нет, это другие щипцы. ") + tools.ask;
       select(0);
@@ -1003,25 +995,70 @@
     requestAnimationFrame(toolsLoop);
   }
 
+  // ---------- Condylography: the bot sends you out ----------
+  const doorCanvas = $("door"), dctx = doorCanvas.getContext("2d");
+  let condy = null; // { out, t0 }
+  drawBot($("bot4"), false);
+  function drawDoor(now) {
+    const c = dctx;
+    c.fillStyle = "#3a3f4a"; c.fillRect(0, 0, 64, 64);           // corridor wall
+    c.fillStyle = "#2a2d35"; c.fillRect(0, 56, 64, 8);           // floor
+    c.fillStyle = "#1a1c22"; c.fillRect(16, 10, 32, 46);         // door frame
+    if (!condy.out) {
+      // open door: the condylograph glowing inside
+      c.fillStyle = "#0d1a2a"; c.fillRect(18, 12, 28, 44);
+      c.fillStyle = "#4aa8ff"; c.fillRect(26, 24, 12, 8);
+      c.fillStyle = "#bfe8ff"; c.fillRect(28, 26, 8, 4);
+      c.fillStyle = "#c8cdd6"; c.fillRect(30, 32, 4, 14); c.fillRect(24, 46, 16, 3);
+    } else {
+      c.fillStyle = "#7a4a2a"; c.fillRect(18, 12, 28, 44);       // closed door
+      c.fillStyle = "#5c361e"; c.fillRect(20, 14, 24, 18); c.fillRect(20, 34, 24, 20);
+      c.fillStyle = "#ffd23a"; c.fillRect(40, 34, 3, 2);         // handle
+      const on = Math.floor((now - condy.t0) / 400) % 2 === 0;
+      c.fillStyle = on ? "#ff3b3b" : "#5a1010"; c.fillRect(28, 4, 8, 4);   // "busy" lamp
+    }
+  }
+  function startCondy() {
+    condy = { out: false, t0: performance.now() };
+    $("leaveBtn").hidden = false;
+    $("condyText").textContent = "Так. Сейчас будет кондилография. Повторюсь: КОНДИЛОГРАФИЯ. Большая функциональная диагностика. Ты пока не готов. Выйди из кабинета.";
+    requestAnimationFrame(condyLoop);
+  }
+  function condyLoop(now) {
+    if (current !== 5) return;
+    drawDoor(now);
+    requestAnimationFrame(condyLoop);
+  }
+  $("leaveBtn").addEventListener("click", () => {
+    condy.out = true; condy.t0 = performance.now();
+    $("leaveBtn").hidden = true;
+    $("condyText").textContent = "*ты стоишь в коридоре. За дверью что-то жужжит и щёлкает…*";
+    later(() => {
+      $("condyText").textContent = "Всё, заходи. Последний пациент — экзамен.";
+      later(() => show(2, true), 1800);
+    }, 3500);
+  });
+
   function showVerdict() {
     $("catImg").src = THRONE_SRC;
-    const clean = tools.mistakes === 0;
+    const clean = game.mistakesTotal === 0;
     $("catVerdict").textContent =
-      `Так. ${PATIENTS_PER_SHIFT} пациента, ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, все щипцы поданы, ` +
-      `заработано ${rub(tools.money)} ₽. До миллиарда осталось совсем чуть-чуть: ${rub(1e9 - tools.money)} ₽. ` +
-      (clean ? "Ни одной ошибки. Я впечатлён, а я кот на адском троне. " : `Ошибок: ${tools.mistakes}. Боты всё записали. `) +
+      `Так. ${PATIENTS_PER_SHIFT} пациента, ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, все щипцы поданы, кондилографию переждал в коридоре, ` +
+      `заработано ${rub(game.money)} ₽. До миллиарда осталось совсем чуть-чуть: ${rub(1e9 - game.money)} ₽. ` +
+      (clean ? "Ни одной ошибки. Я впечатлён, а я кот на адском троне. " : `Ошибок: ${game.mistakesTotal}. Боты всё записали. `) +
       "Экзамен сдан, поэтому я допускаю тебя… к следующей смене ассистентом." +
       (tools.roseGiven ? " Стоп. Я видел, как ты сунул боту розу с тысячей. Это беспредел!" : "");
     $("verdictBot").hidden = !tools.roseGiven;
   }
 
   // ---------- Screen flow ----------
-  function show(i) {
+  function show(i, resume = false) {
     current = i;
     clearTimeout(pending);
     screens.forEach((s, j) => { s.hidden = j !== i; });
     if (i === 1) { startTyping(); requestAnimationFrame(frame); }
-    if (i === 2) { startGame(); requestAnimationFrame(gameLoop); }
+    if (i === 2) { if (resume) startPatient(); else startGame(); requestAnimationFrame(gameLoop); }
+    if (i === 5) startCondy();
     if (i === 3) showVerdict();
     if (i === 4) startTools();
   }
