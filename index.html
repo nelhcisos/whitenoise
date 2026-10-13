@@ -407,6 +407,18 @@
   // Real order of bonding braces; the bot asks for each instrument in turn.
   // The saliva ejector is not a step: the player must use it on their own at least
   // once every DRY_EVERY moves, or the mouth floods.
+  const TOOLS = [
+    { id: "optragate", name: "Оптрагейт" },
+    { id: "suction", name: "Слюноотсос" },
+    { id: "vacuum", name: "Пылесос" },
+    { id: "gel", name: "Протравочный гель" },
+    { id: "bond", name: "Адгезив" },
+    { id: "brackets", name: "Брекеты" },
+    { id: "lamp", name: "Лампа" },
+    { id: "arch", name: "Дуга" },
+    { id: "ligatures", name: "Лигатуры" },
+    { id: "mirror", name: "Зеркало" },
+  ];
   const STEPS = [
     { id: "optragate", key: "open", ask: "Подай оптрагейт. Нужно открыть доступ к зубам." },
     { id: "gel", key: "gel", ask: "Протравочный гель. Наносим на эмаль." },
