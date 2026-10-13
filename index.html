@@ -213,11 +213,20 @@
   #aa { width: 96px; height: 96px; image-rendering: pixelated; }
   .quiz { display: flex; flex-direction: column; gap: 12px; align-items: center; width: 100%; }
   .quiz-img { width: min(100%, 420px); border: 4px solid var(--fg); image-rendering: pixelated; }
+  #obCanvas { width: min(100%, 420px); aspect-ratio: 16 / 9; image-rendering: pixelated; border: 4px solid var(--fg); }
+  .juggle { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: min(100%, 640px); }
+  .juggle .btn { font-size: 9px; padding: 10px 12px; }
+  .juggle.hop .btn { animation: hop .45s ease-out; }
+  .juggle.hop .btn:nth-child(2n) { animation-delay: .06s; }
+  .juggle.hop .btn:nth-child(3n) { animation-delay: .12s; }
+  @keyframes hop { 40% { transform: translateY(-14px) rotate(-3deg); } 70% { transform: translateY(2px); } }
+  .found { margin: 0; padding-left: 24px; width: min(100%, 640px); text-align: left; font-size: clamp(8px, 1.5vw, 10px); line-height: 2; color: var(--ok); }
+  .found:empty { display: none; }
   .cat-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
   #s4 { cursor: default; }
 
   @media (prefers-reduced-motion: reduce) {
-    .blink, .cursor, .tool.bad { animation: none; }
+    .blink, .cursor, .tool.bad, .juggle.hop .btn { animation: none; }
   }
 </style>
 </head>
@@ -324,6 +333,12 @@
     <canvas id="aa" width="16" height="16" aria-label="Ассистент ассистента"></canvas>
     <div class="botrow">
       <div class="botsay" aria-live="polite"><span class="speaker">АССИСТЕНТ АССИСТЕНТА:</span> <span id="aaText"></span></div>
+    </div>
+    <div class="quiz" id="causes" hidden>
+      <p class="hud">ПРИЧИН НАЙДЕНО <b id="causesNum">0/4</b></p>
+      <canvas id="obCanvas" width="160" height="90" aria-label="Открытый прикус: передние зубы не смыкаются"></canvas>
+      <div class="juggle" id="causeChoices"></div>
+      <ol class="found" id="causeFound"></ol>
     </div>
     <div class="quiz" id="quiz" hidden>
       <p class="hud">ДИАГНОЗ <b id="quizNum">1/1</b></p>
@@ -1134,6 +1149,8 @@
   function startAssistant() {
     aa = { stage: "hello", q: 0, right: 0 };
     $("quiz").hidden = true;
+    $("causes").hidden = true;
+    if (cz) clearInterval(cz.timer);
     $("aaAgainBtn").hidden = true;
     $("aaBtn").hidden = false;
     $("aaBtn").textContent = "СКАЗАТЬ СПАСИБО";
@@ -1157,15 +1174,107 @@
       return;
     }
     if (aa.stage === "thanked") {
-      if (!DIAG.length) {
-        $("aaText").textContent = "Хм. Снимки ещё в лаборатории. Как принесут — сразу начнём.";
-        return endAssistant();
-      }
-      aa.stage = "quiz";
+      aa.stage = "causes";
       $("aaBtn").hidden = true;
-      showQuestion();
+      startCauses(CASES[0]);
     }
   });
+  // ---------- "Why could this be?" cases ----------
+  // The assistant's assistant juggles a pile of answers; you pick causes one by one until
+  // every group from the textbook is named. Each correct pick is answered with the full wording.
+  const CASES = [{
+    intro: "Стоп, смотри. У пациента открытый прикус — передние зубы не смыкаются. Из-за чего это могло быть?",
+    groups: [
+      { full: "Вредные привычки: сосание пальца, прикусывание языка, прикусывание губы, аномальное глотание и т.д.",
+        labels: ["Сосание пальца", "Прикусывание языка", "Аномальное глотание"] },
+      { full: "Со стороны дыхательной системы: увеличение миндалин, аденоиды, ротовое дыхание, аллергический ринит и др.",
+        labels: ["Аденоиды", "Ротовое дыхание", "Аллергический ринит"] },
+      { full: "Нарушение дистального соотношения: недостаточное пространство для прорезывания моляров, что может привести к их чрезмерному зубоальвеолярному выдвижению.",
+        labels: ["Экструзия моляров", "Мало места для прорезывания моляров"] },
+      { full: "Другое: неадекватная реставрация (завышение прикуса), крупный язык, наследственность и т.д.",
+        labels: ["Крупный язык", "Завышение прикуса реставрацией", "Наследственность"] },
+    ],
+    wrong: [
+      { label: "ММДМС (много конфет ел)", reply: "Конфеты — это к кариесу, а не к прикусу. Нет." },
+      { label: "Интрузия моляров", reply: "Наоборот. Моляры не вдавливаются, а выдвигаются — экструзия. Она и раскрывает прикус спереди." },
+      { label: "Слишком часто чистил зубы", reply: "Если бы. Нет." },
+      { label: "Громко смеялся", reply: "Смех полезен. К прикусу отношения не имеет." },
+      { label: "Сглазили", reply: "Мы тут доказательной медициной занимаемся. Нет." },
+      { label: "Кариес", reply: "Кариес — беда, но открытый прикус он не делает." },
+    ],
+  }];
+  const MORE = ["Так, хорошо. А ещё?", "Верно. А ещё?", "Да. Что ещё?", "Хорошо. Дальше?"];
+  let cz = null; // { c, found: Set of group indexes, used: Set of labels, wrong, timer }
+  function startCauses(c) {
+    cz = { c, found: new Set(), used: new Set(), wrong: 0 };
+    $("causes").hidden = false;
+    $("causeFound").replaceChildren();
+    $("aaText").textContent = c.intro;
+    drawOpenBite();
+    renderCauses();
+    clearInterval(cz.timer);
+    cz.timer = setInterval(() => { if (current === 7 && cz) renderCauses(true); }, 2600);
+  }
+  function causeOptions() {
+    const out = [];
+    cz.c.groups.forEach((g, gi) => g.labels.forEach(label => out.push({ label, group: gi })));
+    cz.c.wrong.forEach(w => out.push({ label: w.label, reply: w.reply }));
+    return out.filter(o => !cz.used.has(o.label));
+  }
+  function renderCauses(juggle = false) {
+    const box = $("causeChoices");
+    const opts = causeOptions().sort(() => Math.random() - 0.5);
+    box.replaceChildren(...opts.map(o => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "btn btn-ghost"; b.textContent = o.label;
+      b.addEventListener("click", () => pickCause(o));
+      return b;
+    }));
+    if (juggle) { box.classList.remove("hop"); void box.offsetWidth; box.classList.add("hop"); }
+  }
+  function pickCause(o) {
+    cz.used.add(o.label);
+    if (o.group === undefined) {
+      cz.wrong++;
+      $("aaText").textContent = o.reply;
+    } else if (cz.found.has(o.group)) {
+      $("aaText").textContent = "Это из той же группы, она уже есть. А ещё?";
+    } else {
+      cz.found.add(o.group);
+      const li = document.createElement("li");
+      li.textContent = cz.c.groups[o.group].full;
+      $("causeFound").append(li);
+      $("causesNum").textContent = `${cz.found.size}/${cz.c.groups.length}`;
+      if (cz.found.size === cz.c.groups.length) return finishCauses();
+      $("aaText").textContent = "Да, правильно. " + cz.c.groups[o.group].full + " " + pick(MORE);
+    }
+    renderCauses();
+  }
+  function finishCauses() {
+    clearInterval(cz.timer);
+    $("causeChoices").replaceChildren();
+    $("aaText").textContent = `Все четыре группы причин. ` +
+      (cz.wrong ? `Промахов: ${cz.wrong}. ` : "Ни одного промаха. ") +
+      (DIAG.length ? "Теперь снимки." : "Персина спрошу, когда принесут снимки из лаборатории.");
+    if (DIAG.length) { aa.stage = "quiz"; later(() => { $("causes").hidden = true; showQuestion(); }, 2600); }
+    else endAssistant();
+  }
+  // a pixel open bite: back teeth meet, front teeth leave a gap
+  function drawOpenBite() {
+    const c = $("obCanvas").getContext("2d");
+    c.fillStyle = "#d98a6a"; c.fillRect(0, 0, 160, 90);
+    c.fillStyle = "#b8475a"; c.fillRect(14, 18, 132, 54);
+    c.fillStyle = "#4a0b16"; c.fillRect(18, 22, 124, 46);
+    c.fillStyle = "#e06a7a"; c.fillRect(18, 22, 124, 6); c.fillRect(18, 62, 124, 6);
+    for (let i = 0; i < 8; i++) {
+      const x = 22 + i * 15, front = i >= 2 && i <= 5;
+      const up = front ? 12 : 18, lo = front ? 12 : 18;   // front teeth are short of each other
+      c.fillStyle = "#f4efe0"; c.fillRect(x, 28, 13, up); c.fillRect(x, 62 - lo, 13, lo);
+      c.fillStyle = "#d8d0b8"; c.fillRect(x, 28, 1, up); c.fillRect(x, 62 - lo, 1, lo);
+    }
+    c.fillStyle = "#ff8fa8"; c.fillRect(56, 44, 48, 4);   // tongue peeking through the gap
+  }
+
   function showQuestion() {
     const d = DIAG[aa.q];
     $("quiz").hidden = false;
