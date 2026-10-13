@@ -204,6 +204,15 @@
 
   /* Screen 4: cat's verdict */
   #door { width: min(60vw, 256px); aspect-ratio: 1; image-rendering: pixelated; border: 4px solid var(--fg); }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn-ghost { background: var(--panel); color: var(--fg); box-shadow: 4px 4px 0 var(--line); border: 2px solid var(--line); }
+  .btn-ghost:hover { border-color: var(--gold); }
+  .btn-ghost.ok { border-color: var(--ok); color: var(--ok); }
+  .btn-ghost.bad { border-color: var(--blood); color: var(--blood); }
+  .choices { display: flex; flex-direction: column; gap: 10px; width: min(100%, 420px); }
+  #aa { width: 96px; height: 96px; image-rendering: pixelated; }
+  .quiz { display: flex; flex-direction: column; gap: 12px; align-items: center; width: 100%; }
+  .quiz-img { width: min(100%, 420px); border: 4px solid var(--fg); image-rendering: pixelated; }
   .cat-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
   #s4 { cursor: default; }
 
@@ -296,6 +305,39 @@
   </div>
 </section>
 
+<section class="screen" id="s7" hidden>
+  <div class="wrap">
+    <img id="catImg2" class="cat-small" alt="Котик с бантиком на адском троне">
+    <div class="bubble"><span class="speaker">КОТ:</span> <span id="thanksText"></span></div>
+    <div class="choices" id="thanksChoices">
+      <button class="btn btn-ghost" type="button">ТЕБЕ, БОСС</button>
+      <button class="btn btn-ghost" type="button">БОТУ-ОРТОДОНТУ</button>
+      <button class="btn btn-ghost" type="button">СЕБЕ</button>
+    </div>
+    <button class="btn" id="meetBtn" type="button" hidden>ПОГОВОРИТЬ С АССИСТЕНТОМ АССИСТЕНТА</button>
+  </div>
+</section>
+
+<section class="screen game" id="s8" hidden>
+  <div class="wrap">
+    <p class="tagline">ПОДСОБКА. ЗДЕСЬ ЖИВЁТ АССИСТЕНТ АССИСТЕНТА</p>
+    <canvas id="aa" width="16" height="16" aria-label="Ассистент ассистента"></canvas>
+    <div class="botrow">
+      <div class="botsay" aria-live="polite"><span class="speaker">АССИСТЕНТ АССИСТЕНТА:</span> <span id="aaText"></span></div>
+    </div>
+    <div class="quiz" id="quiz" hidden>
+      <p class="hud">ДИАГНОЗ <b id="quizNum">1/1</b></p>
+      <img id="quizImg" class="quiz-img" alt="Снимок пациента">
+      <p class="fine" id="quizQ"></p>
+      <div class="choices" id="quizChoices"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="aaBtn" type="button">СКАЗАТЬ СПАСИБО</button>
+      <button class="btn btn-ghost" id="aaAgainBtn" type="button" hidden>ЕЩЁ СМЕНА</button>
+    </div>
+  </div>
+</section>
+
 <section class="screen" id="s4" hidden>
   <div class="wrap">
     <img id="catImg" class="cat-small" alt="Котик с бантиком на адском троне">
@@ -305,7 +347,10 @@
       <canvas id="botRose2" class="botrose" width="12" height="12" aria-hidden="true"></canvas>
       <div class="botsay"><span class="speaker">БОТ-ОРТОДОНТ:</span> *смущённо прижимает к себе розу с тысячей*</div>
     </div>
-    <button class="btn" id="againBtn" type="button">ЕЩЁ СМЕНА</button>
+    <div class="btn-row">
+      <button class="btn" id="nextBtn" type="button">ДАЛЬШЕ</button>
+      <button class="btn btn-ghost" id="againBtn" type="button">ЕЩЁ СМЕНА</button>
+    </div>
   </div>
 </section>
 
@@ -316,7 +361,7 @@
     "и посмотреть, как они это делают. Только после этого мы сможем допустить тебя " +
     "к игровому процессу. Для начала ты будешь ассистентом.";
 
-  const screens = ["s1", "s2", "s3", "s4", "s5", "s6"].map(id => document.getElementById(id));
+  const screens = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"].map(id => document.getElementById(id));
   let current = 0;
 
   // ---------- Tooth logo ----------
@@ -1055,6 +1100,115 @@
     }, 3500);
   });
 
+  // ---------- Who should you thank? ----------
+  function startThanks() {
+    $("catImg2").src = THRONE_SRC;
+    $("thanksText").textContent = "Слушай. А ты вообще знаешь, кому ты должен быть благодарен больше всего?";
+    $("thanksChoices").hidden = false;
+    $("meetBtn").hidden = true;
+  }
+  for (const b of $("thanksChoices").children) b.addEventListener("click", () => {
+    // there is no right option: the answer is someone you never noticed
+    $("thanksChoices").hidden = true;
+    $("thanksText").textContent =
+      "Нет. Своему ассистенту. Да-да, у тебя тоже есть ассистент — ассистент ассистента. " +
+      "Это он подавал тебе нужные дуги, хотя ты даже не спрашивал, какие именно. Считал расходники. " +
+      "Выносил за тебя мусор. Делал всю грязную работу. А ты ему даже спасибо не сказал.";
+    $("meetBtn").hidden = false;
+  });
+  $("meetBtn").addEventListener("click", () => show(7));
+
+  // ---------- The assistant's assistant ----------
+  const AA = [
+    ".....TTTTTT.....", "....TTTTTTTT....", "....FFFFFFFF....", "....FKFFFFKF....",
+    "....FFFFFFFF....", "....WWWWWWWW....", "....WWWWWWWW....", ".....WWWWWW.....",
+    "......FFFF......", "...TTTTTTTTTT...", "..TTTTTTTTTTTT..", "..TTTTTTTTTTTT..",
+    "..FTTTTTTTTTTF..", "..FTTTTTTTTTTF..", "...TTTT..TTTT...", "...KKK....KKK...",
+  ];
+  drawSprite($("aa").getContext("2d"), AA, 0, 0, { ...TOOL_PAL, T: "#2bb3a3", F: "#f2c49b" });
+  const MAX_MISTAKES_FOR_QUIZ = 8;
+  // Diagnosis questions (Persin's classification first). Filled in once the photos and answers arrive:
+  // { img: "data:image/...", q: "Какой диагноз?", options: ["…", "…"], answer: 0, explain: "…" }
+  const DIAG = [];
+  let aa = null; // { stage: "hello" | "thanked" | "quiz" | "done", q, right }
+  function startAssistant() {
+    aa = { stage: "hello", q: 0, right: 0 };
+    $("quiz").hidden = true;
+    $("aaAgainBtn").hidden = true;
+    $("aaBtn").hidden = false;
+    $("aaBtn").textContent = "СКАЗАТЬ СПАСИБО";
+    $("aaText").textContent = "…А? Ты ко мне? Обычно сюда заходят только за перчатками.";
+  }
+  $("aaBtn").addEventListener("click", () => {
+    if (aa.stage === "hello") {
+      aa.stage = "thanked";
+      const m = game ? game.mistakesTotal : 0;
+      if (m < MAX_MISTAKES_FOR_QUIZ) {
+        $("aaText").textContent =
+          `…Пожалуйста. Мне впервые кто-то сказал спасибо. И смена у тебя приличная, ошибок всего ${m}. ` +
+          "Так что давай проверим, как у тебя с диагностикой. Начнём с классификации Персина.";
+        $("aaBtn").textContent = "ДАВАЙ";
+      } else {
+        $("aaText").textContent =
+          `…Пожалуйста. Но с ${m} ошибками за смену тебе к диагностике рано. ` +
+          `Отработай смену почище, меньше ${MAX_MISTAKES_FOR_QUIZ} ошибок, и приходи.`;
+        endAssistant();
+      }
+      return;
+    }
+    if (aa.stage === "thanked") {
+      if (!DIAG.length) {
+        $("aaText").textContent = "Хм. Снимки ещё в лаборатории. Как принесут — сразу начнём.";
+        return endAssistant();
+      }
+      aa.stage = "quiz";
+      $("aaBtn").hidden = true;
+      showQuestion();
+    }
+  });
+  function showQuestion() {
+    const d = DIAG[aa.q];
+    $("quiz").hidden = false;
+    $("quizNum").textContent = `${aa.q + 1}/${DIAG.length}`;
+    $("quizImg").src = d.img;
+    $("quizQ").textContent = d.q || "Какой диагноз?";
+    $("aaText").textContent = "Смотри на снимок. Что тут?";
+    const box = $("quizChoices");
+    box.replaceChildren();
+    d.options.forEach((text, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "btn btn-ghost"; b.textContent = text;
+      b.addEventListener("click", () => answer(i, b));
+      box.append(b);
+    });
+  }
+  function answer(i, btn) {
+    const d = DIAG[aa.q];
+    if (aa.answered) return;
+    aa.answered = true;
+    const ok = i === d.answer;
+    if (ok) aa.right++;
+    btn.classList.add(ok ? "ok" : "bad");
+    $("quizChoices").children[d.answer].classList.add("ok");
+    $("aaText").textContent = (ok ? "Верно. " : `Нет. Правильно: ${d.options[d.answer]}. `) + (d.explain || "");
+    later(() => {
+      aa.answered = false;
+      aa.q++;
+      if (aa.q < DIAG.length) return showQuestion();
+      $("quiz").hidden = true;
+      $("aaText").textContent = `Итого ${aa.right} из ${DIAG.length}. ` +
+        (aa.right === DIAG.length ? "Чисто. Может, из тебя и выйдет врач." : "Есть над чем поработать. Приходи ещё.");
+      endAssistant();
+    }, 2600);
+  }
+  function endAssistant() {
+    aa.stage = "done";
+    $("aaBtn").hidden = true;
+    $("aaAgainBtn").hidden = false;
+  }
+  $("aaAgainBtn").addEventListener("click", () => show(2));
+  $("nextBtn").addEventListener("click", () => show(6));
+
   function showVerdict() {
     $("catImg").src = THRONE_SRC;
     const clean = game.mistakesTotal === 0;
@@ -1075,6 +1229,8 @@
     if (i === 1) { startTyping(); requestAnimationFrame(frame); }
     if (i === 2) { if (resume) startPatient(); else startGame(); requestAnimationFrame(gameLoop); }
     if (i === 5) startCondy();
+    if (i === 6) startThanks();
+    if (i === 7) startAssistant();
     if (i === 3) showVerdict();
     if (i === 4) startTools();
   }
