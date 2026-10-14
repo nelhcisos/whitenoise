@@ -98,7 +98,7 @@ struct CircleSetupView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Привет, \(model.me?.user.name ?? "друг")! 👋")
                         .font(.largeTitle.bold())
-                    Text("Locket работает внутри компании друзей: все видят фото друг друга, оценивают их 🔥🎨😂, а в воскресенье подводятся итоги недели.")
+                    Text("Locket работает внутри компании друзей: все видят фото друг друга, ставят им ⭐ от 1 до 3 и ✍️ 😂 🫪, а в воскресенье подводятся итоги недели.")
                         .foregroundStyle(.secondary)
                 }
                 .padding(.top, 32)

@@ -30,7 +30,7 @@ struct FeedView: View {
                         ContentUnavailableView(
                             "Пока пусто",
                             systemImage: "camera.viewfinder",
-                            description: Text("Сделай фото — друзья получат его прямо на экран блокировки и оценят 🔥🎨😂")
+                            description: Text("Сделай фото — друзья получат его прямо на экран блокировки и поставят ⭐ и ✍️ 😂 🫪")
                         )
                     }
                 }
@@ -121,9 +121,9 @@ struct PhotoCard: View {
                     }
                 }
 
-            ReactionBar(photo: photo, isMine: isMine)
+            RatingBar(photo: photo, isMine: isMine)
 
-            if !photo.reactors.isEmpty {
+            if !photo.reactors.isEmpty || !photo.raters.isEmpty {
                 Text(reactorsLine)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -135,60 +135,104 @@ struct PhotoCard: View {
         }
     }
 
-    /// "Петя 🔥😂 · Оля 🎨"
+    /// "Петя ⭐⭐⭐ 😂 · Оля ⭐ ✍️"
     private var reactorsLine: String {
         var order: [String] = []
         var names: [String: String] = [:]
+        var stars: [String: Int] = [:]
         var kinds: [String: Set<ReactionKind>] = [:]
+        func note(_ userId: String, _ name: String) {
+            if names[userId] == nil { order.append(userId) }
+            names[userId] = name
+        }
+        for rater in photo.raters {
+            note(rater.userId, rater.name)
+            stars[rater.userId] = rater.stars
+        }
         for reactor in photo.reactors {
-            if names[reactor.userId] == nil { order.append(reactor.userId) }
-            names[reactor.userId] = reactor.name
+            note(reactor.userId, reactor.name)
             kinds[reactor.userId, default: []].insert(reactor.kind)
         }
         return order.map { id in
+            let given = String(repeating: "⭐", count: stars[id] ?? 0)
             let emojis = ReactionKind.allCases.filter { kinds[id]?.contains($0) == true }.map(\.emoji).joined()
-            return "\(names[id] ?? "") \(emojis)"
+            return [names[id] ?? "", given, emojis].filter { !$0.isEmpty }.joined(separator: " ")
         }
         .joined(separator: " · ")
     }
 }
 
-struct ReactionBar: View {
+/// ⭐ 1–3 on the left, ✍️ 😂 🫪 toggles on the right. Own photos and closed weeks are read-only.
+struct RatingBar: View {
     @Environment(AppModel.self) private var model
     let photo: Photo
     let isMine: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
-            ForEach(ReactionKind.allCases) { kind in
-                let active = photo.mine.contains(kind)
-                let count = photo.counts[kind]
-                Button {
-                    Task { await model.toggle(kind, on: photo) }
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(kind.emoji).font(.title3)
-                        if count > 0 {
-                            Text("\(count)").font(.subheadline.weight(.bold)).monospacedDigit()
-                        }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                ForEach(1...Stars.max, id: \.self) { value in
+                    Button {
+                        Task { await model.setStars(value, on: photo) }
+                    } label: {
+                        Image(systemName: value <= shownStars ? "star.fill" : "star")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(value <= shownStars ? Color.locketYellow : Color.white.opacity(0.35))
+                            .frame(width: 44, height: 44)
                     }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .frame(minWidth: 56, minHeight: 44)
-                    .background(active ? Color.locketYellow.opacity(0.22) : Color.card, in: Capsule())
-                    .overlay(Capsule().strokeBorder(active ? Color.locketYellow : Color.clear, lineWidth: 1.5))
+                    .buttonStyle(.plain)
+                    .allowsHitTesting(photo.canReact)
+                    .accessibilityLabel("\(value) из \(Stars.max)")
                 }
-                .buttonStyle(.plain)
-                .allowsHitTesting(photo.canReact)
-                .accessibilityLabel("\(kind.title): \(count)")
-            }
-            Spacer(minLength: 0)
-            if !photo.canReact && !isMine {
-                Label("неделя закрыта", systemImage: "lock.fill")
-                    .font(.caption)
+                Text(starsSummary)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .padding(.leading, 6)
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 10) {
+                ForEach(ReactionKind.allCases) { kind in
+                    let active = photo.mine.contains(kind)
+                    let count = photo.counts[kind]
+                    Button {
+                        Task { await model.toggle(kind, on: photo) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(kind.emoji).font(.title3)
+                            if count > 0 {
+                                Text("\(count)").font(.subheadline.weight(.bold)).monospacedDigit()
+                            }
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .frame(minWidth: 56, minHeight: 44)
+                        .background(active ? Color.locketYellow.opacity(0.22) : Color.card, in: Capsule())
+                        .overlay(Capsule().strokeBorder(active ? Color.locketYellow : Color.clear, lineWidth: 1.5))
+                    }
+                    .buttonStyle(.plain)
+                    .allowsHitTesting(photo.canReact)
+                    .accessibilityLabel("\(kind.title): \(count)")
+                }
+                Spacer(minLength: 0)
+                if !photo.canReact && !isMine {
+                    Label("неделя закрыта", systemImage: "lock.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .sensoryFeedback(.selection, trigger: photo.mine)
+        .sensoryFeedback(.selection, trigger: photo.myStars)
+    }
+
+    /// Your own photo shows its average; a friend's shows what you gave.
+    private var shownStars: Int {
+        isMine ? Int(photo.stars.average.rounded()) : photo.myStars
+    }
+
+    private var starsSummary: String {
+        guard photo.stars.count > 0 else { return isMine ? "ещё нет оценок" : "" }
+        let average = photo.stars.average.formatted(.number.precision(.fractionLength(0...1)).locale(.ru))
+        return "\(average) · \(photo.stars.count) \(Russian.plural(photo.stars.count, "оценка", "оценки", "оценок"))"
     }
 }

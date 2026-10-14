@@ -177,23 +177,30 @@ final class AppModel {
     }
 
     func toggle(_ kind: ReactionKind, on photo: Photo) async {
+        let turnOn = !photo.mine.contains(kind)
+        let mine = turnOn ? photo.mine + [kind] : photo.mine.filter { $0 != kind }
+        await rate(photo, MyRating(myStars: photo.myStars, mine: mine)) {
+            try await self.api.react(kind, on: turnOn, photoId: photo.id)
+        }
+    }
+
+    /// Tapping the star you already gave clears the rating.
+    func setStars(_ stars: Int, on photo: Photo) async {
+        let value = stars == photo.myStars ? 0 : stars
+        await rate(photo, MyRating(myStars: value, mine: photo.mine)) {
+            try await self.api.setStars(value, photoId: photo.id)
+        }
+    }
+
+    /// Shows the new rating at once, then replaces it with what the server says.
+    private func rate(_ photo: Photo, _ optimistic: MyRating, request: () async throws -> Photo) async {
         guard let index = feed.firstIndex(where: { $0.id == photo.id }) else { return }
         let original = feed[index]
-        let turnOn = !original.mine.contains(kind)
-
-        // Optimistic update so the button reacts instantly.
-        if turnOn {
-            feed[index].mine.append(kind)
-            feed[index].counts[kind] += 1
-        } else {
-            feed[index].mine.removeAll { $0 == kind }
-            feed[index].counts[kind] = max(0, feed[index].counts[kind] - 1)
-        }
-
+        feed[index].apply(optimistic)
         do {
-            let updated = try await api.react(kind, on: turnOn, photoId: photo.id)
+            let updated = try await request()
             replace(updated)
-            SharedPhotoStore.updateReactions(photoId: updated.id, mine: updated.mine)
+            SharedPhotoStore.update(photoId: updated.id, rating: MyRating(myStars: updated.myStars, mine: updated.mine))
             Task { await refreshWeek() }
         } catch {
             replace(original)
@@ -220,6 +227,7 @@ final class AppModel {
             authorName: latest.authorName,
             caption: latest.caption,
             createdAt: latest.date,
+            myStars: latest.myStars,
             mine: latest.mine,
             canReact: latest.canReact
         )
@@ -277,34 +285,7 @@ final class AppModel {
     }
 
     func handleNotificationResponse(action: String, push: PushInfo) async {
-        if let kind = ReactionKind(notificationActionID: action), let photoId = push.photoId {
-            await rateFromNotification(kind, photoId: photoId)
-        } else if action == UNNotificationDefaultActionIdentifier {
-            open(push)
-        }
-    }
-
-    /// 🔥 / 🎨 / 😂 tapped on a notification. The app may have been launched in
-    /// the background just for this, so it only touches the network and the widget.
-    private func rateFromNotification(_ kind: ReactionKind, photoId: String) async {
-        let app = UIApplication.shared
-        let task = app.beginBackgroundTask(withName: "rate-photo", expirationHandler: nil)
-        defer { app.endBackgroundTask(task) }
-        do {
-            let mine = try await ReactionAPI.set(kind, on: true, photoId: photoId)
-            SharedPhotoStore.updateReactions(photoId: photoId, mine: mine)
-            if let index = feed.firstIndex(where: { $0.id == photoId }), !feed[index].mine.contains(kind) {
-                feed[index].mine = mine
-                feed[index].counts[kind] += 1
-            }
-        } catch {
-            let content = UNMutableNotificationContent()
-            content.title = "Оценка не отправилась"
-            content.body = "\(error.localizedDescription) Открой Locket и оцени ещё раз."
-            content.sound = .default
-            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-            try? await UNUserNotificationCenter.current().add(request)
-        }
+        if action == UNNotificationDefaultActionIdentifier { open(push) }
     }
 
     func open(_ push: PushInfo) {

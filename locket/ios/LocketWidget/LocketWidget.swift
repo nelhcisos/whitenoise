@@ -10,7 +10,7 @@ struct LocketWidgetBundle: WidgetBundle {
 }
 
 /// Locket-style home-screen widget: the newest photo from a friend,
-/// with 🔥 🎨 😂 buttons on the medium and large sizes (iOS 17 interactive widgets).
+/// with ⭐ 1–3 and ✍️ 😂 🫪 buttons on the medium and large sizes (iOS 17 interactive widgets).
 struct FriendPhotoWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "FriendPhoto", provider: PhotoProvider()) { entry in
@@ -87,17 +87,12 @@ struct FriendPhotoView: View {
                         .font(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                    if let caption = photo.caption {
-                        Text(caption)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.8))
-                            .lineLimit(2)
-                    }
-                    Text(photo.createdAt, style: .relative)
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                    Text(photo.caption ?? "")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.8))
+                        .lineLimit(1)
                     Spacer(minLength: 0)
-                    if photo.canReact { ratingButtons(photo) }
+                    if photo.canReact { ratingButtons(photo, height: 30) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -124,7 +119,7 @@ struct FriendPhotoView: View {
                         Spacer(minLength: 0)
                     }
                     if family == .systemLarge && photo.canReact {
-                        ratingButtons(photo)
+                        ratingButtons(photo, height: 36)
                     }
                 }
                 .padding(12)
@@ -142,33 +137,73 @@ struct FriendPhotoView: View {
             .clipped()
     }
 
-    private func ratingButtons(_ photo: WidgetPhoto) -> some View {
-        HStack(spacing: 8) {
-            ForEach(ReactionKind.allCases) { kind in
-                Button(intent: RatePhotoIntent(photoId: photo.photoId, kind: kind)) {
-                    Text(kind.emoji)
-                        .font(.title3)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 40)
-                        .background(
-                            photo.mine.contains(kind) ? Color.locketYellow : Color.black.opacity(0.45),
-                            in: Capsule()
-                        )
+    private func ratingButtons(_ photo: WidgetPhoto, height: CGFloat) -> some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
+                ForEach(1...Stars.max, id: \.self) { value in
+                    Button(intent: RateStarsIntent(photoId: photo.photoId, stars: value)) {
+                        Image(systemName: value <= photo.myStars ? "star.fill" : "star")
+                            .font(.headline)
+                            .foregroundStyle(value <= photo.myStars ? Color.locketYellow : Color.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: height)
+                            .background(Color.black.opacity(0.45), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+            }
+            HStack(spacing: 6) {
+                ForEach(ReactionKind.allCases) { kind in
+                    Button(intent: RateReactionIntent(photoId: photo.photoId, kind: kind)) {
+                        Text(kind.emoji)
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: height)
+                            .background(
+                                photo.mine.contains(kind) ? Color.locketYellow : Color.black.opacity(0.45),
+                                in: Capsule()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
 }
 
-/// 🔥 / 🎨 / 😂 on the widget: toggles the rating without opening the app.
-struct RatePhotoIntent: AppIntent {
-    static let title: LocalizedStringResource = "Оценить фото"
+/// ⭐ on the widget. Tapping the stars you already gave clears them.
+struct RateStarsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Поставить звёзды"
 
     @Parameter(title: "Фото")
     var photoId: String
 
-    @Parameter(title: "Оценка")
+    @Parameter(title: "Звёзды")
+    var stars: Int
+
+    init() {}
+
+    init(photoId: String, stars: Int) {
+        self.photoId = photoId
+        self.stars = stars
+    }
+
+    func perform() async throws -> some IntentResult {
+        let current = SharedPhotoStore.load()?.myStars ?? 0
+        let rating = try await ReactionAPI.setStars(stars == current ? 0 : stars, photoId: photoId)
+        SharedPhotoStore.update(photoId: photoId, rating: rating)
+        return .result()
+    }
+}
+
+/// ✍️ / 😂 / 🫪 on the widget: toggles the reaction without opening the app.
+struct RateReactionIntent: AppIntent {
+    static let title: LocalizedStringResource = "Отреагировать на фото"
+
+    @Parameter(title: "Фото")
+    var photoId: String
+
+    @Parameter(title: "Реакция")
     var kind: String
 
     init() {}
@@ -181,8 +216,8 @@ struct RatePhotoIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         guard let reaction = ReactionKind(rawValue: kind) else { return .result() }
         let alreadyOn = SharedPhotoStore.load()?.mine.contains(reaction) ?? false
-        let mine = try await ReactionAPI.set(reaction, on: !alreadyOn, photoId: photoId)
-        SharedPhotoStore.updateReactions(photoId: photoId, mine: mine)
+        let rating = try await ReactionAPI.setReaction(reaction, on: !alreadyOn, photoId: photoId)
+        SharedPhotoStore.update(photoId: photoId, rating: rating)
         return .result()
     }
 }

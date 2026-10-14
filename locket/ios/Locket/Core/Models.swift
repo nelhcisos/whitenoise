@@ -44,32 +44,44 @@ struct AuthResponse: Decodable {
 }
 
 struct ReactionCounts: Codable, Hashable {
-    var fire: Int
     var creative: Int
     var funny: Int
+    var wild: Int
 
     subscript(kind: ReactionKind) -> Int {
         get {
             switch kind {
-            case .fire: return fire
             case .creative: return creative
             case .funny: return funny
+            case .wild: return wild
             }
         }
         set {
             switch kind {
-            case .fire: fire = newValue
             case .creative: creative = newValue
             case .funny: funny = newValue
+            case .wild: wild = newValue
             }
         }
     }
+}
+
+struct StarSummary: Codable, Hashable {
+    var count: Int
+    var total: Int
+    var average: Double
 }
 
 struct Reactor: Codable, Hashable {
     let userId: String
     let name: String
     let kind: ReactionKind
+}
+
+struct Rater: Codable, Hashable {
+    let userId: String
+    let name: String
+    let stars: Int
 }
 
 struct Photo: Codable, Hashable, Identifiable {
@@ -82,10 +94,29 @@ struct Photo: Codable, Hashable, Identifiable {
     let weekId: String
     var canReact: Bool
     var counts: ReactionCounts
+    var stars: StarSummary
+    var myStars: Int
     var mine: [ReactionKind]
     var reactors: [Reactor]
+    var raters: [Rater]
 
     var date: Date { Date(timeIntervalSince1970: createdAt / 1000) }
+
+    /// Applies the viewer's new rating locally, keeping the totals consistent.
+    mutating func apply(_ rating: MyRating) {
+        for kind in ReactionKind.allCases {
+            let was = mine.contains(kind), now = rating.mine.contains(kind)
+            if was != now { counts[kind] = max(0, counts[kind] + (now ? 1 : -1)) }
+        }
+        if myStars != rating.myStars {
+            stars.total += rating.myStars - myStars
+            if myStars == 0 { stars.count += 1 }
+            if rating.myStars == 0 { stars.count = max(0, stars.count - 1) }
+            stars.average = stars.count > 0 ? Double(stars.total) / Double(stars.count) : 0
+        }
+        mine = rating.mine
+        myStars = rating.myStars
+    }
 }
 
 struct Standing: Codable, Hashable, Identifiable {
@@ -95,9 +126,10 @@ struct Standing: Codable, Hashable, Identifiable {
     let activity: Int
     let posts: Int
     let given: Int
-    let fire: Int
+    let stars: Int
     let creative: Int
     let funny: Int
+    let wild: Int
 
     var id: String { userId }
 }
@@ -114,10 +146,11 @@ struct BestPhoto: Codable, Hashable {
     let authorName: String
     let caption: String?
     let imageUrl: URL
-    let fire: Int
+    let stars: Int
+    let starCount: Int
     let creative: Int
     let funny: Int
-    let score: Int
+    let wild: Int
 }
 
 struct WeekResults: Codable, Hashable, Identifiable {
@@ -131,6 +164,7 @@ struct WeekResults: Codable, Hashable, Identifiable {
     let friendOfWeek: Nominee?
     let mostCreative: Nominee?
     let mostFunny: Nominee?
+    let mostWild: Nominee?
     let mostActive: Nominee?
 
     var id: String { weekId }

@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 export const CATEGORY_RATE_PHOTO = 'PHOTO_RATING';
 export const CATEGORY_WEEKLY = 'WEEKLY_RESULTS';
 
-const EMOJI = { fire: '🔥', creative: '🎨', funny: '😂' };
+const EMOJI = { creative: '✍️', funny: '😂', wild: '🫪' };
 
 export function createPushService({ store, apns, log = console }) {
   async function sendToUsers(userIds, payload, opts = {}) {
@@ -29,14 +29,14 @@ export function createPushService({ store, apns, log = console }) {
   return { sendToUsers };
 }
 
-// A friend posted a photo: rich notification (the app extension downloads the
-// image) with 🔥 / 🎨 / 😂 buttons, usable straight from the lock screen.
+// A friend posted a photo: rich notification. The app's extensions download the
+// image and show ⭐ 1–3 plus ✍️ / 😂 / 🫪 when it is long-pressed, even on the lock screen.
 export function newPhotoMessage({ photo, imageUrl }) {
   return {
     aps: {
       alert: {
         title: `${photo.authorName} 📸`,
-        body: photo.caption ? `«${photo.caption}» — удерживай, чтобы оценить` : 'Новое фото — удерживай, чтобы оценить 🔥🎨😂',
+        body: photo.caption ? `«${photo.caption}» — удерживай, чтобы оценить ⭐` : 'Новое фото — удерживай, чтобы оценить ⭐',
       },
       sound: 'default',
       category: CATEGORY_RATE_PHOTO,
@@ -55,14 +55,14 @@ export function newPhotoMessage({ photo, imageUrl }) {
 
 // Someone rated your photo. One notification per (photo, friend): later taps
 // replace it via apns-collapse-id instead of stacking up.
-export function reactionMessage({ photo, reactor, kinds, imageUrl }) {
+export function reactionMessage({ photo, reactor, stars, kinds, imageUrl }) {
+  const parts = [];
+  if (stars) parts.push('⭐'.repeat(stars));
+  parts.push(...Object.keys(EMOJI).filter((k) => kinds.includes(k)).map((k) => EMOJI[k]));
   return {
     payload: {
       aps: {
-        alert: {
-          title: reactor.name,
-          body: `${Object.keys(EMOJI).filter((k) => kinds.includes(k)).map((k) => EMOJI[k]).join(' ')} твоему фото`,
-        },
+        alert: { title: reactor.name, body: `${parts.join(' ')} твоему фото` },
         sound: 'default',
         'mutable-content': 1,
         'thread-id': 'reactions',
@@ -80,8 +80,9 @@ export function weeklyResultsMessage(results) {
   if (results.friendOfWeek) lines.push(`👑 Друг недели — ${results.friendOfWeek.name}`);
   if (results.bestPhoto) lines.push(`📸 Фото недели — ${results.bestPhoto.authorName}`);
   const nominations = [
-    results.mostCreative && `🎨 ${results.mostCreative.name}`,
+    results.mostCreative && `✍️ ${results.mostCreative.name}`,
     results.mostFunny && `😂 ${results.mostFunny.name}`,
+    results.mostWild && `🫪 ${results.mostWild.name}`,
     results.mostActive && `⚡️ ${results.mostActive.name}`,
   ].filter(Boolean);
   if (nominations.length) lines.push(nominations.join(' · '));

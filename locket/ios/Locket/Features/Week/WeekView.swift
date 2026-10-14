@@ -122,10 +122,21 @@ private struct NominationsGrid: View {
             Text(live ? "Сейчас лидируют" : "Номинации").font(.title3.bold())
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 NominationTile(emoji: "👑", title: "Друг недели", nominee: results.friendOfWeek) { Russian.points($0) }
-                NominationTile(emoji: "🎨", title: "Самый креативный", nominee: results.mostCreative) { "\($0) 🎨" }
-                NominationTile(emoji: "😂", title: "Самый смешной", nominee: results.mostFunny) { "\($0) 😂" }
+                ForEach(ReactionKind.allCases) { kind in
+                    NominationTile(emoji: kind.emoji, title: kind.nomination, nominee: nominee(for: kind)) { "\($0) \(kind.emoji)" }
+                }
                 NominationTile(emoji: "⚡️", title: "Самый активный", nominee: results.mostActive) { Russian.points($0) }
             }
+        }
+    }
+}
+
+private extension NominationsGrid {
+    func nominee(for kind: ReactionKind) -> Nominee? {
+        switch kind {
+        case .creative: return results.mostCreative
+        case .funny: return results.mostFunny
+        case .wild: return results.mostWild
         }
     }
 }
@@ -177,12 +188,14 @@ private struct BestPhotoCard: View {
                     .background(.ultraThinMaterial, in: Capsule())
                     .padding(14)
                 }
-            HStack(spacing: 16) {
-                Text("🔥 \(best.fire)")
-                Text("🎨 \(best.creative)")
+            HStack(spacing: 14) {
+                Text("⭐ \(best.stars)")
+                Text("✍️ \(best.creative)")
                 Text("😂 \(best.funny)")
+                Text("🫪 \(best.wild)")
                 Spacer()
-                Text(Russian.points(best.score)).foregroundStyle(.secondary)
+                Text("\(best.starCount) \(Russian.plural(best.starCount, "оценка", "оценки", "оценок"))")
+                    .foregroundStyle(.secondary)
             }
             .font(.subheadline.weight(.semibold))
             if let caption = best.caption, !caption.isEmpty {
@@ -208,7 +221,7 @@ private struct LeaderboardSection: View {
                             Text(standing.userId == myId ? "\(standing.name) (ты)" : standing.name)
                                 .font(.headline)
                                 .lineLimit(1)
-                            Text("📸 \(standing.posts)  🔥 \(standing.fire)  🎨 \(standing.creative)  😂 \(standing.funny)  🗳 \(standing.given)")
+                            Text("📸 \(standing.posts)  ⭐ \(standing.stars)  ✍️ \(standing.creative)  😂 \(standing.funny)  🫪 \(standing.wild)  🗳 \(standing.given)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -272,13 +285,14 @@ private struct RulesCard: View {
     var body: some View {
         DisclosureGroup("Как считаются очки") {
             VStack(alignment: .leading, spacing: 10) {
-                Text("• 🔥 на твоём фото — 2 очка, 🎨 и 😂 — по 1")
+                Text("• Каждая ⭐ на твоём фото — 1 очко")
+                Text("• Каждая ✍️, 😂 или 🫪 на твоём фото — 1 очко")
                 Text("• Своё фото — 2 очка (в зачёт идут до 14 фото за неделю)")
-                Text("• Каждая твоя оценка друзьям — 1 очко")
+                Text("• Каждая твоя оценка или реакция друзьям — 1 очко")
                 Divider()
                 Text("👑 Друг недели — больше всех очков")
-                Text("📸 Фото недели — больше всех (🔥×2 + 🎨 + 😂)")
-                Text("🎨 Креативный и 😂 смешной — больше всех 🎨 и 😂")
+                Text("📸 Фото недели — больше всех звёзд")
+                Text("✍️ Креативный, 😂 смешной, 🫪 безбашенный — больше всех таких реакций")
                 Text("⚡️ Активный — фото + оценки друзьям")
                 Divider()
                 Text("Итоги подводятся автоматически (\(deadline)). Оценивать можно только фото текущей недели, свои — нельзя.")

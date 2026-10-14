@@ -1,67 +1,81 @@
-export const KINDS = ['fire', 'creative', 'funny'];
+// Reactions besides the 1–3 star rating. Names are shared with the iOS app.
+export const KINDS = ['creative', 'funny', 'wild']; // ✍️ 😂 🫪
+export const MAX_STARS = 3;
 
 // Points for the weekly leaderboard. "Friend of the week" is whoever has the
 // most points; "most active" only looks at the activity part.
 export const POINTS = {
-  fire: 2, // each 🔥 your photos received
-  creative: 1, // each 🎨
-  funny: 1, // each 😂
+  star: 1, // each star your photos received
+  reaction: 1, // each ✍️ / 😂 / 🫪 your photos received
   post: 2, // each photo you posted…
   postCap: 14, // …counted up to this many per week, so spamming doesn't win
-  given: 1, // each reaction you gave to friends' photos
+  given: 1, // each rating or reaction you gave to friends' photos
 };
-
-export function photoScore(p) {
-  return POINTS.fire * p.fire + POINTS.creative * p.creative + POINTS.funny * p.funny;
-}
 
 /**
  * @param {{ members: {id: string, name: string}[],
  *           photos: {id: string, authorId: string, createdAt: number, caption?: string|null, file: string}[],
- *           reactions: {photoId: string, userId: string, kind: string}[] }} input
+ *           reactions: {photoId: string, userId: string, kind: string}[],
+ *           stars: {photoId: string, userId: string, value: number}[] }} input
  */
-export function computeStandings({ members, photos, reactions }) {
+export function computeStandings({ members, photos, reactions, stars = [] }) {
   const stats = new Map(
     members.map((m) => [
       m.id,
-      { userId: m.id, name: m.name, points: 0, activity: 0, posts: 0, given: 0, fire: 0, creative: 0, funny: 0 },
+      { userId: m.id, name: m.name, points: 0, activity: 0, posts: 0, given: 0, stars: 0, creative: 0, funny: 0, wild: 0 },
     ]),
   );
-  const photoById = new Map(photos.map((p) => [p.id, { ...p, fire: 0, creative: 0, funny: 0 }]));
+  const photoById = new Map(
+    photos.map((p) => [p.id, { ...p, stars: 0, starCount: 0, creative: 0, funny: 0, wild: 0 }]),
+  );
 
   for (const p of photos) {
     const author = stats.get(p.authorId);
     if (author) author.posts++;
   }
-  for (const r of reactions) {
-    const photo = photoById.get(r.photoId);
-    if (!photo || !KINDS.includes(r.kind) || r.userId === photo.authorId) continue;
-    photo[r.kind]++;
-    const author = stats.get(photo.authorId);
-    if (author) author[r.kind]++;
-    const giver = stats.get(r.userId);
+  const credit = (photoId, userId, apply) => {
+    const photo = photoById.get(photoId);
+    if (!photo || userId === photo.authorId) return;
+    apply(photo, stats.get(photo.authorId));
+    const giver = stats.get(userId);
     if (giver) giver.given++;
+  };
+  for (const r of reactions) {
+    if (!KINDS.includes(r.kind)) continue;
+    credit(r.photoId, r.userId, (photo, author) => {
+      photo[r.kind]++;
+      if (author) author[r.kind]++;
+    });
+  }
+  for (const s of stars) {
+    if (!(s.value >= 1 && s.value <= MAX_STARS)) continue;
+    credit(s.photoId, s.userId, (photo, author) => {
+      photo.stars += s.value;
+      photo.starCount++;
+      if (author) author.stars += s.value;
+    });
   }
   for (const s of stats.values()) {
     s.activity = POINTS.post * Math.min(s.posts, POINTS.postCap) + POINTS.given * s.given;
-    s.points = photoScore(s) + s.activity;
+    s.points = POINTS.star * s.stars + POINTS.reaction * (s.creative + s.funny + s.wild) + s.activity;
   }
 
   const leaderboard = [...stats.values()].sort(
-    (a, b) => b.points - a.points || b.fire - a.fire || a.name.localeCompare(b.name) || a.userId.localeCompare(b.userId),
+    (a, b) => b.points - a.points || b.stars - a.stars || a.name.localeCompare(b.name) || a.userId.localeCompare(b.userId),
   );
 
+  // Photo of the week: most stars in total; ties go to more reactions, then the earlier photo.
   let bestPhoto = null;
   for (const p of photoById.values()) {
-    if (!stats.has(p.authorId)) continue; // left the circle
-    const score = photoScore(p);
-    if (score === 0) continue;
+    if (!stats.has(p.authorId) || p.stars === 0) continue; // author left the circle / no stars
+    const reactionsCount = p.creative + p.funny + p.wild;
     if (
       !bestPhoto ||
-      score > bestPhoto.score ||
-      (score === bestPhoto.score && (p.fire > bestPhoto.fire || (p.fire === bestPhoto.fire && p.createdAt < bestPhoto.createdAt)))
+      p.stars > bestPhoto.stars ||
+      (p.stars === bestPhoto.stars &&
+        (reactionsCount > bestPhoto.reactions || (reactionsCount === bestPhoto.reactions && p.createdAt < bestPhoto.createdAt)))
     ) {
-      bestPhoto = { ...p, score, authorName: stats.get(p.authorId).name };
+      bestPhoto = { ...p, reactions: reactionsCount, authorName: stats.get(p.authorId).name };
     }
   }
 
@@ -79,6 +93,7 @@ export function computeStandings({ members, photos, reactions }) {
     friendOfWeek: leader('points'),
     mostCreative: leader('creative'),
     mostFunny: leader('funny'),
+    mostWild: leader('wild'),
     mostActive: leader('activity'),
   };
 }

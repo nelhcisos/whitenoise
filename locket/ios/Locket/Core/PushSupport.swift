@@ -7,14 +7,11 @@ enum PushCategories {
     static let weeklyResults = "WEEKLY_RESULTS"
 
     static var all: Set<UNNotificationCategory> {
-        // No .foreground and no .authenticationRequired: tapping a button rates
-        // the photo in the background, right from the lock screen.
-        let rateActions = ReactionKind.allCases.map { kind in
-            UNNotificationAction(identifier: kind.notificationActionID, title: "\(kind.emoji) \(kind.title)", options: [])
-        }
+        // No action buttons: a long-press opens the NotificationContent extension,
+        // which shows the photo with ⭐ 1–3 and ✍️ 😂 🫪 and sends ratings itself.
         let rate = UNNotificationCategory(
             identifier: ratePhoto,
-            actions: rateActions,
+            actions: [],
             intentIdentifiers: [],
             hiddenPreviewsBodyPlaceholder: "Новое фото от друга",
             options: []

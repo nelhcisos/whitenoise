@@ -43,9 +43,16 @@ CREATE INDEX IF NOT EXISTS photos_week ON photos(week_id, circle_id);
 CREATE TABLE IF NOT EXISTS reactions (
   photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  kind TEXT NOT NULL CHECK (kind IN ('fire', 'creative', 'funny')),
+  kind TEXT NOT NULL CHECK (kind IN ('creative', 'funny', 'wild')),
   created_at INTEGER NOT NULL,
   PRIMARY KEY (photo_id, user_id, kind)
+);
+CREATE TABLE IF NOT EXISTS stars (
+  photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  value INTEGER NOT NULL CHECK (value BETWEEN 1 AND 3),
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (photo_id, user_id)
 );
 CREATE TABLE IF NOT EXISTS weeks (
   circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
@@ -167,6 +174,26 @@ export function createStore(db) {
     },
     kindsBy: (photoId, userId) =>
       q('SELECT kind FROM reactions WHERE photo_id = ? AND user_id = ? ORDER BY created_at, rowid').all(photoId, userId).map((r) => r.kind),
+    starsFor(photoIds) {
+      if (!photoIds.length) return [];
+      return q(
+        `SELECT s.photo_id AS photoId, s.user_id AS userId, s.value, u.name
+         FROM stars s JOIN users u ON u.id = s.user_id
+         WHERE s.photo_id IN (${placeholders(photoIds.length)}) ORDER BY s.updated_at, s.rowid`,
+      ).all(...photoIds);
+    },
+    starsBy: (photoId, userId) => q('SELECT value FROM stars WHERE photo_id = ? AND user_id = ?').get(photoId, userId)?.value ?? 0,
+    // Returns true when the rating actually changed. value 0 clears it.
+    setStars(photoId, userId, value, now) {
+      const res = value
+        ? q(
+            `INSERT INTO stars (photo_id, user_id, value, updated_at) VALUES (?, ?, ?, ?)
+             ON CONFLICT(photo_id, user_id) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+             WHERE stars.value <> excluded.value`,
+          ).run(photoId, userId, value, now)
+        : q('DELETE FROM stars WHERE photo_id = ? AND user_id = ?').run(photoId, userId);
+      return res.changes > 0;
+    },
 
     // Weeks
     weekData(circleId, weekId) {
@@ -175,7 +202,11 @@ export function createStore(db) {
         `SELECT r.photo_id AS photoId, r.user_id AS userId, r.kind FROM reactions r
          JOIN photos p ON p.id = r.photo_id WHERE p.circle_id = ? AND p.week_id = ?`,
       ).all(circleId, weekId);
-      return { photos, reactions };
+      const stars = q(
+        `SELECT s.photo_id AS photoId, s.user_id AS userId, s.value FROM stars s
+         JOIN photos p ON p.id = s.photo_id WHERE p.circle_id = ? AND p.week_id = ?`,
+      ).all(circleId, weekId);
+      return { photos, reactions, stars };
     },
     unclosedWeeksBefore: (weekId) =>
       q(
@@ -188,7 +219,9 @@ export function createStore(db) {
       return q(
         `SELECT u.id AS userId, COUNT(p.id) AS unrated FROM users u
          JOIN photos p ON p.circle_id = u.circle_id AND p.week_id = ? AND p.author_id <> u.id
-         WHERE u.circle_id = ? AND NOT EXISTS (SELECT 1 FROM reactions r WHERE r.photo_id = p.id AND r.user_id = u.id)
+         WHERE u.circle_id = ?
+           AND NOT EXISTS (SELECT 1 FROM reactions r WHERE r.photo_id = p.id AND r.user_id = u.id)
+           AND NOT EXISTS (SELECT 1 FROM stars s WHERE s.photo_id = p.id AND s.user_id = u.id)
          GROUP BY u.id`,
       ).all(weekId, circleId);
     },

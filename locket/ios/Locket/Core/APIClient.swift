@@ -124,6 +124,15 @@ extension APIClient {
         return response.photo
     }
 
+    /// 1–3 sets the rating, 0 clears it.
+    func setStars(_ stars: Int, photoId: String) async throws -> Photo {
+        let path = "api/photos/\(photoId)/stars"
+        let response: PhotoResponse = stars == 0
+            ? try await request("DELETE", path)
+            : try await request("PUT", path, json: ["stars": String(stars)])
+        return response.photo
+    }
+
     func react(_ kind: ReactionKind, on: Bool, photoId: String) async throws -> Photo {
         let response: PhotoResponse = try await request(on ? "PUT" : "DELETE", "api/photos/\(photoId)/reactions/\(kind.rawValue)")
         return response.photo

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { KINDS, computeStandings } from './awards.js';
+import { KINDS, MAX_STARS, computeStandings } from './awards.js';
 import { createAttemptLimiter, hashPassword, hashToken, newSessionToken, verifyPassword } from './auth.js';
 import { createStore } from './db.js';
 import { HttpError, createRouter, readBody, readJson, sendJson } from './http.js';
@@ -54,12 +54,17 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
 
   function serializePhotos(photos, viewerId) {
     const weekId = currentWeekId();
-    const byPhoto = new Map(photos.map((p) => [p.id, []]));
-    for (const r of store.reactionsFor(photos.map((p) => p.id))) byPhoto.get(r.photoId).push(r);
+    const ids = photos.map((p) => p.id);
+    const reactionsBy = new Map(ids.map((id) => [id, []]));
+    const starsBy = new Map(ids.map((id) => [id, []]));
+    for (const r of store.reactionsFor(ids)) reactionsBy.get(r.photoId).push(r);
+    for (const s of store.starsFor(ids)) starsBy.get(s.photoId).push(s);
     return photos.map((p) => {
-      const reactions = byPhoto.get(p.id);
-      const counts = { fire: 0, creative: 0, funny: 0 };
+      const reactions = reactionsBy.get(p.id);
+      const ratings = starsBy.get(p.id);
+      const counts = Object.fromEntries(KINDS.map((k) => [k, 0]));
       for (const r of reactions) counts[r.kind]++;
+      const total = ratings.reduce((sum, s) => sum + s.value, 0);
       return {
         id: p.id,
         authorId: p.authorId,
@@ -70,15 +75,18 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
         weekId: p.weekId,
         canReact: p.authorId !== viewerId && p.weekId === weekId,
         counts,
+        stars: { count: ratings.length, total, average: ratings.length ? Math.round((total / ratings.length) * 10) / 10 : 0 },
+        myStars: ratings.find((s) => s.userId === viewerId)?.value ?? 0,
         mine: reactions.filter((r) => r.userId === viewerId).map((r) => r.kind),
         reactors: reactions.map((r) => ({ userId: r.userId, name: r.name, kind: r.kind })),
+        raters: ratings.map((s) => ({ userId: s.userId, name: s.name, stars: s.value })),
       };
     });
   }
 
   function weekResults(circleId, weekId, closedAt = null) {
-    const { photos, reactions } = store.weekData(circleId, weekId);
-    const s = computeStandings({ members: store.members(circleId), photos, reactions });
+    const { photos, reactions, stars } = store.weekData(circleId, weekId);
+    const s = computeStandings({ members: store.members(circleId), photos, reactions, stars });
     const best = s.bestPhoto;
     return {
       weekId,
@@ -92,14 +100,16 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
         authorName: best.authorName,
         caption: best.caption,
         imageUrl: mediaUrl(best.file),
-        fire: best.fire,
+        stars: best.stars,
+        starCount: best.starCount,
         creative: best.creative,
         funny: best.funny,
-        score: best.score,
+        wild: best.wild,
       },
       friendOfWeek: s.friendOfWeek,
       mostCreative: s.mostCreative,
       mostFunny: s.mostFunny,
+      mostWild: s.mostWild,
       mostActive: s.mostActive,
     };
   }
@@ -282,26 +292,48 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     return { ok: true };
   });
 
-  const react = (on) => ({ user, params }) => {
-    const { kind } = params;
-    if (!KINDS.includes(kind)) throw new HttpError(400, 'Неизвестная оценка');
-    const photo = photoInCircle(user, params.id);
+  // Shared checks for stars and reactions: a friend's photo of the current week.
+  function ratablePhoto(user, photoId) {
+    const photo = photoInCircle(user, photoId);
     if (photo.authorId === user.id) throw new HttpError(403, 'Свои фото оценивать нельзя 😉');
     if (photo.weekId !== currentWeekId()) throw new HttpError(409, 'Голосование за ту неделю уже закрыто');
-    const changed = store.setReaction(photo.id, user.id, kind, on, now());
-    if (changed && on) {
-      const { payload, opts } = reactionMessage({
-        photo,
-        reactor: user,
-        kinds: store.kindsBy(photo.id, user.id),
-        imageUrl: mediaUrl(photo.file),
-      });
-      background(push.sendToUsers([photo.authorId], payload, opts));
-    }
+    return photo;
+  }
+
+  // Tells the author what this friend gave the photo so far (one notification per friend).
+  function notifyAuthor(photo, user) {
+    const { payload, opts } = reactionMessage({
+      photo,
+      reactor: user,
+      stars: store.starsBy(photo.id, user.id),
+      kinds: store.kindsBy(photo.id, user.id),
+      imageUrl: mediaUrl(photo.file),
+    });
+    background(push.sendToUsers([photo.authorId], payload, opts));
+  }
+
+  const react = (on) => ({ user, params }) => {
+    if (!KINDS.includes(params.kind)) throw new HttpError(400, 'Неизвестная оценка');
+    const photo = ratablePhoto(user, params.id);
+    if (store.setReaction(photo.id, user.id, params.kind, on, now()) && on) notifyAuthor(photo, user);
     return { photo: serializePhotos([photo], user.id)[0] };
   };
   router.put('/api/photos/:id/reactions/:kind', react(true));
   router.delete('/api/photos/:id/reactions/:kind', react(false));
+
+  router.put('/api/photos/:id/stars', ({ user, params, body }) => {
+    const value = Number(body.stars);
+    if (!Number.isInteger(value) || value < 1 || value > MAX_STARS) throw new HttpError(400, `Звёзд может быть от 1 до ${MAX_STARS}`);
+    const photo = ratablePhoto(user, params.id);
+    if (store.setStars(photo.id, user.id, value, now())) notifyAuthor(photo, user);
+    return { photo: serializePhotos([photo], user.id)[0] };
+  });
+
+  router.delete('/api/photos/:id/stars', ({ user, params }) => {
+    const photo = ratablePhoto(user, params.id);
+    store.setStars(photo.id, user.id, 0, now());
+    return { photo: serializePhotos([photo], user.id)[0] };
+  });
 
   router.get('/api/week/current', ({ user }) => weekResults(requireCircle(user), currentWeekId()));
 

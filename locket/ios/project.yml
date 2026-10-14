@@ -63,6 +63,7 @@ targets:
         com.apple.security.application-groups: [$(APP_GROUP_ID)]
     dependencies:
       - target: NotificationService
+      - target: NotificationContent
       - target: LocketWidget
 
   NotificationService:
@@ -89,6 +90,38 @@ targets:
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
     entitlements:
       path: NotificationService/NotificationService.entitlements
+      properties:
+        com.apple.security.application-groups: [$(APP_GROUP_ID)]
+
+  NotificationContent:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: NotificationContent
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_ID).NotificationContent
+    info:
+      path: NotificationContent/Info.plist
+      properties:
+        CFBundleDisplayName: Locket
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        APIBaseURL: $(API_BASE_URL)
+        AppGroupID: $(APP_GROUP_ID)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationViewController
+          NSExtensionAttributes:
+            UNNotificationExtensionCategory: PHOTO_RATING
+            UNNotificationExtensionDefaultContentHidden: true
+            UNNotificationExtensionUserInteractionEnabled: true
+            UNNotificationExtensionInitialContentSizeRatio: 1.6
+    entitlements:
+      path: NotificationContent/NotificationContent.entitlements
       properties:
         com.apple.security.application-groups: [$(APP_GROUP_ID)]
 
@@ -124,6 +157,7 @@ schemes:
       targets:
         Locket: all
         NotificationService: all
+        NotificationContent: all
         LocketWidget: all
     run:
       config: Debug

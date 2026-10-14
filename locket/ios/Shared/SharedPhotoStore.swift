@@ -9,6 +9,7 @@ struct WidgetPhoto: Codable, Equatable {
     var authorName: String
     var caption: String?
     var createdAt: Date
+    var myStars: Int
     var mine: [ReactionKind]
     var canReact: Bool
 }
@@ -40,9 +41,12 @@ enum SharedPhotoStore {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    static func updateReactions(photoId: String, mine: [ReactionKind]) {
-        guard var photo = load(), photo.photoId == photoId, photo.mine != mine else { return }
-        photo.mine = mine
+    static func update(photoId: String, rating: MyRating) {
+        guard var photo = load(), photo.photoId == photoId,
+              photo.mine != rating.mine || photo.myStars != rating.myStars
+        else { return }
+        photo.mine = rating.mine
+        photo.myStars = rating.myStars
         saveMeta(photo)
     }
 

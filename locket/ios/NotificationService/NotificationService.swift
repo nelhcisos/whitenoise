@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import UserNotifications
 
 /// Runs for every push with "mutable-content": downloads the photo so the
-/// notification shows it (long-press on the lock screen = big photo + 🔥 🎨 😂),
+/// notification shows it (the NotificationContent extension reuses it on long-press),
 /// and hands a friend's new photo to the home-screen widget right away.
 final class NotificationService: UNNotificationServiceExtension {
     private let lock = NSLock()
@@ -82,6 +82,7 @@ final class NotificationService: UNNotificationServiceExtension {
             authorName: authorName,
             caption: caption,
             createdAt: createdAt,
+            myStars: 0,
             mine: [],
             canReact: true
         )

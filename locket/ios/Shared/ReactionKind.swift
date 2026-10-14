@@ -1,36 +1,39 @@
 import Foundation
 
-/// The three ratings. Raw values match the server API.
+/// Reactions given alongside the 1–3 star rating. Raw values match the server API.
 enum ReactionKind: String, Codable, CaseIterable, Identifiable, Hashable {
-    case fire
     case creative
     case funny
+    case wild
 
     var id: String { rawValue }
 
     var emoji: String {
         switch self {
-        case .fire: return "🔥"
-        case .creative: return "🎨"
+        case .creative: return "✍️"
         case .funny: return "😂"
+        case .wild: return "🫪" // Emoji 17: shown by iOS 26.4 and newer
         }
     }
 
     var title: String {
         switch self {
-        case .fire: return "Огонь"
-        case .creative: return "Креативно"
+        case .creative: return "Креатив"
         case .funny: return "Смешно"
+        case .wild: return "Жесть"
         }
     }
 
-    /// Identifier of the matching button on a push notification.
-    var notificationActionID: String { "RATE_\(rawValue.uppercased())" }
-
-    init?(notificationActionID: String) {
-        guard let kind = ReactionKind.allCases.first(where: { $0.notificationActionID == notificationActionID }) else {
-            return nil
+    /// Weekly nomination for whoever collects the most of this reaction.
+    var nomination: String {
+        switch self {
+        case .creative: return "Самый креативный"
+        case .funny: return "Самый смешной"
+        case .wild: return "Самый безбашенный"
         }
-        self = kind
     }
+}
+
+enum Stars {
+    static let max = 3
 }

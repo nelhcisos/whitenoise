@@ -32,8 +32,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         completionHandler([.banner, .list, .sound])
     }
 
-    /// The notification itself or one of its 🔥 🎨 😂 buttons was tapped —
-    /// possibly on the lock screen, with the app launched in the background.
+    /// The notification was tapped (ratings themselves are sent by the NotificationContent extension).
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,

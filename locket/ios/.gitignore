@@ -4,6 +4,8 @@ Locket/Info.plist
 Locket/Locket.entitlements
 NotificationService/Info.plist
 NotificationService/NotificationService.entitlements
+NotificationContent/Info.plist
+NotificationContent/NotificationContent.entitlements
 LocketWidget/Info.plist
 LocketWidget/LocketWidget.entitlements
 
