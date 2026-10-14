@@ -18,8 +18,8 @@ jobs:
       run:
         working-directory: locket/server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - run: npm test
@@ -30,16 +30,21 @@ jobs:
       run:
         working-directory: locket/ios
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: brew install xcodegen
       - run: xcodegen generate
       - name: Build for the simulator (no signing)
         run: |
           xcodebuild -version
+          set +e
           xcodebuild build \
             -project Locket.xcodeproj \
             -scheme Locket \
             -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO \
-            | tail -n 200
-          exit ${PIPESTATUS[0]}
+            CODE_SIGNING_ALLOWED=NO > build.log 2>&1
+          status=$?
+          echo "::group::Warnings and errors in our sources"
+          grep -E "/locket/ios/.*: (warning|error):" build.log | sort -u
+          echo "::endgroup::"
+          tail -n 40 build.log
+          exit $status
