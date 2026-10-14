@@ -1,0 +1,45 @@
+name: Locket
+
+on:
+  push:
+    paths:
+      - "locket/**"
+      - ".github/workflows/locket.yml"
+  pull_request:
+    paths:
+      - "locket/**"
+      - ".github/workflows/locket.yml"
+  workflow_dispatch:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: locket/server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
+  ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: locket/ios
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - name: Build for the simulator (no signing)
+        run: |
+          xcodebuild -version
+          xcodebuild build \
+            -project Locket.xcodeproj \
+            -scheme Locket \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -n 200
+          exit ${PIPESTATUS[0]}
