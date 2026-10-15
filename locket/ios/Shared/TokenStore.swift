@@ -1,9 +1,9 @@
 import Foundation
 import Security
 
-/// Session token in the Keychain, shared through the app group so the widget
-/// can rate photos too. Readable after the first unlock, which is what lets the
-/// lock-screen buttons work while the phone stays locked.
+/// Session token in the Keychain, shared with the widget and the notification
+/// extension through a keychain access group. Readable after the first unlock,
+/// which is what lets the lock-screen rating work while the phone stays locked.
 enum TokenStore {
     private static let service = "locket.session"
     private static let account = "token"
@@ -22,7 +22,7 @@ enum TokenStore {
     }
 
     private static var sharedGroup: String? {
-        AppConfig.appGroupID.isEmpty ? nil : AppConfig.appGroupID
+        AppConfig.keychainGroup.isEmpty ? nil : AppConfig.keychainGroup
     }
 
     private static func query(group: String?) -> [String: Any] {

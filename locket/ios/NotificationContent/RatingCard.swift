@@ -39,7 +39,7 @@ final class RatingCardModel {
         do {
             rating = try await request(photoId)
             status = .sent
-            SharedPhotoStore.update(photoId: photoId, rating: rating)
+            WidgetRefresh.now()
         } catch {
             rating = previous
             status = .failed(error.localizedDescription)

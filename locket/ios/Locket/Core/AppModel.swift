@@ -98,7 +98,7 @@ final class AppModel {
         feedHasMore = true
         currentWeek = nil
         history = []
-        SharedPhotoStore.clear()
+        WidgetRefresh.now()
     }
 
     private func apply(_ newMe: MeResponse) {
@@ -150,7 +150,7 @@ final class AppModel {
             let photos = try await self.api.photos()
             self.feed = photos
             self.feedHasMore = photos.count >= self.pageSize
-            self.updateWidget()
+            WidgetRefresh.now()
         }
     }
 
@@ -200,7 +200,7 @@ final class AppModel {
         do {
             let updated = try await request()
             replace(updated)
-            SharedPhotoStore.update(photoId: updated.id, rating: MyRating(myStars: updated.myStars, mine: updated.mine))
+            WidgetRefresh.now()
             Task { await refreshWeek() }
         } catch {
             replace(original)
@@ -217,31 +217,6 @@ final class AppModel {
 
     private func replace(_ photo: Photo) {
         if let index = feed.firstIndex(where: { $0.id == photo.id }) { feed[index] = photo }
-    }
-
-    /// Keeps the home-screen widget on the newest photo from a friend.
-    private func updateWidget() {
-        guard let myId, let latest = feed.first(where: { $0.authorId != myId }) else { return }
-        let snapshot = WidgetPhoto(
-            photoId: latest.id,
-            authorName: latest.authorName,
-            caption: latest.caption,
-            createdAt: latest.date,
-            myStars: latest.myStars,
-            mine: latest.mine,
-            canReact: latest.canReact
-        )
-        let stored = SharedPhotoStore.load()
-        if let stored, stored.photoId == latest.id {
-            if stored != snapshot { SharedPhotoStore.saveMeta(snapshot) }
-            return
-        }
-        if let stored, stored.createdAt > latest.date { return }
-        let url = latest.imageUrl
-        Task.detached(priority: .utility) {
-            guard let result = try? await URLSession.shared.data(from: url) else { return }
-            SharedPhotoStore.save(snapshot, imageData: result.0)
-        }
     }
 
     // MARK: - Week

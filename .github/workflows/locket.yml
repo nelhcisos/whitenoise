@@ -23,6 +23,8 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - name: TestFlight signing script
+        run: node --test ../ios/ci/*.test.mjs
 
   ios:
     runs-on: macos-latest

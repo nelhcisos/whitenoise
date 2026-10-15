@@ -282,6 +282,12 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     { raw: true },
   );
 
+  // The newest photo from a friend, for the home-screen widget.
+  router.get('/api/widget', ({ user }) => {
+    const photo = user.circleId && store.latestFromOthers(user.circleId, user.id);
+    return { photo: photo ? serializePhotos([photo], user.id)[0] : null };
+  });
+
   router.get('/api/photos/:id', ({ user, params }) => ({ photo: serializePhotos([photoInCircle(user, params.id)], user.id)[0] }));
 
   router.delete('/api/photos/:id', ({ user, params }) => {

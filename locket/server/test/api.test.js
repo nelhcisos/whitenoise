@@ -192,6 +192,10 @@ test('a full week: sign up, circle, photos, ratings, reminder, awards', async ()
   assert.deepEqual(feed[2].stars, { count: 2, total: 3, average: 1.5 });
   assert.deepEqual(feed[2].reactors.map((r) => `${r.name}:${r.kind}`), ['Петя:funny', 'Оля:funny']);
   assert.deepEqual(feed[2].raters.map((r) => `${r.name}:${r.stars}`), ['Петя:2', 'Оля:1']);
+  const widget = (await api('GET', '/api/widget', { auth: olya.token })).body.photo;
+  assert.equal(widget.id, p1.id, "the widget shows a friend's newest photo, not your own");
+  assert.equal(widget.myStars, 3);
+  assert.deepEqual(widget.mine, ['wild']);
   const page2 = (await api('GET', `/api/photos?before=${feed[1].createdAt}&limit=1`, { auth: masha.token })).body.photos;
   assert.deepEqual(page2.map((p) => p.id), [m1.id]);
 
@@ -260,6 +264,7 @@ test('a full week: sign up, circle, photos, ratings, reminder, awards', async ()
 
   const left = await api('POST', '/api/circles/leave', { auth: olya.token });
   assert.equal(left.body.circle, null);
+  assert.equal((await api('GET', '/api/widget', { auth: olya.token })).body.photo, null);
   assert.equal((await api('GET', `/api/photos/${m1.id}`, { auth: olya.token })).status, 404);
 
   assert.equal((await api('POST', '/api/auth/logout', { auth: petya.token, json: { deviceToken: token('b') } })).status, 200);

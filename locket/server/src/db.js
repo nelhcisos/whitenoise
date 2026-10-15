@@ -151,6 +151,8 @@ export function createStore(db) {
       );
     },
     photo: (id) => photoRow(q(`${PHOTO_SELECT} WHERE p.id = ?`).get(id)),
+    latestFromOthers: (circleId, userId) =>
+      photoRow(q(`${PHOTO_SELECT} WHERE p.circle_id = ? AND p.author_id <> ? ORDER BY p.created_at DESC LIMIT 1`).get(circleId, userId)),
     deletePhoto: (id) => q('DELETE FROM photos WHERE id = ?').run(id),
     feed(circleId, before, limit) {
       return q(`${PHOTO_SELECT} WHERE p.circle_id = ? AND p.created_at < ? ORDER BY p.created_at DESC LIMIT ?`)

@@ -1,4 +1,5 @@
 import AppIntents
+import ImageIO
 import SwiftUI
 import WidgetKit
 
@@ -37,18 +38,96 @@ struct PhotoProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (PhotoEntry) -> Void) {
-        completion(currentEntry())
+        completion(WidgetStore.cachedEntry())
     }
 
-    // The app and the notification extension call reloadAllTimelines() when
-    // there is a new photo, so no periodic refresh is needed.
+    // The app and the notification extension also ask for a reload when a
+    // friend posts, so the half-hour refresh is only a fallback.
     func getTimeline(in context: Context, completion: @escaping (Timeline<PhotoEntry>) -> Void) {
-        completion(Timeline(entries: [currentEntry()], policy: .never))
+        Task {
+            let entry = await WidgetStore.fetch()
+            completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(30 * 60))))
+        }
+    }
+}
+
+/// The newest photo from a friend, as GET /api/widget returns it.
+struct WidgetPhoto: Codable, Equatable {
+    let id: String
+    let authorName: String
+    let caption: String?
+    let createdAt: Double
+    let imageUrl: URL
+    var canReact: Bool
+    var myStars: Int
+    var mine: [ReactionKind]
+}
+
+/// Loads the photo from the server and keeps the last one in the widget's own
+/// caches folder, so it still shows something offline.
+enum WidgetStore {
+    private struct Response: Decodable { let photo: WidgetPhoto? }
+
+    private static var folder: URL { FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0] }
+    private static var metaURL: URL { folder.appendingPathComponent("widget-photo.json") }
+    private static var imageURL: URL { folder.appendingPathComponent("widget-photo.jpg") }
+
+    static func cached() -> WidgetPhoto? {
+        guard let data = try? Data(contentsOf: metaURL) else { return nil }
+        return try? JSONDecoder().decode(WidgetPhoto.self, from: data)
     }
 
-    private func currentEntry() -> PhotoEntry {
-        let image = SharedPhotoStore.imageURL.flatMap { UIImage(contentsOfFile: $0.path) }
-        return PhotoEntry(date: .now, photo: SharedPhotoStore.load(), image: image)
+    static func cachedEntry() -> PhotoEntry {
+        PhotoEntry(date: .now, photo: cached(), image: UIImage(contentsOfFile: imageURL.path))
+    }
+
+    static func fetch() async -> PhotoEntry {
+        guard let token = TokenStore.token else { return PhotoEntry(date: .now, photo: nil, image: nil) }
+        var request = URLRequest(url: AppConfig.apiBaseURL.appendingPathComponent("api/widget"))
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 15
+        guard let result = try? await URLSession.shared.data(for: request),
+              (result.1 as? HTTPURLResponse)?.statusCode == 200,
+              let decoded = try? JSONDecoder().decode(Response.self, from: result.0)
+        else { return cachedEntry() }
+
+        guard let photo = decoded.photo else {
+            try? FileManager.default.removeItem(at: metaURL)
+            try? FileManager.default.removeItem(at: imageURL)
+            return PhotoEntry(date: .now, photo: nil, image: nil)
+        }
+        if cached()?.id != photo.id || !FileManager.default.fileExists(atPath: imageURL.path) {
+            guard let download = try? await URLSession.shared.data(from: photo.imageUrl),
+                  let thumbnail = thumbnail(download.0)
+            else { return cachedEntry() }
+            try? thumbnail.write(to: imageURL, options: .atomic)
+        }
+        save(photo)
+        return cachedEntry()
+    }
+
+    static func save(_ photo: WidgetPhoto) {
+        if let data = try? JSONEncoder().encode(photo) { try? data.write(to: metaURL, options: .atomic) }
+    }
+
+    /// After a tap on the widget, so the next render shows it even before the refetch.
+    static func remember(_ rating: MyRating, photoId: String) {
+        guard var photo = cached(), photo.id == photoId else { return }
+        photo.myStars = rating.myStars
+        photo.mine = rating.mine
+        save(photo)
+    }
+
+    /// Widgets refuse to render large images, so keep a small copy.
+    private static func thumbnail(_ data: Data, maxPixel: Int = 800) -> Data? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return UIImage(cgImage: image).jpegData(compressionQuality: 0.85)
     }
 }
 
@@ -59,7 +138,7 @@ struct FriendPhotoView: View {
     var body: some View {
         if let photo = entry.photo, let image = entry.image {
             content(photo, image)
-                .widgetURL(URL(string: "locket://photo/\(photo.photoId)"))
+                .widgetURL(URL(string: "locket://photo/\(photo.id)"))
         } else {
             VStack(spacing: 8) {
                 Image(systemName: "heart.fill")
@@ -141,7 +220,7 @@ struct FriendPhotoView: View {
         VStack(spacing: 6) {
             HStack(spacing: 6) {
                 ForEach(1...Stars.max, id: \.self) { value in
-                    Button(intent: RateStarsIntent(photoId: photo.photoId, stars: value)) {
+                    Button(intent: RateStarsIntent(photoId: photo.id, stars: value)) {
                         Image(systemName: value <= photo.myStars ? "star.fill" : "star")
                             .font(.headline)
                             .foregroundStyle(value <= photo.myStars ? Color.locketYellow : Color.white)
@@ -154,7 +233,7 @@ struct FriendPhotoView: View {
             }
             HStack(spacing: 6) {
                 ForEach(ReactionKind.allCases) { kind in
-                    Button(intent: RateReactionIntent(photoId: photo.photoId, kind: kind)) {
+                    Button(intent: RateReactionIntent(photoId: photo.id, kind: kind)) {
                         Text(kind.emoji)
                             .font(.headline)
                             .frame(maxWidth: .infinity)
@@ -189,9 +268,9 @@ struct RateStarsIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        let current = SharedPhotoStore.load()?.myStars ?? 0
+        let current = WidgetStore.cached().flatMap { $0.id == photoId ? $0.myStars : nil } ?? 0
         let rating = try await ReactionAPI.setStars(stars == current ? 0 : stars, photoId: photoId)
-        SharedPhotoStore.update(photoId: photoId, rating: rating)
+        WidgetStore.remember(rating, photoId: photoId)
         return .result()
     }
 }
@@ -215,9 +294,9 @@ struct RateReactionIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         guard let reaction = ReactionKind(rawValue: kind) else { return .result() }
-        let alreadyOn = SharedPhotoStore.load()?.mine.contains(reaction) ?? false
+        let alreadyOn = WidgetStore.cached().map { $0.id == photoId && $0.mine.contains(reaction) } ?? false
         let rating = try await ReactionAPI.setReaction(reaction, on: !alreadyOn, photoId: photoId)
-        SharedPhotoStore.update(photoId: photoId, rating: rating)
+        WidgetStore.remember(rating, photoId: photoId)
         return .result()
     }
 }

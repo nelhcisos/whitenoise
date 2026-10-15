@@ -4,7 +4,7 @@ import UserNotifications
 
 /// Runs for every push with "mutable-content": downloads the photo so the
 /// notification shows it (the NotificationContent extension reuses it on long-press),
-/// and hands a friend's new photo to the home-screen widget right away.
+/// and nudges the home-screen widget to pick up a friend's new photo right away.
 final class NotificationService: UNNotificationServiceExtension {
     private let lock = NSLock()
     private var contentHandler: ((UNNotificationContent) -> Void)?
@@ -35,7 +35,7 @@ final class NotificationService: UNNotificationServiceExtension {
                     content.attachments = [attachment]
                 }
                 if info["type"] as? String == "photo" {
-                    Self.updateWidget(info, imageData: data)
+                    WidgetRefresh.now()
                 }
             }
             self.finish()
@@ -71,21 +71,5 @@ final class NotificationService: UNNotificationServiceExtension {
         } catch {
             return nil
         }
-    }
-
-    private static func updateWidget(_ info: [AnyHashable: Any], imageData: Data) {
-        guard let photoId = info["photoId"] as? String, let authorName = info["authorName"] as? String else { return }
-        let createdAt = (info["createdAt"] as? Double).map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date()
-        let caption = (info["caption"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-        let photo = WidgetPhoto(
-            photoId: photoId,
-            authorName: authorName,
-            caption: caption,
-            createdAt: createdAt,
-            myStars: 0,
-            mine: [],
-            canReact: true
-        )
-        SharedPhotoStore.save(photo, imageData: imageData)
     }
 }

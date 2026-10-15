@@ -9,7 +9,8 @@ enum AppConfig {
         return URL(string: raw) ?? URL(string: "http://localhost:3000")!
     }()
 
-    static let appGroupID: String = Bundle.main.object(forInfoDictionaryKey: "AppGroupID") as? String ?? ""
+    /// "TEAMID.<bundle id>.shared": the keychain group the app and its extensions share.
+    static let keychainGroup: String = Bundle.main.object(forInfoDictionaryKey: "KeychainGroup") as? String ?? ""
 }
 
 extension Locale {
