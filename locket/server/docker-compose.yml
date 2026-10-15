@@ -1,4 +1,4 @@
-# docker compose up -d --build
+# docker compose up -d --build   (install.sh does this for you)
 # Caddy gets a free HTTPS certificate for $DOMAIN automatically.
 services:
   api:
@@ -6,14 +6,13 @@ services:
     env_file: .env
     environment:
       DATA_DIR: /data
-      APNS_KEY_PATH: /secrets/AuthKey.p8
     volumes:
       - ./data:/data
       - ./secrets:/secrets:ro
     restart: unless-stopped
 
   caddy:
-    image: caddy:2-alpine
+    image: mirror.gcr.io/library/caddy:2-alpine
     ports:
       - "80:80"
       - "443:443"

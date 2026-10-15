@@ -1,4 +1,5 @@
-FROM node:22-alpine
+# Docker Hub images through Google's mirror: works from regions where Docker Hub is blocked.
+FROM mirror.gcr.io/library/node:22-alpine
 WORKDIR /app
 COPY package.json ./
 COPY src ./src
