@@ -224,6 +224,7 @@
   .found:empty { display: none; }
   #bossScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
   #s9, #s10 { cursor: default; }
+  #lessonCanvas { width: min(100%, 480px); aspect-ratio: 16 / 9; image-rendering: pixelated; border: 4px solid var(--fg); }
   #payScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
   .cat-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
   #s4 { cursor: default; }
@@ -370,6 +371,7 @@
   <div class="wrap">
     <p class="tagline" id="payDay">ДЕНЬ 2</p>
     <canvas id="payScene" width="160" height="120" aria-label="Кот на адском троне"></canvas>
+    <canvas id="lessonCanvas" width="160" height="90" aria-label="Схема зубов на текущем этапе лечения" hidden></canvas>
     <div class="bubble"><span class="speaker" id="payWho">КОТ:</span> <span id="payLine"></span></div>
     <div class="btn-row" id="payBtns"></div>
   </div>
@@ -1377,6 +1379,8 @@
   }
   function startPayScene() {
     pay = { phase: "talk", t0: 0, phoneY: 130, flash: 0 };
+    lesson = null;
+    payCanvas.hidden = false; lessonCanvas.hidden = true;
     $("payDay").textContent = `ДЕНЬ ${day}`;
     const was = game && game.money ? game.money : 5800;
     payPerStep = Math.round(BASE_RATE / 10);
@@ -1400,10 +1404,98 @@
     setTimeout(shutter, 2300);
     later(() => {
       $("payWho").textContent = "КОТ:";
-      $("payLine").textContent = "Ну что. За работу.";
-      payButtons([[`НАЧАТЬ ДЕНЬ ${day}`, () => show(2)]]);
+      $("payLine").textContent = "Мяу. А теперь кое-что хорошее.";
+      payButtons([["СЛУШАЮ", () => startLesson(0)]]);
     }, 4600);
   }
+  // ---------- The boss explains the stages of braces treatment, kindly ----------
+  const LESSON = [
+    { title: "ВСЁ ЛЕЧЕНИЕ НА БРЕКЕТАХ", line: "Мяу-мяу! Раз ты у нас уже свой, расскажу, как вообще лечат на брекетах. Всего пять этапов. Слушай внимательно — потом спрошу." },
+    { title: "ЭТАП 1. ВЫРАВНИВАНИЕ", line: "Мяу! Клеим брекеты и трубки на все зубы и вставляем тонкую круглую проволочку — 0,014 дюйма. Она мягкая и, как резиночка, тянет кривые зубки в ровный рядок." },
+    { title: "ЭТАП 2. УБИРАЕМ ОККЛЮЗИОННЫЕ ПРЕПЯТСТВИЯ", line: "Это когда зубы мешают друг другу нормально сомкнуться, чаще всего жевательные. Ставим многопетлевые дуги — те самые МПД, для которых ты подавал щипцы Кима! Подгибаем кончик от премоляров до моляров, а мешающие моляры выравниваем и немножко погружаем — это интрузия. Мур." },
+    { title: "ЭТАП 3. СТАВИМ НА МЕСТО НИЖНЮЮ ЧЕЛЮСТЬ", line: "Изгиб кончика на молярах выпрямляем, на премолярах убираем, а ступенчатым изгибом чуть выдвигаем зуб. Нижняя челюсть находит своё удобное место и перестаёт гулять. Мяу." },
+    { title: "ЭТАП 4. НАЛАЖИВАЕМ ОККЛЮЗИОННУЮ ПЛОСКОСТЬ", line: "Представь линию, по которой встречаются верхние и нижние зубы. Убираем изгиб кончика по всей МПД и делаем ступеньку у нижних моляров — плоскость становится круче и правильнее. Если надо, ступенька вниз будет и у передних верхних зубов." },
+    { title: "ЭТАП 5. ДЕТАЛИЗАЦИЯ", line: "Её ещё называют формированием физиологичной окклюзии. Тут ювелирка: проверяем наклон каждого зуба, настраиваем, как зубы скользят друг по другу при движениях челюсти, и добиваемся идеального смыкания. Щёлк — и зубки встают как пазл. Мур-мур!" },
+    { title: "ВОТ И ВСЁ", line: "Выровняли, убрали препятствия, поставили челюсть, наладили плоскость, довели детали. Никакой магии — только терпение. Мяу. Ну что, за работу!" },
+  ];
+  const lessonCanvas = $("lessonCanvas"), lctx = lessonCanvas.getContext("2d");
+  let lesson = null; // { i, t0 }
+  function startLesson(i) {
+    lesson = { i, t0: performance.now() };
+    payCanvas.hidden = true; lessonCanvas.hidden = false;
+    const st = LESSON[i];
+    $("payDay").textContent = st.title;
+    $("payWho").textContent = "КОТ:";
+    $("payLine").textContent = st.line;
+    const last = i === LESSON.length - 1;
+    payButtons([[last ? `НАЧАТЬ ДЕНЬ ${day}` : "ДАЛЬШЕ ▶", () => last ? show(2) : startLesson(i + 1)]]);
+    requestAnimationFrame(lessonLoop);
+  }
+  function lessonLoop(now) {
+    if (current !== 9 || !lesson) return;
+    drawLesson(Math.min(lesson.i, 5), Math.min(1, (now - lesson.t0) / 1500), now);
+    requestAnimationFrame(lessonLoop);
+  }
+  // Side view of the teeth, front teeth on the left, molars on the right.
+  const CROOK = [3, -2, 4, -3, 2, -1, 3, -2];
+  function drawLesson(stage, t, now) {
+    const c = lctx, e = t * t * (3 - 2 * t);
+    c.fillStyle = "#1a0d14"; c.fillRect(0, 0, 160, 90);
+    c.fillStyle = "#e06a7a"; c.fillRect(0, 0, 160, 12); c.fillRect(0, 78, 160, 12);   // gums
+    // how crooked, how far the lower jaw sits off, how open the bite, how tilted the plane
+    const crook = stage === 0 ? 1 : stage === 1 ? 1 - e : 0;
+    const shift = stage < 3 ? 6 : stage === 3 ? 6 * (1 - e) : 0;
+    const gap = stage < 5 ? 10 : 10 - 8 * e;
+    const tilt = stage < 4 ? 0 : stage === 4 ? 8 * e : 8;
+    const upY = 12, toothH = 33 - gap / 2;
+    const ups = [], los = [];
+    for (let i = 0; i < 8; i++) {
+      const x = 8 + i * 18, dy = Math.round(CROOK[i] * 2 * crook);
+      const sink = stage >= 2 && i >= 6 ? Math.round(2 * (stage === 2 ? e : 1)) : 0;   // intrusion of the molars
+      const hu = Math.round(toothH + i * tilt / 8) + dy - sink;
+      c.fillStyle = "#f4efe0"; c.fillRect(x, upY, 14, hu);
+      c.fillStyle = "#d8d0b8"; c.fillRect(x, upY, 1, hu);
+      ups.push({ x: x + 7, y: upY + Math.round(hu * 0.55) });
+      const lx = x + Math.round(shift), hl = Math.round(toothH - i * tilt / 8) - dy - sink;
+      c.fillStyle = "#f4efe0"; c.fillRect(lx, 78 - hl, 14, hl);
+      c.fillStyle = "#d8d0b8"; c.fillRect(lx, 78 - hl, 1, hl);
+      los.push({ x: lx + 7, y: 78 - Math.round(hl * 0.55) });
+    }
+    if (stage >= 1) {
+      for (const row of [ups, los]) {
+        // the archwire: thin at first, then multiloop from stage 2
+        c.fillStyle = stage === 1 ? "#c8cdd6" : "#e8eef7";
+        for (let i = 0; i < row.length - 1; i++) {
+          const a = row[i], b = row[i + 1];
+          const steps = Math.max(1, Math.abs(b.x - a.x));
+          for (let k = 0; k <= steps; k++) c.fillRect(Math.round(a.x + (b.x - a.x) * k / steps), Math.round(a.y + (b.y - a.y) * k / steps), 1, stage === 1 ? 1 : 2);
+          if (stage >= 2 && stage <= 4) {   // a little vertical loop between teeth
+            const mx = Math.round((a.x + b.x) / 2), my = Math.round((a.y + b.y) / 2), dir = row === ups ? 1 : -1;
+            c.fillRect(mx - 1, my, 1, 5 * dir); c.fillRect(mx + 1, my, 1, 5 * dir); c.fillRect(mx - 1, my + 5 * dir, 3, 1);
+          }
+        }
+        for (const p of row) { c.fillStyle = "#8a93a3"; c.fillRect(p.x - 2, p.y - 2, 5, 5); }
+      }
+    }
+    if (stage === 2) {   // intrusion arrows over the molars
+      c.fillStyle = "#ffd23a";
+      for (const x of [123, 141]) { c.fillRect(x, 2, 2, 7); c.fillRect(x - 2, 2, 6, 2); c.fillRect(x, 81, 2, 7); c.fillRect(x - 2, 86, 6, 2); }
+    }
+    if (stage === 3) {   // the lower jaw slides into place
+      c.fillStyle = "#ffd23a"; c.fillRect(70, 86, 20, 2); c.fillRect(70, 84, 2, 6);
+    }
+    if (stage >= 4) {    // occlusal plane: a dashed line between the rows
+      c.fillStyle = "#ffd23a";
+      for (let x = 4; x < 156; x += 6) c.fillRect(x, Math.round(45 + (x - 80) * tilt / 160), 3, 1);
+    }
+    if (stage === 5 && t >= 1) {   // sparkles
+      c.fillStyle = "#ffffff";
+      for (const [x, y] of [[20, 20], [76, 16], [132, 24]]) {
+        if (Math.floor((now / 300 + x) % 2) === 0) { c.fillRect(x, y - 2, 1, 5); c.fillRect(x - 2, y, 5, 1); }
+      }
+    }
+  }
+
   function payLoop(now) {
     if (current !== 9) return;
     pyctx.imageSmoothingEnabled = false;
