@@ -223,7 +223,8 @@
   .found { margin: 0; padding-left: 24px; width: min(100%, 640px); text-align: left; font-size: clamp(8px, 1.5vw, 10px); line-height: 2; color: var(--ok); }
   .found:empty { display: none; }
   #bossScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
-  #s9 { cursor: default; }
+  #s9, #s10 { cursor: default; }
+  #payScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
   .cat-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
   #s4 { cursor: default; }
 
@@ -266,6 +267,7 @@
 <section class="screen game" id="s3" hidden>
   <div class="wrap">
     <div class="hud">
+      <span>ДЕНЬ <b id="hudDay">1</b></span>
       <span>ПАЦИЕНТ <b id="hudPatient">1/3</b></span>
       <span>ЧАСЫ <b id="hudHours">0,0</b></span>
       <span>₽ <b id="hudMoney">0</b></span>
@@ -364,6 +366,15 @@
   </div>
 </section>
 
+<section class="screen" id="s10" hidden>
+  <div class="wrap">
+    <p class="tagline" id="payDay">ДЕНЬ 2</p>
+    <canvas id="payScene" width="160" height="120" aria-label="Кот на адском троне"></canvas>
+    <div class="bubble"><span class="speaker" id="payWho">КОТ:</span> <span id="payLine"></span></div>
+    <div class="btn-row" id="payBtns"></div>
+  </div>
+</section>
+
 <section class="screen" id="s4" hidden>
   <div class="wrap">
     <img id="catImg" class="cat-small" alt="Котик с бантиком на адском троне">
@@ -387,7 +398,7 @@
     "и посмотреть, как они это делают. Только после этого мы сможем допустить тебя " +
     "к игровому процессу. Для начала ты будешь ассистентом.";
 
-  const screens = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"].map(id => document.getElementById(id));
+  const screens = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"].map(id => document.getElementById(id));
   let current = 0;
 
   // ---------- Tooth logo ----------
@@ -572,7 +583,9 @@
   }
   const LIG_COLORS = ["#ff3b3b", "#4aa8ff", "#3ddc84", "#ff7ad9", "#ffd23a", "#a46bff"];
   const PRAISE = ["Спасибо.", "Отлично.", "Да, это оно.", "Быстро. Хвалю."];
-  const PER_STEP_RUB = 150, PER_PATIENT_HOURS = 1.5, PATIENTS_PER_SHIFT = 3, MAX_MISTAKES = 3;
+  const BASE_RATE = 150, PER_PATIENT_HOURS = 1.5, PATIENTS_PER_SHIFT = 3, MAX_MISTAKES = 3;
+  // Pay per correct action. From day 2 the boss "reviews" it: ten times less.
+  let day = 1, payPerStep = BASE_RATE;
 
   const $ = id => document.getElementById(id);
   const botText = $("botText"), patientLine = $("patientLine"), tray = $("tray"), timerFill = $("timerFill");
@@ -660,7 +673,7 @@
     if (id === want.id) {
       timer = null;
       flashBtn(btn, "ok");
-      game.money += PER_STEP_RUB;
+      game.money += payPerStep;
       game.step++; stage = game.step;
       lastTool = id;
       game.wet = id === "vacuum" ? 0 : game.wet + 1;
@@ -727,6 +740,7 @@
 
   function updateHud() {
     $("hudPatient").textContent = `${Math.min(game.idx + 1, PATIENTS_PER_SHIFT)}/${PATIENTS_PER_SHIFT}${isExam() ? " ЭКЗАМЕН" : ""}`;
+    $("hudDay").textContent = day;
     $("hudHours").textContent = game.hours.toFixed(1).replace(".", ",");
     $("hudMoney").textContent = rub(game.money);
     $("toBillion").textContent = rub(1e9 - game.money);
@@ -1051,7 +1065,7 @@
     if (id === TOOL_TASKS[tools.task].tool) {
       tools.waiting = false;
       giveBtn.disabled = true;
-      game.money += PER_STEP_RUB;
+      game.money += payPerStep;
       $("toolMoney").textContent = rub(game.money);
       tools.mark = { id, color: "#3ddc84", until: Infinity };
       toolBotText.textContent = "Да, это они. Спасибо.";
@@ -1338,8 +1352,96 @@
     $("aaBossBtn").hidden = !SKIP_TO_DIAGNOSTICS;   // while chapter 2 is in progress, a way to see the boss scene
   }
   $("aaBossBtn").addEventListener("click", () => show(8));
-  $("aaAgainBtn").addEventListener("click", () => show(2));
+  $("aaAgainBtn").addEventListener("click", nextDay);
   $("nextBtn").addEventListener("click", () => show(8));
+
+  // ---------- Day 2: the pay "review" and a photo nobody explains ----------
+  function nextDay() {
+    day++;
+    if (day === 2) show(9); else show(2);
+  }
+  const PHONE = [
+    "KKKKKKKK", "KGGGGGGK", "KGKKGGGK", "KGKKGGGK", "KGGGGGGK", "KGGGGGGK", "KGGGGGGK",
+    "KGGGGGGK", "KGGGGGGK", "KGGGGGGK", "KGGGGGGK", "KGGGGGGK", "KGGGGGGK", "KKKKKKKK",
+  ];
+  const PHONE_PAL = { K: "#14161c", G: "#2a2f3a" };
+  const payCanvas = $("payScene"), pyctx = payCanvas.getContext("2d");
+  let pay = null; // { phase, t0, phone: {y, flash} }
+  function payButtons(list) {
+    $("payBtns").replaceChildren(...list.map(([text, fn]) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "btn"; b.textContent = text;
+      b.addEventListener("click", fn);
+      return b;
+    }));
+  }
+  function startPayScene() {
+    pay = { phase: "talk", t0: 0, phoneY: 130, flash: 0 };
+    $("payDay").textContent = `ДЕНЬ ${day}`;
+    const was = game && game.money ? game.money : 5800;
+    payPerStep = Math.round(BASE_RATE / 10);
+    $("payLine").textContent =
+      `Новый день! Хорошие новости: ты у нас уже свой. Поэтому ставка теперь не ${BASE_RATE} ₽ за действие, а ${payPerStep}. ` +
+      `Вчера ты заработал ${rub(was)} ₽, а сегодня за то же самое будет ${rub(Math.round(was / 10))} ₽. Это мотивирует.`;
+    payButtons([["…", payStrange]]);
+    requestAnimationFrame(payLoop);
+  }
+  function payStrange() {
+    $("payLine").textContent = "Что такое? Ты как-то странно выглядишь.";
+    // there is nothing to say back
+    payButtons([["…", paySnap]]);
+  }
+  function paySnap() {
+    // the "secret" photo: phone up fast, hold, flash, hold, phone away fast. No comment.
+    $("payWho").textContent = "";
+    $("payLine").textContent = "";
+    $("payBtns").replaceChildren();
+    pay.phase = "snap"; pay.t0 = performance.now();
+    setTimeout(shutter, 2300);
+    later(() => {
+      $("payWho").textContent = "КОТ:";
+      $("payLine").textContent = "Ну что. За работу.";
+      payButtons([[`НАЧАТЬ ДЕНЬ ${day}`, () => show(2)]]);
+    }, 4600);
+  }
+  function payLoop(now) {
+    if (current !== 9) return;
+    pyctx.imageSmoothingEnabled = false;
+    if (throneImg.complete) pyctx.drawImage(throneImg, 0, 0, 160, 120);
+    if (pay.phase === "snap") {
+      const t = now - pay.t0;
+      // 0-250ms up, hold until 3600 (flash at 2300), small drift, 3600-3850 down
+      let y;
+      if (t < 250) y = 130 - (130 - 66) * (t / 250);
+      else if (t < 3600) y = 66 + (t > 2400 ? Math.sin((t - 2400) / 120) * 1.5 : 0);
+      else if (t < 3850) y = 66 + (130 - 66) * ((t - 3600) / 250);
+      else y = 130;
+      if (y < 125) drawScaled(pyctx, PHONE, 94, Math.round(y), PHONE_PAL, 2);
+      if (t > 2300 && t < 2700) {
+        pyctx.fillStyle = `rgba(255, 255, 255, ${1 - (t - 2300) / 400})`;
+        pyctx.fillRect(0, 0, 160, 120);
+      }
+    }
+    requestAnimationFrame(payLoop);
+  }
+  function shutter() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    let ac;
+    try { ac = new AC(); } catch (e) { return; }
+    const len = Math.floor(ac.sampleRate * 0.12);
+    const buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      const env = i < len * 0.3 ? 1 : i < len * 0.45 ? 0.1 : (1 - i / len);
+      d[i] = (Math.random() * 2 - 1) * env;
+    }
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const f = ac.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 1500;
+    const g = ac.createGain(); g.gain.value = 0.4;
+    src.connect(f); f.connect(g); g.connect(ac.destination);
+    src.start();
+    setTimeout(() => ac.close().catch(() => {}), 500);
+  }
 
   // ---------- The boss's visitor: a cutscene in the throne room ----------
   // A bald man in a black suit and sunglasses asks the cat to "add a zero" to the report.
@@ -1463,6 +1565,7 @@
     if (i === 6) startThanks();
     if (i === 7) startAssistant();
     if (i === 8) startBossScene();
+    if (i === 9) startPayScene();
     if (i === 3) showVerdict();
     if (i === 4) startTools();
   }
@@ -1471,7 +1574,7 @@
   screens[0].addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(1); } });
   screens[1].addEventListener("click", () => { if (typer) finishTyping(); });
   assistBtn.addEventListener("click", e => { e.stopPropagation(); show(2); });
-  $("againBtn").addEventListener("click", () => show(2));
+  $("againBtn").addEventListener("click", nextDay);
 
   const condBtn = document.getElementById("condBtn");
   condBtn.addEventListener("click", e => {
