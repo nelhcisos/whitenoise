@@ -537,7 +537,7 @@
 
   function isExam() { return game.idx === PATIENTS_PER_SHIFT - 1; }
   // Shift: patient 1 (the bot names every instrument) -> bending MPD loops with the pliers ->
-  // patient 2 (the bot names only some) -> condylography, you're sent out -> patient 3 (exam, silent).
+  // patient 2 (the bot names only some) -> patient 3 (exam, silent).
   function isGuided() { return game.idx === 0; }
   const NUDGES = ["Ну давай, подавай, что дальше.", "Дальше?", "Что теперь?", "Жду. Ты же помнишь порядок."];
 
@@ -639,7 +639,6 @@
         later(() => {
           game.idx++;
           if (game.idx === 1) show(4);        // MPD loops with the pliers
-          else if (game.idx === 2) show(5);   // condylography: you're sent out
           else if (game.idx >= PATIENTS_PER_SHIFT) show(3);
           else startPatient();
         }, 3400);
@@ -1059,7 +1058,7 @@
     $("catImg").src = THRONE_SRC;
     const clean = game.mistakesTotal === 0;
     $("catVerdict").textContent =
-      `Так. ${PATIENTS_PER_SHIFT} пациента, ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, все щипцы поданы, кондилографию переждал в коридоре, ` +
+      `Так. ${PATIENTS_PER_SHIFT} пациента, ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, все щипцы поданы, ` +
       `заработано ${rub(game.money)} ₽. До миллиарда осталось совсем чуть-чуть: ${rub(1e9 - game.money)} ₽. ` +
       (clean ? "Ни одной ошибки. Я впечатлён, а я кот на адском троне. " : `Ошибок: ${game.mistakesTotal}. Боты всё записали. `) +
       "Экзамен сдан, поэтому я допускаю тебя… к следующей смене ассистентом." +
