@@ -8,9 +8,7 @@ struct FriendsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var notificationStatus: UNAuthorizationStatus?
     @State private var editingName = false
-    @State private var newName = ""
     @State private var editingCircle = false
-    @State private var newCircleName = ""
     @State private var confirmLeave = false
     @State private var confirmSignOut = false
     @State private var leaving = false
@@ -44,19 +42,11 @@ struct FriendsView: View {
             // Back from Settings, where the switch may have changed.
             if newPhase == .active { Task { await refreshNotificationStatus() } }
         }
-        .alert("Твоё имя", isPresented: $editingName) {
-            TextField("Например, Маша", text: $newName)
-            Button("Сохранить") { Task { await model.renameMe(newName) } }
-            Button("Отмена", role: .cancel) {}
-        } message: {
-            Text("Так тебя видят друзья в ленте и в итогах недели.")
+        .sheet(isPresented: $editingName) {
+            RenameSheet(kind: .name, initialValue: model.me?.user.name ?? "")
         }
-        .alert("Название компании", isPresented: $editingCircle) {
-            TextField("Например, Банда", text: $newCircleName)
-            Button("Сохранить") { Task { await model.renameCircle(newCircleName) } }
-            Button("Отмена", role: .cancel) {}
-        } message: {
-            Text("Новое название увидят все в компании.")
+        .sheet(isPresented: $editingCircle) {
+            RenameSheet(kind: .circle, initialValue: model.circle?.name ?? "")
         }
     }
 
@@ -72,12 +62,9 @@ struct FriendsView: View {
     // MARK: - Invite
 
     private func invite(_ circle: FriendCircle) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.header) {
             SectionHeader(title: "Компания") {
-                headerAction("Изменить название…") {
-                    newCircleName = circle.name
-                    editingCircle = true
-                }
+                headerAction("Изменить название…") { editingCircle = true }
             }
             Card {
                 VStack(alignment: .leading, spacing: 4) {
@@ -113,7 +100,7 @@ struct FriendsView: View {
     // MARK: - Members
 
     private func members(_ circle: FriendCircle) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.header) {
             SectionHeader("В компании")
                 .frame(minHeight: Space.hitTarget)
             Card {
@@ -128,7 +115,7 @@ struct FriendsView: View {
 
     private func memberRow(_ member: Member, isOwner: Bool) -> some View {
         HStack(spacing: 12) {
-            Avatar(name: member.name, size: 32)
+            Avatar(name: member.name, size: AvatarSize.small)
             VStack(alignment: .leading, spacing: 2) {
                 Text(displayName(member))
                     .font(.body)
@@ -152,7 +139,7 @@ struct FriendsView: View {
     // MARK: - Notifications
 
     private var notifications: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.header) {
             SectionHeader("Уведомления")
                 .frame(minHeight: Space.hitTarget)
             Card {
@@ -223,16 +210,13 @@ struct FriendsView: View {
     // MARK: - Profile
 
     private var profile: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.header) {
             SectionHeader(title: "Профиль") {
-                headerAction("Изменить имя…") {
-                    newName = model.me?.user.name ?? ""
-                    editingName = true
-                }
+                headerAction("Изменить имя…") { editingName = true }
             }
             Card {
                 HStack(spacing: 12) {
-                    Avatar(name: model.me?.user.name ?? "", size: 40)
+                    Avatar(name: model.me?.user.name ?? "", size: AvatarSize.regular)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(model.me?.user.name ?? "")
                             .font(.body.weight(.semibold))
@@ -301,5 +285,136 @@ struct FriendsView: View {
                 .frame(minHeight: Space.hitTarget)
                 .contentShape(Rectangle())
         }
+    }
+}
+
+/// Edits your name or the company's name. A blank value or a server error shows
+/// under the field, and the typed value stays.
+private struct RenameSheet: View {
+    enum Kind { case name, circle }
+
+    let kind: Kind
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var value: String
+    @State private var fieldError: String?
+    @State private var saving = false
+    @FocusState private var focused: Bool
+
+    init(kind: Kind, initialValue: String) {
+        self.kind = kind
+        _value = State(initialValue: initialValue)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Space.section) {
+                ScreenTitle(title: title, subtitle: subtitle)
+                VStack(alignment: .leading, spacing: Space.gap) {
+                    FormField(label: label, error: fieldError) {
+                        TextField(label, text: $value, prompt: Text(placeholder).foregroundStyle(Palette.faint))
+                            .textContentType(contentType)
+                            .textInputAutocapitalization(capitalization)
+                            .submitLabel(.done)
+                            .focused($focused)
+                            .onSubmit(save)
+                    }
+                    Button(action: save) {
+                        ButtonLabel(title: "Сохранить", isLoading: saving)
+                    }
+                    .buttonStyle(LocketButtonStyle(.primary))
+                    .disabled(saving)
+                    Button("Отменить") { dismiss() }
+                        .buttonStyle(LocketButtonStyle(.secondary))
+                        .disabled(saving)
+                }
+            }
+            .padding(Space.margin)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .background(Palette.ground)
+        .onChange(of: value) { fieldError = nil }
+        .interactiveDismissDisabled(saving)
+        .presentationDetents([.medium])
+        .presentationBackground(Palette.ground)
+    }
+
+    private var title: String {
+        switch kind {
+        case .name: return "Твоё имя"
+        case .circle: return "Компания"
+        }
+    }
+
+    private var subtitle: String {
+        switch kind {
+        case .name: return "Так тебя видят друзья в ленте и в итогах недели."
+        case .circle: return "Новое название увидят все в компании."
+        }
+    }
+
+    private var label: String {
+        switch kind {
+        case .name: return "Имя"
+        case .circle: return "Название компании"
+        }
+    }
+
+    private var placeholder: String {
+        switch kind {
+        case .name: return "Например, Маша"
+        case .circle: return "Например, Банда"
+        }
+    }
+
+    private var blankError: String {
+        switch kind {
+        case .name: return "Укажи имя — его увидят друзья"
+        case .circle: return "Укажи название — его видят все в компании"
+        }
+    }
+
+    private var contentType: UITextContentType? {
+        switch kind {
+        case .name: return .givenName
+        case .circle: return nil
+        }
+    }
+
+    private var capitalization: TextInputAutocapitalization {
+        switch kind {
+        case .name: return .words
+        case .circle: return .sentences
+        }
+    }
+
+    private func save() {
+        guard !saving else { return }
+        if value.isBlank {
+            show(blankError)
+            focused = true
+            return
+        }
+        saving = true
+        Task { @MainActor in
+            defer { saving = false }
+            do {
+                switch kind {
+                case .name: try await model.renameMe(value)
+                case .circle: try await model.renameCircle(value)
+                }
+                dismiss()
+            } catch is CancellationError {
+                // The session lapsed and the app has signed out: nothing to show.
+                dismiss()
+            } catch {
+                show(error.localizedDescription)
+            }
+        }
+    }
+
+    private func show(_ message: String) {
+        fieldError = message
+        AccessibilityNotification.Announcement(message).post()
     }
 }

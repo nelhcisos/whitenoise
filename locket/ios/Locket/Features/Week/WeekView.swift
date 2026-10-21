@@ -30,6 +30,12 @@ struct WeekView: View {
                 .padding(.bottom, Space.section)
             }
             .background(Palette.ground)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                // Keeps scrolled content from showing under the status bar.
+                Color.clear
+                    .frame(height: 0)
+                    .background(Palette.ground, ignoresSafeAreaEdges: .top)
+            }
             .refreshable { await model.refreshWeek() }
             .navigationTitle("Неделя")
             .toolbar(.hidden, for: .navigationBar)
@@ -48,7 +54,7 @@ struct WeekView: View {
         if let week = model.currentWeek {
             if week.photoCount == 0 {
                 EmptyState(
-                    text: "На этой неделе ещё нет фото. Выложи первое — и гонка начнётся.",
+                    text: "На этой неделе ещё нет фото — выложи первое.",
                     actionTitle: "Сделать фото",
                     action: { model.selectedTab = .camera }
                 )
@@ -65,7 +71,7 @@ struct WeekView: View {
         if let best = week.bestPhoto {
             BestPhotoSection(title: "Лучшее фото", best: best)
         } else {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.header) {
                 SectionHeader("Лучшее фото")
                 EmptyState(
                     text: "Пока ни у одного фото нет звёзд.",
@@ -133,6 +139,7 @@ struct WeekResultsView: View {
         .background(Palette.ground)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        .groundBar(for: .navigationBar)
     }
 }
 
@@ -179,16 +186,15 @@ private struct NominationsSection: View {
     let results: WeekResults
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Space.header) {
             SectionHeader("Номинации")
+            // The friend of the week leads the screen in its own card, so it is not repeated here.
             Card {
-                NominationRow(label: "Друг недели", nominee: results.friendOfWeek, value: WeekFormat.points)
                 ForEach(ReactionKind.allCases) { kind in
+                    NominationRow(mark: kind.emoji, title: kind.nomination, nominee: nominee(for: kind), value: WeekFormat.reactions)
                     WeekDivider()
-                    NominationRow(label: "\(kind.emoji) \(kind.nomination)", nominee: nominee(for: kind), value: WeekFormat.reactions)
                 }
-                WeekDivider()
-                NominationRow(label: "Самый активный", nominee: results.mostActive, value: WeekFormat.points)
+                NominationRow(title: "Самый активный", nominee: results.mostActive, value: WeekFormat.points)
             }
         }
     }
@@ -203,7 +209,9 @@ private struct NominationsSection: View {
 }
 
 private struct NominationRow: View {
-    let label: String
+    /// The reaction's emoji, shown before the title but not read by VoiceOver.
+    var mark: String? = nil
+    let title: String
     let nominee: Nominee?
     let value: (Int) -> String
 
@@ -213,6 +221,7 @@ private struct NominationRow: View {
                 Text(label)
                     .font(.subheadline)
                     .foregroundStyle(Palette.muted)
+                    .accessibilityLabel(title)
                 if let nominee {
                     Text(nominee.name)
                         .font(.body)
@@ -237,6 +246,11 @@ private struct NominationRow: View {
         .frame(minHeight: Space.hitTarget)
         .accessibilityElement(children: .combine)
     }
+
+    private var label: String {
+        guard let mark else { return title }
+        return "\(mark) \(title)"
+    }
 }
 
 /// The photo with the most stars, its author and what it collected.
@@ -245,7 +259,7 @@ private struct BestPhotoSection: View {
     let best: BestPhoto
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Space.header) {
             SectionHeader(title)
             SquarePhoto(url: best.imageUrl)
                 .accessibilityElement(children: .ignore)
@@ -253,16 +267,17 @@ private struct BestPhotoSection: View {
                 .accessibilityAddTraits(.isImage)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 10) {
-                    Avatar(name: best.authorName, size: 28)
+                    Avatar(name: best.authorName, size: AvatarSize.small)
                     Text(best.authorName)
                         .font(.body.weight(.semibold))
                         .foregroundStyle(Palette.text)
                         .lineLimit(1)
                 }
-                Text(summary)
+                Text(summary(spoken: false))
                     .font(.subheadline)
                     .monospacedDigit()
                     .foregroundStyle(Palette.muted)
+                    .accessibilityLabel(summary(spoken: true))
                 if let caption = best.caption, !caption.isBlank {
                     Text("«\(caption)»")
                         .font(.subheadline)
@@ -273,11 +288,11 @@ private struct BestPhotoSection: View {
         }
     }
 
-    /// "5 звёзд · 2 оценки · ✍️ 1 · 😂 0 · 🫪 1"
-    private var summary: String {
+    /// "5 звёзд · 2 оценки · ✍️ 1 · 😂 0 · 🫪 1"; spoken, the reactions are named.
+    private func summary(spoken: Bool) -> String {
         var parts = [WeekFormat.stars(best.stars), WeekFormat.ratings(best.starCount)]
-        parts += ReactionKind.allCases.map { WeekFormat.mark($0, count(for: $0)) }
-        return parts.joined(separator: " · ")
+        parts += ReactionKind.allCases.map { WeekFormat.mark($0, count(for: $0), spoken: spoken) }
+        return parts.joined(separator: spoken ? ", " : " · ")
     }
 
     private func count(for kind: ReactionKind) -> Int {
@@ -295,7 +310,7 @@ private struct LeaderboardSection: View {
     let myId: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Space.header) {
             SectionHeader("Таблица")
             Card {
                 ForEach(Array(standings.enumerated()), id: \.element.id) { index, standing in
@@ -320,13 +335,13 @@ private struct StandingRow: View {
                 .monospacedDigit()
                 .foregroundStyle(Palette.muted)
                 .frame(width: rankWidth, alignment: .leading)
-            Avatar(name: standing.name, size: 34)
+            Avatar(name: standing.name, size: AvatarSize.small)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
                     .font(.body)
                     .foregroundStyle(Palette.text)
                     .lineLimit(1)
-                Text(breakdown)
+                Text(breakdown(spoken: false))
                     .font(.footnote)
                     .monospacedDigit()
                     .foregroundStyle(Palette.muted)
@@ -340,19 +355,19 @@ private struct StandingRow: View {
         }
         .frame(minHeight: Space.hitTarget)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(rank). \(name), \(WeekFormat.points(standing.points)). \(breakdown)")
+        .accessibilityLabel("\(rank). \(name), \(WeekFormat.points(standing.points)). \(breakdown(spoken: true))")
     }
 
     private var name: String {
         isMe ? "\(standing.name) · ты" : standing.name
     }
 
-    /// "1 фото · 5 звёзд · ✍️ 1 · 😂 0 · 🫪 1 · 2 оценки другим"
-    private var breakdown: String {
+    /// "1 фото · 5 звёзд · ✍️ 1 · 😂 0 · 🫪 1 · 2 оценки другим"; spoken, the reactions are named.
+    private func breakdown(spoken: Bool) -> String {
         var parts = ["\(standing.posts)\(nbsp)фото", WeekFormat.stars(standing.stars)]
-        parts += ReactionKind.allCases.map { WeekFormat.mark($0, count(for: $0)) }
+        parts += ReactionKind.allCases.map { WeekFormat.mark($0, count(for: $0), spoken: spoken) }
         parts.append("\(WeekFormat.ratings(standing.given)) другим")
-        return parts.joined(separator: " · ")
+        return parts.joined(separator: spoken ? ", " : " · ")
     }
 
     private func count(for kind: ReactionKind) -> Int {
@@ -369,7 +384,7 @@ private struct HistorySection: View {
     let weeks: [WeekResults]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Space.header) {
             SectionHeader("Прошлые недели")
             Card {
                 ForEach(Array(weeks.enumerated()), id: \.element.id) { index, week in
@@ -401,6 +416,7 @@ private struct HistoryRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(week.rangeTitle)
                     .font(.body.weight(.semibold))
+                    .monospacedDigit()
                     .foregroundStyle(Palette.text)
                 Text(week.friendOfWeek.map { "Друг недели — \($0.name)" } ?? "Никто не набрал очков")
                     .font(.subheadline)
@@ -430,9 +446,14 @@ private struct RulesCard: View {
                 VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Каждая звезда на твоём фото — 1\(nbsp)очко")
+                            .monospacedDigit()
                         Text("Каждая реакция \(marks) на твоём фото — 1\(nbsp)очко")
+                            .monospacedDigit()
+                            .accessibilityLabel("Каждая реакция \(spokenMarks) на твоём фото — 1\(nbsp)очко")
                         Text("Своё фото — 2\(nbsp)очка, в зачёт до 14\(nbsp)фото за неделю")
+                            .monospacedDigit()
                         Text("Каждая твоя оценка или реакция друзьям — 1\(nbsp)очко")
+                            .monospacedDigit()
                     }
                     WeekDivider()
                     VStack(alignment: .leading, spacing: 8) {
@@ -440,11 +461,13 @@ private struct RulesCard: View {
                         Text("Фото недели — больше всех звёзд")
                         ForEach(ReactionKind.allCases) { kind in
                             Text("\(kind.emoji) \(kind.nomination) — больше всех реакций «\(kind.title)»")
+                                .accessibilityLabel("\(kind.nomination) — больше всех реакций «\(kind.title)»")
                         }
                         Text("Самый активный — больше всех очков за свои фото и оценки друзьям")
                     }
                     WeekDivider()
                     Text(closingNote)
+                        .monospacedDigit()
                         .foregroundStyle(Palette.muted)
                 }
                 .font(.subheadline)
@@ -465,6 +488,11 @@ private struct RulesCard: View {
 
     private var marks: String {
         ReactionKind.allCases.map(\.emoji).joined(separator: " ")
+    }
+
+    /// The same reactions by name, for VoiceOver.
+    private var spokenMarks: String {
+        ReactionKind.allCases.map { "«\($0.title)»" }.joined(separator: ", ")
     }
 
     private var closingNote: String {
@@ -525,8 +553,11 @@ private enum WeekFormat {
     static func stars(_ n: Int) -> String { quantity(n, "звезда", "звезды", "звёзд") }
     static func ratings(_ n: Int) -> String { quantity(n, "оценка", "оценки", "оценок") }
 
-    /// "✍️ 3": the reaction's mark is the unit.
-    static func mark(_ kind: ReactionKind, _ n: Int) -> String { "\(kind.emoji)\(nbsp)\(n)" }
+    /// "✍️ 3": the reaction's mark is the unit. Spoken it is "Креатив 3":
+    /// VoiceOver has no name for 🫪 before iOS 26.4.
+    static func mark(_ kind: ReactionKind, _ n: Int, spoken: Bool = false) -> String {
+        spoken ? "\(kind.title) \(n)" : "\(kind.emoji)\(nbsp)\(n)"
+    }
 }
 
 /// The week's end in words: "в воскресенье в 21:00", "завтра в 21:00", "через 2 дня".

@@ -6,7 +6,6 @@ struct AuthView: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledMetric(relativeTo: .largeTitle) private var logoSize: CGFloat = 44
     @State private var isSignUp = false
     @State private var name = ""
     @State private var email = ""
@@ -37,13 +36,8 @@ struct AuthView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                LogoMark(size: logoSize)
-                Text("Locket")
-                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                    .foregroundStyle(Palette.text)
-                    .accessibilityAddTraits(.isHeader)
-            }
+            Wordmark()
+                .accessibilityAddTraits(.isHeader)
             Text("Фото для своих. По воскресеньям — итоги недели: лучшее фото и друг недели.")
                 .font(.body)
                 .foregroundStyle(Palette.muted)
@@ -75,7 +69,8 @@ struct AuthView: View {
             FormField(label: "Email", error: errors[.email]) {
                 TextField("Email", text: $email, prompt: Text.placeholder("Например, masha@mail.ru"))
                     .keyboardType(.emailAddress)
-                    .textContentType(.emailAddress)
+                    // .username so Password AutoFill pairs it with the password field.
+                    .textContentType(.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.next)
@@ -179,7 +174,7 @@ struct CircleSetupView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.section) {
-                ScreenTitle(title: "Компания", subtitle: greeting)
+                ScreenTitle(title: "Компания", subtitle: "Вступи по коду друга или создай свою — фото и итоги недели видны только внутри компании.")
                 joinSection
                 createSection
                 Button("Выйти из аккаунта…") { confirmingSignOut = true }
@@ -190,6 +185,12 @@ struct CircleSetupView: View {
             .padding(.vertical, Space.section)
         }
         .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // Keeps scrolled content from showing under the status bar.
+            Color.clear
+                .frame(height: 0)
+                .background(Palette.ground, ignoresSafeAreaEdges: .top)
+        }
         .onChange(of: code) { errors[.code] = nil }
         .onChange(of: circleName) { errors[.circleName] = nil }
         .confirmationDialog("Выйти из аккаунта?", isPresented: $confirmingSignOut, titleVisibility: .visible) {
@@ -201,47 +202,46 @@ struct CircleSetupView: View {
         }
     }
 
-    private var greeting: String {
-        let name = model.me?.user.name ?? "друг"
-        return "Привет, \(name). Locket работает внутри компании друзей: все видят фото друг друга и оценивают их, а в воскресенье подводятся итоги."
-    }
-
     private var joinSection: some View {
-        VStack(alignment: .leading, spacing: Space.gap) {
+        VStack(alignment: .leading, spacing: Space.header) {
             sectionHeader("Вступить по коду", hint: "Попроси код у друга — он во вкладке «Друзья».")
-            FormField(label: "Код приглашения", error: errors[.code]) {
-                TextField("Код приглашения", text: $code, prompt: Text.placeholder("Например, K7QX2M"))
-                    .font(.body.monospaced())
-                    .keyboardType(.asciiCapable)
-                    .textInputAutocapitalization(.characters)
-                    .autocorrectionDisabled()
-                    .submitLabel(.join)
-                    .focused($focus, equals: .code)
-                    .onSubmit(join)
+            VStack(alignment: .leading, spacing: Space.gap) {
+                FormField(label: "Код приглашения", error: errors[.code]) {
+                    TextField("Код приглашения", text: $code, prompt: Text.placeholder("Например, K7QX2M"))
+                        .font(.body.monospaced())
+                        .keyboardType(.asciiCapable)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .submitLabel(.join)
+                        .focused($focus, equals: .code)
+                        .onSubmit(join)
+                }
+                Button(action: join) {
+                    ButtonLabel(title: "Вступить", isLoading: running == .join)
+                }
+                .buttonStyle(LocketButtonStyle(.primary))
+                .disabled(running != nil)
             }
-            Button(action: join) {
-                ButtonLabel(title: "Вступить", isLoading: running == .join)
-            }
-            .buttonStyle(LocketButtonStyle(.primary))
-            .disabled(running != nil)
         }
     }
 
     private var createSection: some View {
-        VStack(alignment: .leading, spacing: Space.gap) {
+        VStack(alignment: .leading, spacing: Space.header) {
             sectionHeader("Создать компанию", hint: "Получишь код, который можно отправить друзьям.")
-            FormField(label: "Название", error: errors[.circleName]) {
-                TextField("Название", text: $circleName, prompt: Text.placeholder("Например, Банда"))
-                    .textInputAutocapitalization(.sentences)
-                    .submitLabel(.done)
-                    .focused($focus, equals: .circleName)
-                    .onSubmit(create)
+            VStack(alignment: .leading, spacing: Space.gap) {
+                FormField(label: "Название", error: errors[.circleName]) {
+                    TextField("Название", text: $circleName, prompt: Text.placeholder("Например, Банда"))
+                        .textInputAutocapitalization(.sentences)
+                        .submitLabel(.done)
+                        .focused($focus, equals: .circleName)
+                        .onSubmit(create)
+                }
+                Button(action: create) {
+                    ButtonLabel(title: "Создать компанию", isLoading: running == .create)
+                }
+                .buttonStyle(LocketButtonStyle(.secondary))
+                .disabled(running != nil)
             }
-            Button(action: create) {
-                ButtonLabel(title: "Создать компанию", isLoading: running == .create)
-            }
-            .buttonStyle(LocketButtonStyle(.secondary))
-            .disabled(running != nil)
         }
     }
 

@@ -174,8 +174,14 @@ struct WeekResults: Codable, Hashable, Identifiable {
     var rangeTitle: String {
         let start = Date(timeIntervalSince1970: startsAt / 1000).addingTimeInterval(12 * 3600)
         let end = endDate.addingTimeInterval(-1)
-        let style = Date.FormatStyle.dateTime.day().month(.abbreviated).locale(.ru)
-        return "\(start.formatted(style)) – \(end.formatted(style))"
+        return "\(start.dayMonth) – \(end.dayMonth)"
+    }
+}
+
+extension Date {
+    /// "12 окт." with a non-breaking space, so the day never wraps away from its month.
+    var dayMonth: String {
+        formatted(.dateTime.day().month(.abbreviated).locale(.ru)).replacingOccurrences(of: " ", with: nbsp)
     }
 }
 
@@ -212,5 +218,6 @@ enum Russian {
         return many
     }
 
-    static func points(_ n: Int) -> String { "\(n) \(plural(n, "очко", "очка", "очков"))" }
+    /// "11 очков", with a non-breaking space so the number never wraps away from its word.
+    static func points(_ n: Int) -> String { "\(n)\(nbsp)\(plural(n, "очко", "очка", "очков"))" }
 }

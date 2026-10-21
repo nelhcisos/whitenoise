@@ -60,7 +60,7 @@ struct FeedView: View {
                 .accessibilityLabel("Загружаю ленту…")
             case .loaded:
                 EmptyState(
-                    text: "Пока никто ничего не выложил. Сделай первое фото — друзья увидят его прямо на экране блокировки.",
+                    text: "Пока никто ничего не выложил — сделай первое фото.",
                     actionTitle: "Открыть камеру",
                     action: { model.selectedTab = .camera }
                 )
@@ -71,7 +71,7 @@ struct FeedView: View {
         } else {
             ForEach(sections, id: \.weekId) { section in
                 ForEach(section.photos) { photo in
-                    VStack(alignment: .leading, spacing: Space.gap) {
+                    VStack(alignment: .leading, spacing: Space.header) {
                         if photo.id == section.photos.first?.id {
                             SectionHeader(section.title)
                                 .padding(.horizontal, Space.margin)
@@ -82,7 +82,12 @@ struct FeedView: View {
                     .task { await model.loadMoreIfNeeded(after: photo) }
                 }
             }
-            if model.isLoadingMore {
+            if let message = model.loadMoreError {
+                InlineError(message: "Не удалось загрузить старые фото. \(message)") {
+                    Task { await model.retryLoadMore() }
+                }
+                .padding(.horizontal, Space.margin)
+            } else if model.isLoadingMore {
                 PhotoCardSkeleton()
                     .appearsAfter()
                     .accessibilityElement(children: .ignore)
@@ -122,14 +127,13 @@ struct FeedView: View {
                 result.append(FeedSection(weekId: photo.weekId, title: "", photos: [photo]))
             }
         }
-        let style = Date.FormatStyle.dateTime.day().month(.abbreviated).locale(.ru)
         for index in result.indices {
             let section = result[index]
             if section.weekId == model.me?.week.id {
                 result[index].title = "Эта неделя"
             } else if let newest = section.photos.first, let oldest = section.photos.last {
-                let from = oldest.date.formatted(style)
-                let to = newest.date.formatted(style)
+                let from = oldest.date.dayMonth
+                let to = newest.date.dayMonth
                 result[index].title = from == to ? from : "\(from) – \(to)"
             }
         }
@@ -166,10 +170,14 @@ struct PhotoCard: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Palette.ground.opacity(0.55), in: Capsule())
+                            .background(Palette.scrim, in: Capsule())
                             .padding(Space.gap)
                     }
                 }
+                // One VoiceOver stop for the photo and its caption.
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(photoSpoken)
+                .accessibilityAddTraits(.isImage)
 
             RatingBar(photo: photo, isMine: isMine)
 
@@ -194,14 +202,15 @@ struct PhotoCard: View {
     private var author: some View {
         HStack(spacing: 12) {
             HStack(spacing: 12) {
-                Avatar(name: photo.authorName, size: 36)
+                Avatar(name: photo.authorName, size: AvatarSize.small)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(isMine ? "Ты" : photo.authorName)
                         .font(.body.weight(.semibold))
                         .foregroundStyle(Palette.text)
                         .lineLimit(1)
-                    Text(photo.date, format: .relative(presentation: .named))
+                    Text(postedAgo)
                         .font(.footnote)
+                        .monospacedDigit()
                         .foregroundStyle(Palette.muted)
                 }
             }
@@ -224,6 +233,18 @@ struct PhotoCard: View {
                 .accessibilityLabel("Ещё")
             }
         }
+    }
+
+    /// "5 минут назад", with the number kept next to its unit.
+    private var postedAgo: String {
+        photo.date.formatted(.relative(presentation: .named).locale(.ru))
+            .replacingOccurrences(of: #"(\d) "#, with: "$1\(nbsp)", options: .regularExpression)
+    }
+
+    /// "Фото, подпись «…»" for VoiceOver.
+    private var photoSpoken: String {
+        guard let caption = photo.caption, !caption.isBlank else { return "Фото" }
+        return "Фото, подпись «\(caption)»"
     }
 
     /// One person's rating of this photo.
@@ -349,8 +370,11 @@ struct RatingBar: View {
         .buttonStyle(.plain)
         .allowsHitTesting(photo.canReact)
         .accessibilityLabel("\(value) из \(Stars.max)")
-        .accessibilityAddTraits(lit ? .isSelected : [])
+        // Selected is your own pick only, not every lit star.
+        .accessibilityAddTraits(!isMine && value == photo.myStars ? .isSelected : [])
         .accessibilityRemoveTraits(photo.canReact ? [] : .isButton)
+        // On your photo the stars draw the average, which the summary next to them reads out.
+        .accessibilityHidden(isMine)
     }
 
     private var reactions: some View {
@@ -378,7 +402,7 @@ struct RatingBar: View {
             }
             .padding(.horizontal, 14)
             .frame(minWidth: 56, minHeight: Space.hitTarget)
-            .background(active ? Palette.accent.opacity(0.18) : Palette.surface, in: Capsule())
+            .background(active ? Palette.accentTint : Palette.surface, in: Capsule())
             .overlay(Capsule().strokeBorder(active ? Palette.accent : Color.clear, lineWidth: 1.5))
             .contentShape(Capsule())
         }
@@ -402,7 +426,7 @@ private struct PhotoCardSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                SkeletonBlock(width: 36, height: 36, cornerRadius: 18)
+                SkeletonBlock(width: AvatarSize.small, height: AvatarSize.small, cornerRadius: AvatarSize.small / 2)
                 VStack(alignment: .leading, spacing: 6) {
                     SkeletonBlock(width: 120, height: 14)
                     SkeletonBlock(width: 72, height: 10)

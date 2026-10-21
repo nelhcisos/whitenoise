@@ -16,7 +16,7 @@ struct FriendPhotoWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "FriendPhoto", provider: PhotoProvider()) { entry in
             FriendPhotoView(entry: entry)
-                .containerBackground(for: .widget) { Color.black }
+                .containerBackground(for: .widget) { Palette.ground }
                 .environment(\.locale, .ru)
         }
         .configurationDisplayName("Фото друзей")
@@ -30,6 +30,10 @@ struct PhotoEntry: TimelineEntry {
     let date: Date
     let photo: WidgetPhoto?
     let image: UIImage?
+    /// No session: the widget asks to sign in instead of promising a photo.
+    var signedOut = false
+    /// A tap on the buttons that didn't save, shown with them.
+    var failure: String? = nil
 }
 
 struct PhotoProvider: TimelineProvider {
@@ -68,9 +72,21 @@ struct WidgetPhoto: Codable, Equatable {
 enum WidgetStore {
     private struct Response: Decodable { let photo: WidgetPhoto? }
 
+    /// A tap that didn't save, for the photo it was about.
+    private struct SavedFailure: Codable {
+        let photoId: String
+        let message: String
+        let date: Date
+    }
+
     private static var folder: URL { FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0] }
     private static var metaURL: URL { folder.appendingPathComponent("widget-photo.json") }
     private static var imageURL: URL { folder.appendingPathComponent("widget-photo.jpg") }
+    private static var failureURL: URL { folder.appendingPathComponent("widget-failure.json") }
+
+    /// WidgetKit reloads the timeline as soon as a button's intent returns, so a fetch
+    /// clears a failure only once it has been on screen for a while.
+    private static let failureMinAge: TimeInterval = 60
 
     static func cached() -> WidgetPhoto? {
         guard let data = try? Data(contentsOf: metaURL) else { return nil }
@@ -78,11 +94,14 @@ enum WidgetStore {
     }
 
     static func cachedEntry() -> PhotoEntry {
-        PhotoEntry(date: .now, photo: cached(), image: UIImage(contentsOfFile: imageURL.path))
+        let photo = cached()
+        var failure: String?
+        if let saved = cachedFailure(), saved.photoId == photo?.id { failure = saved.message }
+        return PhotoEntry(date: .now, photo: photo, image: UIImage(contentsOfFile: imageURL.path), failure: failure)
     }
 
     static func fetch() async -> PhotoEntry {
-        guard let token = TokenStore.token else { return PhotoEntry(date: .now, photo: nil, image: nil) }
+        guard let token = TokenStore.token else { return PhotoEntry(date: .now, photo: nil, image: nil, signedOut: true) }
         var request = URLRequest(url: AppConfig.apiBaseURL.appendingPathComponent("api/widget"))
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 15
@@ -91,6 +110,9 @@ enum WidgetStore {
               let decoded = try? JSONDecoder().decode(Response.self, from: result.0)
         else { return cachedEntry() }
 
+        if let saved = cachedFailure(), Date.now.timeIntervalSince(saved.date) > failureMinAge {
+            clearFailure()
+        }
         guard let photo = decoded.photo else {
             try? FileManager.default.removeItem(at: metaURL)
             try? FileManager.default.removeItem(at: imageURL)
@@ -116,6 +138,24 @@ enum WidgetStore {
         photo.myStars = rating.myStars
         photo.mine = rating.mine
         save(photo)
+        clearFailure()
+    }
+
+    /// WidgetKit drops errors thrown by a widget button, so the widget shows them itself.
+    static func rememberFailure(_ error: Error, photoId: String) {
+        var message = "Не сохранилось — нет связи. Нажми ещё раз."
+        if let failure = error as? ReactionAPI.Failure, !failure.canRetry { message = failure.message }
+        let saved = SavedFailure(photoId: photoId, message: message, date: .now)
+        if let data = try? JSONEncoder().encode(saved) { try? data.write(to: failureURL, options: .atomic) }
+    }
+
+    private static func cachedFailure() -> SavedFailure? {
+        guard let data = try? Data(contentsOf: failureURL) else { return nil }
+        return try? JSONDecoder().decode(SavedFailure.self, from: data)
+    }
+
+    private static func clearFailure() {
+        try? FileManager.default.removeItem(at: failureURL)
     }
 
     /// Widgets refuse to render large images, so keep a small copy.
@@ -144,18 +184,21 @@ struct FriendPhotoView: View {
                 Text("Locket")
                     .font(.system(.headline, design: .rounded).weight(.bold))
                     .foregroundStyle(Palette.text)
-                Text("Здесь появится последнее фото друзей")
+                Text(emptyText)
                     .font(.footnote)
                     .foregroundStyle(Palette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             .padding(16)
+            // Opens the app; it ignores a link with no host.
+            .widgetURL(URL(string: "locket://"))
         }
     }
 
-    /// Dark scrim under text and buttons on the photo; the one place a translucent fill is allowed.
-    private static let scrim = Color.black.opacity(0.55)
+    private var emptyText: String {
+        entry.signedOut ? "Войди в Locket, чтобы видеть фото друзей" : "Здесь появится фото, когда друг его выложит"
+    }
 
     @ViewBuilder
     private func content(_ photo: WidgetPhoto, _ image: UIImage) -> some View {
@@ -166,18 +209,28 @@ struct FriendPhotoView: View {
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(photo.authorName)
-                        .font(.headline)
-                        .foregroundStyle(Palette.text)
-                        .lineLimit(1)
-                    if let caption = photo.caption, !caption.isEmpty {
-                        Text(caption)
-                            .font(.footnote)
-                            .foregroundStyle(Palette.muted)
-                            .lineLimit(1)
+                    if photo.canReact {
+                        // Two 44 pt rows take 94 of the 124–146 pt inside a medium widget:
+                        // above them is room for the name or a failed tap, not the caption.
+                        Group {
+                            if let failure = entry.failure {
+                                failureLine(failure)
+                            } else {
+                                mediumName(photo)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        ratingButtons(photo)
+                    } else {
+                        mediumName(photo)
+                        if let caption = photo.caption, !caption.isEmpty {
+                            Text(caption)
+                                .font(.footnote)
+                                .foregroundStyle(Palette.muted)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
-                    if photo.canReact { ratingButtons(photo, height: 30) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -193,7 +246,7 @@ struct FriendPhotoView: View {
                             .lineLimit(2)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Self.scrim, in: Capsule())
+                            .background(Palette.scrim, in: Capsule())
                     }
                     Text(photo.authorName)
                         .font(.footnote.weight(.semibold))
@@ -201,9 +254,15 @@ struct FriendPhotoView: View {
                         .lineLimit(1)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(Self.scrim, in: Capsule())
+                        .background(Palette.scrim, in: Capsule())
                     if family == .systemLarge && photo.canReact {
-                        ratingButtons(photo, height: 36)
+                        ratingButtons(photo)
+                        if let failure = entry.failure {
+                            failureLine(failure)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Palette.scrim, in: Capsule())
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -224,8 +283,31 @@ struct FriendPhotoView: View {
             .accessibilityLabel("Фото от \(photo.authorName)")
     }
 
-    /// Stars 1–3 and the three reactions. Your choice is the accent (data); the rest sit on the scrim.
-    private func ratingButtons(_ photo: WidgetPhoto, height: CGFloat) -> some View {
+    private func mediumName(_ photo: WidgetPhoto) -> some View {
+        Text(photo.authorName)
+            .font(.headline)
+            .foregroundStyle(Palette.text)
+            .lineLimit(1)
+    }
+
+    /// A tap that didn't save. The icon carries the colour and the text stays white,
+    /// so it reads on the ground and on the photo's scrim alike.
+    private func failureLine(_ text: String) -> some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: "exclamationmark.circle")
+                .foregroundStyle(Palette.negative)
+        }
+        .font(.footnote)
+        .foregroundStyle(Palette.text)
+        .lineLimit(2)
+        .minimumScaleFactor(0.8)
+    }
+
+    /// Stars 1–3 and the three reactions, 44 pt tall. Your choice is the accent (data):
+    /// a filled star, a tinted and outlined reaction. The rest sit on the scrim.
+    private func ratingButtons(_ photo: WidgetPhoto) -> some View {
         VStack(spacing: 6) {
             HStack(spacing: 6) {
                 ForEach(1...Stars.max, id: \.self) { value in
@@ -235,12 +317,13 @@ struct FriendPhotoView: View {
                             .font(.headline)
                             .foregroundStyle(lit ? Palette.accent : Palette.text)
                             .frame(maxWidth: .infinity)
-                            .frame(height: height)
-                            .background(Self.scrim, in: Capsule())
+                            .frame(height: Space.hitTarget)
+                            .background(Palette.scrim, in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(value) из \(Stars.max)")
-                    .accessibilityAddTraits(lit ? .isSelected : [])
+                    // Selected is your own pick only, not every lit star.
+                    .accessibilityAddTraits(value == photo.myStars ? .isSelected : [])
                 }
             }
             HStack(spacing: 6) {
@@ -249,9 +332,11 @@ struct FriendPhotoView: View {
                     Button(intent: RateReactionIntent(photoId: photo.id, kind: kind)) {
                         Text(kind.emoji)
                             .font(.headline)
+                            .foregroundStyle(Palette.text)
                             .frame(maxWidth: .infinity)
-                            .frame(height: height)
-                            .background(active ? Palette.accent.opacity(0.9) : Self.scrim, in: Capsule())
+                            .frame(height: Space.hitTarget)
+                            .background(active ? Palette.accentTint : Palette.scrim, in: Capsule())
+                            .overlay(Capsule().strokeBorder(active ? Palette.accent : Color.clear, lineWidth: 1.5))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(kind.title)
@@ -281,8 +366,13 @@ struct RateStarsIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         let current = WidgetStore.cached().flatMap { $0.id == photoId ? $0.myStars : nil } ?? 0
-        let rating = try await ReactionAPI.setStars(stars == current ? 0 : stars, photoId: photoId)
-        WidgetStore.remember(rating, photoId: photoId)
+        do {
+            let rating = try await ReactionAPI.setStars(stars == current ? 0 : stars, photoId: photoId)
+            WidgetStore.remember(rating, photoId: photoId)
+        } catch {
+            WidgetStore.rememberFailure(error, photoId: photoId)
+            WidgetRefresh.now()
+        }
         return .result()
     }
 }
@@ -307,8 +397,13 @@ struct RateReactionIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         guard let reaction = ReactionKind(rawValue: kind) else { return .result() }
         let alreadyOn = WidgetStore.cached().map { $0.id == photoId && $0.mine.contains(reaction) } ?? false
-        let rating = try await ReactionAPI.setReaction(reaction, on: !alreadyOn, photoId: photoId)
-        WidgetStore.remember(rating, photoId: photoId)
+        do {
+            let rating = try await ReactionAPI.setReaction(reaction, on: !alreadyOn, photoId: photoId)
+            WidgetStore.remember(rating, photoId: photoId)
+        } catch {
+            WidgetStore.rememberFailure(error, photoId: photoId)
+            WidgetRefresh.now()
+        }
         return .result()
     }
 }

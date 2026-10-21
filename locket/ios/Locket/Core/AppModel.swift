@@ -35,6 +35,8 @@ final class AppModel {
     private(set) var feed: [Photo] = []
     private(set) var feedHasMore = true
     private(set) var isLoadingMore = false
+    /// Older photos failed to load: the end of the feed shows it with a Retry.
+    private(set) var loadMoreError: String?
     private(set) var feedState: LoadState = .idle
     private(set) var currentWeek: WeekResults?
     private(set) var history: [WeekResults] = []
@@ -75,8 +77,8 @@ final class AppModel {
         }
     }
 
+    /// Keeps the offline screen up, with its button's own loading state, until start() decides.
     func retry() async {
-        phase = .launching
         await start()
     }
 
@@ -114,6 +116,7 @@ final class AppModel {
     private func resetCircleData() {
         feed = []
         feedHasMore = true
+        loadMoreError = nil
         feedState = .idle
         currentWeek = nil
         history = []
@@ -130,8 +133,13 @@ final class AppModel {
         }
     }
 
+    /// A background load: a failure is not a toast. The friends list keeps what it had.
     func refreshMe() async {
-        await perform { self.apply(try await self.api.me()) }
+        do {
+            apply(try await api.me())
+        } catch {
+            _ = loadFailure(error)
+        }
     }
 
     func refreshAll() async {
@@ -154,12 +162,30 @@ final class AppModel {
         await perform { self.apply(try await self.api.leaveCircle()) }
     }
 
-    func renameMe(_ name: String) async {
-        await perform { self.apply(try await self.api.rename(name)) }
+    /// Throws so the edit sheet can show the error under its field.
+    /// A lapsed session signs out and throws CancellationError (nothing to show).
+    func renameMe(_ name: String) async throws {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        try await signedIn { self.apply(try await self.api.rename(name)) }
     }
 
-    func renameCircle(_ name: String) async {
-        await perform { self.apply(try await self.api.renameCircle(name)) }
+    /// Throws so the edit sheet can show the error under its field.
+    /// A lapsed session signs out and throws CancellationError (nothing to show).
+    func renameCircle(_ name: String) async throws {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        try await signedIn { self.apply(try await self.api.renameCircle(name)) }
+    }
+
+    private func signedIn(_ work: () async throws -> Void) async throws {
+        do {
+            try await work()
+        } catch {
+            if (error as? APIError) == .unauthorized {
+                signOutLocally()
+                throw CancellationError()
+            }
+            throw error
+        }
     }
 
     // MARK: - Feed
@@ -182,13 +208,22 @@ final class AppModel {
     func loadMoreIfNeeded(after photo: Photo) async {
         guard feedHasMore, !isLoadingMore, photo.id == feed.last?.id else { return }
         isLoadingMore = true
+        loadMoreError = nil
         defer { isLoadingMore = false }
-        await perform {
-            let more = try await self.api.photos(before: photo.createdAt)
-            let known = Set(self.feed.map(\.id))
-            self.feed += more.filter { !known.contains($0.id) }
-            self.feedHasMore = more.count >= self.pageSize
+        do {
+            let more = try await api.photos(before: photo.createdAt)
+            let known = Set(feed.map(\.id))
+            feed += more.filter { !known.contains($0.id) }
+            feedHasMore = more.count >= pageSize
+        } catch {
+            loadMoreError = loadFailure(error)
         }
+    }
+
+    /// Retry for the end of the feed.
+    func retryLoadMore() async {
+        guard let last = feed.last else { return }
+        await loadMoreIfNeeded(after: last)
     }
 
     func upload(_ image: UIImage, caption: String) async throws {

@@ -8,10 +8,7 @@ struct RootView: View {
             Palette.ground.ignoresSafeArea()
             switch model.phase {
             case .launching:
-                ProgressView()
-                    .controlSize(.large)
-                    .tint(Palette.faint)
-                    .appearsAfter()
+                LaunchView()
             case .offline(let message):
                 OfflineView(message: message)
             case .signedOut:
@@ -24,6 +21,21 @@ struct RootView: View {
         }
         .overlay(alignment: .top) { ToastView() }
         .task { await model.start() }
+    }
+}
+
+/// While the session loads: the wordmark the launch screen hands off to, no spinner.
+/// A slow server gets one honest line after a second.
+private struct LaunchView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Wordmark()
+            Text("Подключаюсь к серверу…")
+                .font(.footnote)
+                .foregroundStyle(Palette.muted)
+                .appearsAfter(.seconds(1))
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -68,10 +80,13 @@ private struct ToastView: View {
                             .foregroundStyle(Palette.negative)
                             .accessibilityHidden(true)
                     }
+                    // Padding sits on the text, so a wrapped error keeps air above and below
+                    // while its first line still lines up with the 44 pt close button.
                     Text(toast.text)
                         .font(.subheadline)
                         .foregroundStyle(Palette.text)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 12)
                     if toast.isError {
                         Spacer(minLength: 8)
                         Button {
@@ -87,7 +102,6 @@ private struct ToastView: View {
                 }
                 .padding(.leading, 16)
                 .padding(.trailing, toast.isError ? 0 : 16)
-                .padding(.vertical, toast.isError ? 0 : 12)
                 .background(Palette.raised, in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
                 .padding(.horizontal, Space.margin)
                 .padding(.top, 8)
@@ -107,16 +121,22 @@ struct MainTabView: View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
             CameraScreen()
+                .groundBar(for: .tabBar)
                 .tabItem { Label("Камера", systemImage: "camera") }
                 .tag(AppModel.Tab.camera)
             FeedView()
+                .groundBar(for: .tabBar)
                 .tabItem { Label("Лента", systemImage: "photo.stack") }
                 .tag(AppModel.Tab.feed)
-                .badge(model.unratedCount)
+                // The feed's own title already says how many wait, so the badge
+                // only shows from the other tabs.
+                .badge(model.selectedTab == .feed ? 0 : model.unratedCount)
             WeekView()
+                .groundBar(for: .tabBar)
                 .tabItem { Label("Неделя", systemImage: "trophy") }
                 .tag(AppModel.Tab.week)
             FriendsView()
+                .groundBar(for: .tabBar)
                 .tabItem { Label("Друзья", systemImage: "person.2") }
                 .tag(AppModel.Tab.friends)
         }
@@ -134,5 +154,13 @@ struct MainTabView: View {
                     }
             }
         }
+    }
+}
+
+extension View {
+    /// An opaque ground-coloured bar: no system blur material under scrolled content.
+    func groundBar(for bar: ToolbarPlacement) -> some View {
+        toolbarBackground(Palette.ground, for: bar)
+            .toolbarBackground(.visible, for: bar)
     }
 }

@@ -5,13 +5,16 @@ import SwiftUI
 @Observable
 final class RatingCardModel {
     enum Status: Equatable {
-        case idle, sending, sent, failed(String)
+        /// `canRetry` is false when tapping again can't help (signed out, the server's own reason).
+        case idle, sending, sent, failed(String, canRetry: Bool)
     }
 
     var photoId = ""
     var authorName = ""
     var caption: String?
     var image: UIImage?
+    /// No attachment and the download failed: the card says so instead of a blank square.
+    var imageFailed = false
     var rating = MyRating(myStars: 0, mine: [])
     var status: Status = .idle
 
@@ -42,7 +45,8 @@ final class RatingCardModel {
             WidgetRefresh.now()
         } catch {
             rating = previous
-            status = .failed(error.localizedDescription)
+            let canRetry = (error as? ReactionAPI.Failure)?.canRetry ?? true
+            status = .failed(error.localizedDescription, canRetry: canRetry)
         }
     }
 }
@@ -122,24 +126,32 @@ struct RatingCard: View {
         .frame(minHeight: Space.hitTarget)
     }
 
+    private static let imageFailedText = "Фото не загрузилось — нажми «Открыть»"
+
     private var photo: some View {
-        Color.primary.opacity(0.08)
+        Palette.systemFill
             .aspectRatio(1, contentMode: .fit)
             .overlay {
                 if let image = model.image {
                     Image(uiImage: image).resizable().scaledToFill()
+                } else if model.imageFailed {
+                    Label(Self.imageFailedText, systemImage: "photo")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(Self.padding)
                 }
             }
             .overlay(alignment: .bottom) {
                 if let caption = model.caption {
                     Text(caption)
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Palette.text)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(Color.black.opacity(0.55), in: Capsule())
+                        .background(Palette.scrim, in: Capsule())
                         .padding(12)
                 }
             }
@@ -149,6 +161,10 @@ struct RatingCard: View {
     }
 
     private var photoLabel: String {
+        if model.image == nil && model.imageFailed {
+            guard let caption = model.caption else { return Self.imageFailedText }
+            return "\(Self.imageFailedText). Подпись: «\(caption)»"
+        }
         guard let caption = model.caption else { return "Фото" }
         return "Фото с подписью «\(caption)»"
     }
@@ -162,12 +178,13 @@ struct RatingCard: View {
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(lit ? Palette.accent : Color.secondary)
                 .frame(maxWidth: .infinity, minHeight: Space.controlHeight)
-                .background(Color.primary.opacity(0.08), in: shape)
+                .background(Palette.systemFill, in: shape)
                 .contentShape(shape)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(value) из \(Stars.max)")
-        .accessibilityAddTraits(lit ? .isSelected : [])
+        // Selected is your own pick only, not every lit star.
+        .accessibilityAddTraits(value == model.rating.myStars ? .isSelected : [])
     }
 
     private func reaction(_ kind: ReactionKind) -> some View {
@@ -178,7 +195,7 @@ struct RatingCard: View {
             Text(kind.emoji)
                 .font(.title3)
                 .frame(maxWidth: .infinity, minHeight: Space.controlHeight)
-                .background(active ? Palette.accent.opacity(0.3) : Color.primary.opacity(0.08), in: shape)
+                .background(active ? Palette.accentTint : Palette.systemFill, in: shape)
                 .overlay(shape.strokeBorder(active ? Palette.accent : Color.clear, lineWidth: 1.5))
                 .contentShape(shape)
         }
@@ -207,7 +224,8 @@ struct RatingCard: View {
         case .idle: return "Поставь оценку — приложение открывать не нужно"
         case .sending: return "Сохраняю…"
         case .sent: return "Оценка сохранена"
-        case .failed(let message): return Self.sentence(message) + " Попробуй ещё раз."
+        case .failed(let message, let canRetry):
+            return canRetry ? Self.sentence(message) + " Попробуй ещё раз." : Self.sentence(message)
         }
     }
 

@@ -9,14 +9,15 @@ import SwiftUI
 /// the hues stay muted and never reuse the accent's yellow.
 struct Avatar: View {
     let name: String
-    var size: CGFloat = 40
+    var size: CGFloat = AvatarSize.regular
 
     /// Hues at least 60° apart, skipping yellow (the accent) and violet.
     private static let hues: [Double] = [10, 95, 160, 205, 330]
 
     var body: some View {
         Text(String(name.prefix(1)).uppercased())
-            .font(.system(size: size * 0.42, weight: .semibold))
+            .font((size >= AvatarSize.regular ? Font.body : Font.footnote).weight(.semibold))
+            .dynamicTypeSize(...DynamicTypeSize.xLarge)
             .foregroundStyle(Color(hue: hue, saturation: 0.35, brightness: 0.95))
             .frame(width: size, height: size)
             .background(Circle().fill(Color(hue: hue, saturation: 0.55, brightness: 0.32)))
@@ -67,20 +68,14 @@ struct SquarePhoto: View {
     }
 }
 
-/// The product's mark: a flat yellow tile with a heart.
-struct LogoMark: View {
-    var size: CGFloat = 64
+/// The product's name in its rounded face: the only place that face is used.
+struct Wordmark: View {
+    var style: Font.TextStyle = .largeTitle
 
     var body: some View {
-        RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-            .fill(Palette.accent)
-            .frame(width: size, height: size)
-            .overlay {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: size * 0.45, weight: .bold))
-                    .foregroundStyle(Palette.onFill)
-            }
-            .accessibilityHidden(true)
+        Text("Locket")
+            .font(.system(style, design: .rounded, weight: .bold))
+            .foregroundStyle(Palette.text)
     }
 }
 
@@ -100,6 +95,7 @@ struct ScreenTitle: View {
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
                     .font(.subheadline)
+                    .monospacedDigit()
                     .foregroundStyle(Palette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -117,6 +113,7 @@ struct SectionHeader<Trailing: View>: View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
                 .font(.title3.weight(.semibold))
+                .monospacedDigit()
                 .foregroundStyle(Palette.text)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 12)
@@ -157,10 +154,13 @@ struct InlineError: View {
             Image(systemName: "exclamationmark.circle")
                 .foregroundStyle(Palette.negative)
                 .accessibilityHidden(true)
+            // Padding sits on the text so wrapped messages keep air above and below,
+            // while the first line still lines up with the 44 pt Retry button.
             Text(message)
                 .font(.subheadline)
                 .foregroundStyle(Palette.text)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 12)
             Spacer(minLength: 8)
             Button("Повторить", action: retry)
                 .font(.subheadline.weight(.semibold))
@@ -168,7 +168,6 @@ struct InlineError: View {
                 .frame(minHeight: Space.hitTarget)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 4)
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
     }
 }
@@ -203,7 +202,7 @@ struct EmptyState: View {
 struct SkeletonBlock: View {
     var width: CGFloat? = nil
     var height: CGFloat
-    var cornerRadius: CGFloat = 6
+    var cornerRadius: CGFloat = Radius.line
 
     var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -317,6 +316,8 @@ struct ButtonLabel: View {
 }
 
 /// A form field with its label above and its error right under it.
+/// VoiceOver gets one stop per field: the label is the field's own label and the
+/// error is its hint, so neither is read a second time as loose text.
 struct FormField<Field: View>: View {
     let label: String
     var error: String?
@@ -327,6 +328,7 @@ struct FormField<Field: View>: View {
             Text(label)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Palette.text)
+                .accessibilityHidden(true)
             field()
                 .font(.body)
                 .foregroundStyle(Palette.text)
@@ -338,11 +340,13 @@ struct FormField<Field: View>: View {
                         .strokeBorder(error == nil ? Palette.border : Palette.negative, lineWidth: 1)
                 )
                 .accessibilityLabel(label)
+                .accessibilityHint(error ?? "")
             if let error {
                 Label(error, systemImage: "exclamationmark.circle")
                     .font(.footnote)
                     .foregroundStyle(Palette.negative)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityHidden(true)
             }
         }
     }

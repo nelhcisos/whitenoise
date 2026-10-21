@@ -9,8 +9,11 @@ struct MyRating: Decodable, Equatable {
 /// The two requests the lock-screen notification and the widget need.
 /// Lives in Shared so it works outside the main app.
 enum ReactionAPI {
+    /// A failed request. The message says what happened; `canRetry` says whether
+    /// tapping again can help (no connection, a server hiccup) or not (signed out).
     struct Failure: LocalizedError {
         let message: String
+        var canRetry = true
         var errorDescription: String? { message }
     }
 
@@ -28,7 +31,7 @@ enum ReactionAPI {
     }
 
     private static func send(_ method: String, _ path: String, body: Data?) async throws -> MyRating {
-        guard let token = TokenStore.token else { throw Failure(message: "Нужно войти в Locket.") }
+        guard let token = TokenStore.token else { throw Failure(message: "Открой Locket и войди — тогда оценки будут сохраняться отсюда.", canRetry: false) }
         var request = URLRequest(url: AppConfig.apiBaseURL.appendingPathComponent(path))
         request.httpMethod = method
         request.timeoutInterval = 20
@@ -47,8 +50,11 @@ enum ReactionAPI {
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
-            let message = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error
-            throw Failure(message: message ?? "Сервер ответил ошибкой \(status).")
+            if let message = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error {
+                // The server's own words (a deleted photo, a closed week): tapping again won't help.
+                throw Failure(message: message, canRetry: status >= 500)
+            }
+            throw Failure(message: "Сервер не ответил (\(status)).")
         }
         return try JSONDecoder().decode(Response.self, from: data).photo
     }

@@ -47,8 +47,10 @@ final class NotificationViewController: UIViewController, UNNotificationContentE
             model.image = image
         } else if let link = info["imageUrl"] as? String, let url = URL(string: link) {
             Task { [model] in
-                if let result = try? await URLSession.shared.data(from: url) {
-                    model.image = UIImage(data: result.0)
+                if let result = try? await URLSession.shared.data(from: url), let image = UIImage(data: result.0) {
+                    model.image = image
+                } else {
+                    model.imageFailed = true
                 }
             }
         }

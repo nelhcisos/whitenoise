@@ -65,7 +65,7 @@ final class APIClient: @unchecked Sendable {
         guard (200..<300).contains(status) else {
             if status == 401 && !path.hasPrefix("api/auth/") { throw APIError.unauthorized }
             let message = (try? decoder.decode(ErrorBody.self, from: data))?.error
-            throw APIError.server(message ?? "Ошибка сервера (\(status)).")
+            throw APIError.server(message ?? "Сервер не ответил (\(status)). Попробуй ещё раз через минуту.")
         }
         return try decoder.decode(T.self, from: data)
     }

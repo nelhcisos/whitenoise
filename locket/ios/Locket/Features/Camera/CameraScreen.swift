@@ -26,6 +26,13 @@ struct CameraScreen: View {
             viewfinder
             controls
                 .padding(.top, Space.gap)
+            if sending {
+                // Shown without animation: `sending` never changes inside withAnimation.
+                Text("Отправляю…")
+                    .font(.footnote)
+                    .foregroundStyle(Palette.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if let sendError {
                 sendFailure(sendError)
             }
@@ -48,7 +55,7 @@ struct CameraScreen: View {
             if !friends.isEmpty {
                 HStack(spacing: -10) {
                     ForEach(friends.prefix(4)) { friend in
-                        Avatar(name: friend.name, size: 32)
+                        Avatar(name: friend.name, size: AvatarSize.small)
                             .padding(2)
                             .background(Palette.ground, in: Circle())
                     }
@@ -123,7 +130,7 @@ struct CameraScreen: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(camera.flashOn ? Palette.accent : Palette.text)
                     .frame(width: Space.hitTarget, height: Space.hitTarget)
-                    .background(Palette.ground.opacity(0.55), in: Circle())
+                    .background(Palette.scrim, in: Circle())
             }
             .buttonStyle(RoundControlStyle())
             .accessibilityLabel("Вспышка")
@@ -141,7 +148,7 @@ struct CameraScreen: View {
             .foregroundStyle(Palette.text)
             .padding(.horizontal, Space.gap)
             .frame(minHeight: Space.hitTarget)
-            .background(Palette.ground.opacity(0.55), in: Capsule())
+            .background(Palette.scrim, in: Capsule())
             .padding(Space.gap)
             .disabled(sending)
             .onChange(of: caption) { _, value in
@@ -198,20 +205,18 @@ struct CameraScreen: View {
         } label: {
             ZStack {
                 Circle().fill(Palette.accent)
-                if sending {
-                    ProgressView()
-                        .tint(Palette.onFill)
-                } else {
-                    Image(systemName: "paperplane.fill")
-                        .font(.title.weight(.semibold))
-                        .foregroundStyle(Palette.onFill)
-                }
+                // The icon stays while sending; the note under the controls says what happens.
+                Image(systemName: "paperplane.fill")
+                    .font(.title.weight(.semibold))
+                    .foregroundStyle(Palette.onFill)
+                    .opacity(sending ? 0.5 : 1)
             }
             .frame(width: mainControl, height: mainControl)
         }
         .buttonStyle(RoundControlStyle(dimsWhenDisabled: false))
         .disabled(sending)
         .accessibilityLabel("Отправить друзьям")
+        .accessibilityValue(sending ? "Отправляю…" : "")
     }
 
     private func roundButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
