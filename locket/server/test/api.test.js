@@ -100,7 +100,7 @@ test('a full week: sign up, circle, photos, ratings, reminder, awards', async ()
   const joined = await api('POST', '/api/circles/join', { auth: petya.token, json: { code: ` ${code.toLowerCase().slice(0, 3)} ${code.slice(3)} ` } });
   assert.equal(joined.status, 200);
   assert.equal(joined.body.circle.name, 'Банда');
-  assert.equal(lastPushTo(token('a')).aps.alert.body, '👋 Петя теперь с вами');
+  assert.equal(lastPushTo(token('a')).aps.alert.body, 'Петя теперь с вами');
   await api('POST', '/api/circles/join', { auth: olya.token, json: { code } });
   assert.deepEqual((await api('GET', '/api/me', { auth: olya.token })).body.members.map((m) => m.name), ['Маша', 'Петя', 'Оля']);
   assert.equal((await api('POST', '/api/circles', { auth: olya.token, json: { name: 'Вторая' } })).status, 409);
@@ -117,7 +117,7 @@ test('a full week: sign up, circle, photos, ratings, reminder, awards', async ()
   const notif = lastPushTo(token('b'));
   assert.equal(notif.aps.category, 'PHOTO_RATING');
   assert.equal(notif.aps['mutable-content'], 1);
-  assert.equal(notif.aps.alert.title, 'Маша 📸');
+  assert.equal(notif.aps.alert.title, 'Маша');
   assert.equal(notif.photoId, m1.id);
   assert.equal(notif.imageUrl, m1.imageUrl);
   assert.equal(lastPushTo(token('c')).photoId, m1.id);
@@ -139,12 +139,12 @@ test('a full week: sign up, circle, photos, ratings, reminder, awards', async ()
   assert.deepEqual(res.body.photo.stars, { count: 1, total: 3, average: 3 });
   const firstReactionPush = sent.at(-1);
   assert.equal(firstReactionPush.token, token('a'));
-  assert.equal(firstReactionPush.payload.aps.alert.body, '⭐⭐⭐ твоему фото');
+  assert.equal(firstReactionPush.payload.aps.alert.body, '3\u00a0звезды — твоему фото');
 
   res = await rate(petya, m1.id, 'creative');
   assert.deepEqual(res.body.photo.counts, { creative: 1, funny: 0, wild: 0 });
   assert.deepEqual(res.body.photo.mine, ['creative']);
-  assert.equal(lastPushTo(token('a')).aps.alert.body, '⭐⭐⭐ ✍️ твоему фото');
+  assert.equal(lastPushTo(token('a')).aps.alert.body, '3\u00a0звезды · ✍️ — твоему фото');
   assert.equal(sent.at(-1).opts.collapseId, firstReactionPush.opts.collapseId, 'replaces the earlier notification');
 
   const before = sent.length;
@@ -153,11 +153,11 @@ test('a full week: sign up, circle, photos, ratings, reminder, awards', async ()
   assert.equal(sent.length, before, 'repeating a rating sends nothing');
 
   await starIt(petya, m1.id, 2);
-  assert.equal(lastPushTo(token('a')).aps.alert.body, '⭐⭐ ✍️ твоему фото');
+  assert.equal(lastPushTo(token('a')).aps.alert.body, '2\u00a0звезды · ✍️ — твоему фото');
   res = await rate(petya, m1.id, 'creative', 'DELETE');
   assert.deepEqual(res.body.photo.counts, { creative: 0, funny: 0, wild: 0 });
   await rate(petya, m1.id, 'funny');
-  assert.equal(lastPushTo(token('a')).aps.alert.body, '⭐⭐ 😂 твоему фото');
+  assert.equal(lastPushTo(token('a')).aps.alert.body, '2\u00a0звезды · 😂 — твоему фото');
   await starIt(olya, m1.id, 1);
   await rate(olya, m1.id, 'funny');
 
@@ -210,8 +210,8 @@ test('a full week: sign up, circle, photos, ratings, reminder, awards', async ()
   sent.length = 0;
   await app.runDue();
   assert.deepEqual(sent.map((s) => s.token).sort(), [token('a'), token('b')]);
-  assert.equal(sent[0].payload.aps.alert.body, 'У тебя 1 неоценённое фото друзей — успей проголосовать!');
-  assert.equal(sent[0].payload.aps.alert.title, '⏰ До итогов недели 3 ч');
+  assert.equal(sent[0].payload.aps.alert.body, '1\u00a0фото ждёт твоей оценки — успей до итогов');
+  assert.equal(sent[0].payload.aps.alert.title, 'До итогов недели 3\u00a0ч');
   await app.runDue();
   assert.equal(sent.length, 2, 'reminder is sent once');
 
@@ -221,8 +221,8 @@ test('a full week: sign up, circle, photos, ratings, reminder, awards', async ()
   await app.runDue();
   assert.equal(sent.length, 3);
   const weekly = lastPushTo(token('c'));
-  assert.equal(weekly.aps.alert.title, '🏆 Итоги недели');
-  assert.equal(weekly.aps.alert.body, '👑 Друг недели — Петя\n📸 Фото недели — Петя\n✍️ Петя · 😂 Маша · 🫪 Петя · ⚡️ Оля');
+  assert.equal(weekly.aps.alert.title, 'Итоги недели');
+  assert.equal(weekly.aps.alert.body, 'Друг недели — Петя\nФото недели — Петя\n✍️ Петя · 😂 Маша · 🫪 Петя · самый активный — Оля');
   assert.equal(weekly.aps.category, 'WEEKLY_RESULTS');
   assert.equal(weekly.weekId, '2026-W42');
   assert.equal(weekly.imageUrl, p1.imageUrl);

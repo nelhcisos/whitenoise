@@ -18,19 +18,32 @@ final class AppModel {
         case camera, feed, week, friends
     }
 
+    /// Where a block's data stands. Each block shows its own loading and error state.
+    enum LoadState: Equatable {
+        case idle, loading, loaded, failed(String)
+    }
+
+    /// A short non-blocking message at the top of the screen, also read out by VoiceOver.
+    struct Toast: Equatable, Identifiable {
+        let id = UUID()
+        let text: String
+        var isError = false
+    }
+
     var phase: Phase = .launching
     private(set) var me: MeResponse?
     private(set) var feed: [Photo] = []
     private(set) var feedHasMore = true
     private(set) var isLoadingMore = false
+    private(set) var feedState: LoadState = .idle
     private(set) var currentWeek: WeekResults?
     private(set) var history: [WeekResults] = []
+    private(set) var weekState: LoadState = .idle
 
     var selectedTab: Tab = .camera
     var focusPhotoId: String?
     var presentedWeek: WeekResults?
-    var toast: String?
-    var alert: String?
+    private(set) var toast: Toast?
 
     @ObservationIgnored private var deviceToken: String?
     @ObservationIgnored private var pendingWeekId: String?
@@ -40,6 +53,11 @@ final class AppModel {
     var myId: String? { me?.user.id }
     var circle: FriendCircle? { me?.circle }
     var members: [Member] { me?.members ?? [] }
+
+    /// Friends' photos of this week you haven't rated yet: the feed's finding.
+    var unratedCount: Int {
+        feed.filter { $0.canReact && $0.myStars == 0 && $0.mine.isEmpty }.count
+    }
 
     // MARK: - Session
 
@@ -96,8 +114,10 @@ final class AppModel {
     private func resetCircleData() {
         feed = []
         feedHasMore = true
+        feedState = .idle
         currentWeek = nil
         history = []
+        weekState = .idle
         WidgetRefresh.now()
     }
 
@@ -146,11 +166,16 @@ final class AppModel {
 
     func refreshFeed() async {
         guard phase == .ready else { return }
-        await perform {
-            let photos = try await self.api.photos()
-            self.feed = photos
-            self.feedHasMore = photos.count >= self.pageSize
+        if feedState != .loaded { feedState = .loading }
+        do {
+            let photos = try await api.photos()
+            feed = photos
+            feedHasMore = photos.count >= pageSize
+            feedState = .loaded
             WidgetRefresh.now()
+        } catch {
+            // Photos already on screen stay; the block shows the error with a Retry.
+            if let message = loadFailure(error) { feedState = .failed(message) }
         }
     }
 
@@ -172,7 +197,7 @@ final class AppModel {
         }
         let photo = try await api.upload(jpeg: jpeg, caption: caption)
         feed.insert(photo, at: 0)
-        show(toast: "Отправлено друзьям 💛")
+        show(toast: "Фото отправлено друзьям")
         Task { await refreshWeek() }
     }
 
@@ -204,7 +229,9 @@ final class AppModel {
             Task { await refreshWeek() }
         } catch {
             replace(original)
-            if !(error is CancellationError) { alert = error.localizedDescription }
+            if !(error is CancellationError) {
+                show(error: "Оценка не сохранилась: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -223,13 +250,17 @@ final class AppModel {
 
     func refreshWeek() async {
         guard phase == .ready else { return }
+        if weekState != .loaded { weekState = .loading }
         let api = self.api
-        await perform {
+        do {
             async let current = api.currentWeek()
             async let past = api.weeks()
             let (week, weeks) = try await (current, past)
-            self.currentWeek = week
-            self.history = weeks
+            currentWeek = week
+            history = weeks
+            weekState = .loaded
+        } catch {
+            if let message = loadFailure(error) { weekState = .failed(message) }
         }
         if let id = pendingWeekId, let week = history.first(where: { $0.weekId == id }) {
             pendingWeekId = nil
@@ -295,21 +326,42 @@ final class AppModel {
     // MARK: - UI helpers
 
     func show(toast text: String) {
-        toast = text
+        present(Toast(text: text))
+    }
+
+    func show(error text: String) {
+        present(Toast(text: text, isError: true))
+    }
+
+    func dismissToast() {
+        toast = nil
+    }
+
+    private func present(_ newToast: Toast) {
+        toast = newToast
+        AccessibilityNotification.Announcement(newToast.text).post()
         Task {
-            try? await Task.sleep(for: .seconds(2.5))
-            if toast == text { toast = nil }
+            try? await Task.sleep(for: .seconds(newToast.isError ? 5 : 2.5))
+            if toast?.id == newToast.id { toast = nil }
         }
     }
 
+    /// The message for a block that failed to load, or nil when there is nothing to show.
+    private func loadFailure(_ error: Error) -> String? {
+        if error is CancellationError { return nil }
+        if (error as? APIError) == .unauthorized {
+            signOutLocally()
+            return nil
+        }
+        return error.localizedDescription
+    }
+
+    /// Runs an action the person started; a failure becomes an error toast.
     private func perform(_ work: () async throws -> Void) async {
         do {
             try await work()
-        } catch is CancellationError {
-        } catch APIError.unauthorized {
-            signOutLocally()
         } catch {
-            alert = error.localizedDescription
+            if let message = loadFailure(error) { show(error: message) }
         }
     }
 }

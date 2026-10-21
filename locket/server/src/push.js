@@ -4,7 +4,17 @@ import crypto from 'node:crypto';
 export const CATEGORY_RATE_PHOTO = 'PHOTO_RATING';
 export const CATEGORY_WEEKLY = 'WEEKLY_RESULTS';
 
+// Reaction marks are the app's rating scale (data), the only emoji in push copy.
 const EMOJI = { creative: '✍️', funny: '😂', wild: '🫪' };
+const NBSP = '\u00a0';
+
+function plural(n, one, few, many) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return few;
+  return many;
+}
 
 export function createPushService({ store, apns, log = console }) {
   async function sendToUsers(userIds, payload, opts = {}) {
@@ -30,13 +40,13 @@ export function createPushService({ store, apns, log = console }) {
 }
 
 // A friend posted a photo: rich notification. The app's extensions download the
-// image and show ⭐ 1–3 plus ✍️ / 😂 / 🫪 when it is long-pressed, even on the lock screen.
+// image and show stars 1–3 plus ✍️ / 😂 / 🫪 when it is long-pressed, even on the lock screen.
 export function newPhotoMessage({ photo, imageUrl }) {
   return {
     aps: {
       alert: {
-        title: `${photo.authorName} 📸`,
-        body: photo.caption ? `«${photo.caption}» — удерживай, чтобы оценить ⭐` : 'Новое фото — удерживай, чтобы оценить ⭐',
+        title: photo.authorName,
+        body: photo.caption ? `«${photo.caption}» — удерживай, чтобы оценить` : 'Новое фото — удерживай, чтобы оценить',
       },
       sound: 'default',
       category: CATEGORY_RATE_PHOTO,
@@ -57,12 +67,13 @@ export function newPhotoMessage({ photo, imageUrl }) {
 // replace it via apns-collapse-id instead of stacking up.
 export function reactionMessage({ photo, reactor, stars, kinds, imageUrl }) {
   const parts = [];
-  if (stars) parts.push('⭐'.repeat(stars));
-  parts.push(...Object.keys(EMOJI).filter((k) => kinds.includes(k)).map((k) => EMOJI[k]));
+  if (stars) parts.push(`${stars}${NBSP}${plural(stars, 'звезда', 'звезды', 'звёзд')}`);
+  const marks = Object.keys(EMOJI).filter((k) => kinds.includes(k)).map((k) => EMOJI[k]);
+  if (marks.length) parts.push(marks.join(' '));
   return {
     payload: {
       aps: {
-        alert: { title: reactor.name, body: `${parts.join(' ')} твоему фото` },
+        alert: { title: reactor.name, body: `${parts.join(' · ')} — твоему фото` },
         sound: 'default',
         'mutable-content': 1,
         'thread-id': 'reactions',
@@ -77,18 +88,18 @@ export function reactionMessage({ photo, reactor, stars, kinds, imageUrl }) {
 
 export function weeklyResultsMessage(results) {
   const lines = [];
-  if (results.friendOfWeek) lines.push(`👑 Друг недели — ${results.friendOfWeek.name}`);
-  if (results.bestPhoto) lines.push(`📸 Фото недели — ${results.bestPhoto.authorName}`);
+  if (results.friendOfWeek) lines.push(`Друг недели — ${results.friendOfWeek.name}`);
+  if (results.bestPhoto) lines.push(`Фото недели — ${results.bestPhoto.authorName}`);
   const nominations = [
     results.mostCreative && `✍️ ${results.mostCreative.name}`,
     results.mostFunny && `😂 ${results.mostFunny.name}`,
     results.mostWild && `🫪 ${results.mostWild.name}`,
-    results.mostActive && `⚡️ ${results.mostActive.name}`,
+    results.mostActive && `самый активный — ${results.mostActive.name}`,
   ].filter(Boolean);
   if (nominations.length) lines.push(nominations.join(' · '));
   return {
     aps: {
-      alert: { title: '🏆 Итоги недели', body: lines.join('\n') || 'Неделя закрыта — загляни в приложение' },
+      alert: { title: 'Итоги недели', body: lines.join('\n') || 'Неделя закрыта — открой Locket, чтобы посмотреть итоги' },
       sound: 'default',
       category: CATEGORY_WEEKLY,
       'mutable-content': 1,
@@ -101,10 +112,13 @@ export function weeklyResultsMessage(results) {
 }
 
 export function reminderMessage({ unrated, hours }) {
-  const word = unrated % 10 === 1 && unrated % 100 !== 11 ? 'неоценённое' : 'неоценённых';
+  const word = plural(unrated, 'фото ждёт', 'фото ждут', 'фото ждут');
   return {
     aps: {
-      alert: { title: `⏰ До итогов недели ${hours} ч`, body: `У тебя ${unrated} ${word} фото друзей — успей проголосовать!` },
+      alert: {
+        title: `До итогов недели ${hours}${NBSP}ч`,
+        body: `${unrated}${NBSP}${word} твоей оценки — успей до итогов`,
+      },
       sound: 'default',
       'thread-id': 'weekly',
     },
@@ -114,7 +128,7 @@ export function reminderMessage({ unrated, hours }) {
 
 export function joinedMessage({ user, circle }) {
   return {
-    aps: { alert: { title: circle.name, body: `👋 ${user.name} теперь с вами` }, sound: 'default', 'thread-id': 'circle' },
+    aps: { alert: { title: circle.name, body: `${user.name} теперь с вами` }, sound: 'default', 'thread-id': 'circle' },
     type: 'join',
   };
 }

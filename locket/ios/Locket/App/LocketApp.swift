@@ -16,7 +16,7 @@ struct LocketApp: App {
                 .environment(model)
                 .environment(\.locale, .ru)
                 .preferredColorScheme(.dark)
-                .tint(.locketYellow)
+                .tint(Palette.text) // the accent is for data, not for chrome
                 .onOpenURL { model.open(url: $0) }
         }
     }

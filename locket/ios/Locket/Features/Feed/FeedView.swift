@@ -1,46 +1,111 @@
 import SwiftUI
 
+/// Friends' photos, newest first, grouped by week. The finding is how many still wait for your rating.
 struct FeedView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 32) {
-                        ForEach(sections, id: \.weekId) { section in
-                            Text(section.title)
-                                .font(.title3.bold())
-                                .padding(.horizontal, 16)
-                            ForEach(section.photos) { photo in
-                                PhotoCard(photo: photo)
-                                    .id(photo.id)
-                                    .task { await model.loadMoreIfNeeded(after: photo) }
-                            }
-                        }
-                        if model.isLoadingMore {
-                            ProgressView().frame(maxWidth: .infinity)
-                        }
+                    LazyVStack(alignment: .leading, spacing: Space.section) {
+                        header
+                        content
                     }
-                    .padding(.vertical, 12)
+                    .padding(.top, Space.gap)
+                    .padding(.bottom, Space.section)
                 }
                 .refreshable { await model.refreshFeed() }
-                .overlay {
-                    if model.feed.isEmpty {
-                        ContentUnavailableView(
-                            "Пока пусто",
-                            systemImage: "camera.viewfinder",
-                            description: Text("Сделай фото — друзья получат его прямо на экран блокировки и поставят ⭐ и ✍️ 😂 🫪")
-                        )
-                    }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    // Keeps scrolled photos from showing under the status bar.
+                    Color.clear
+                        .frame(height: 0)
+                        .background(Palette.ground, ignoresSafeAreaEdges: .top)
                 }
                 .onAppear { scrollToFocus(proxy) }
                 .onChange(of: model.focusPhotoId) { scrollToFocus(proxy) }
                 .onChange(of: model.feed.count) { scrollToFocus(proxy) }
             }
-            .navigationTitle("Лента")
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
+
+    // MARK: - Parts
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: Space.gap) {
+            ScreenTitle(title: "Лента", subtitle: finding)
+            if case .failed(let message) = model.feedState {
+                // Photos already loaded stay below the error.
+                InlineError(message: "Не удалось загрузить ленту. \(message)") {
+                    Task { await model.refreshFeed() }
+                }
+            }
+        }
+        .padding(.horizontal, Space.margin)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if model.feed.isEmpty {
+            switch model.feedState {
+            case .idle, .loading:
+                VStack(alignment: .leading, spacing: Space.section) {
+                    PhotoCardSkeleton()
+                    PhotoCardSkeleton()
+                }
+                .appearsAfter()
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Загружаю ленту…")
+            case .loaded:
+                EmptyState(
+                    text: "Пока никто ничего не выложил. Сделай первое фото — друзья увидят его прямо на экране блокировки.",
+                    actionTitle: "Открыть камеру",
+                    action: { model.selectedTab = .camera }
+                )
+                .padding(.horizontal, Space.margin)
+            case .failed:
+                EmptyView()
+            }
+        } else {
+            ForEach(sections, id: \.weekId) { section in
+                ForEach(section.photos) { photo in
+                    VStack(alignment: .leading, spacing: Space.gap) {
+                        if photo.id == section.photos.first?.id {
+                            SectionHeader(section.title)
+                                .padding(.horizontal, Space.margin)
+                        }
+                        PhotoCard(photo: photo)
+                    }
+                    .id(photo.id)
+                    .task { await model.loadMoreIfNeeded(after: photo) }
+                }
+            }
+            if model.isLoadingMore {
+                PhotoCardSkeleton()
+                    .appearsAfter()
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Загружаю ещё фото…")
+            }
+        }
+    }
+
+    /// "3 фото ждут твоей оценки", or that this week's friends' photos are all rated.
+    private var finding: String? {
+        let unrated = model.unratedCount
+        if unrated > 0 {
+            let waiting = Russian.plural(unrated, "фото ждёт", "фото ждут", "фото ждут")
+            return "\(unrated)\(nbsp)\(waiting) твоей оценки"
+        }
+        // Only friends' photos of this week can be rated.
+        if model.feed.contains(where: { $0.canReact }) {
+            return "Ты оценил все фото этой недели"
+        }
+        return nil
+    }
+
+    // MARK: - Sections
 
     private struct FeedSection {
         let weekId: String
@@ -73,11 +138,14 @@ struct FeedView: View {
 
     private func scrollToFocus(_ proxy: ScrollViewProxy) {
         guard let id = model.focusPhotoId, model.feed.contains(where: { $0.id == id }) else { return }
-        withAnimation { proxy.scrollTo(id, anchor: .top) }
+        withAnimation(reduceMotion ? nil : .default) {
+            proxy.scrollTo(id, anchor: .top)
+        }
         model.focusPhotoId = nil
     }
 }
 
+/// One photo: who posted it and when, the photo with its caption, the rating, who rated it.
 struct PhotoCard: View {
     @Environment(AppModel.self) private var model
     let photo: Photo
@@ -87,37 +155,19 @@ struct PhotoCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Avatar(name: photo.authorName, size: 36)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(isMine ? "Ты" : photo.authorName).font(.headline)
-                    Text(photo.date, format: .relative(presentation: .named))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if isMine {
-                    Menu {
-                        Button("Удалить фото", systemImage: "trash", role: .destructive) { confirmDelete = true }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 36, height: 36)
-                    }
-                }
-            }
+            author
 
             SquarePhoto(url: photo.imageUrl)
                 .overlay(alignment: .bottom) {
-                    if let caption = photo.caption, !caption.isEmpty {
+                    if let caption = photo.caption, !caption.isBlank {
                         Text(caption)
-                            .font(.headline)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Palette.text)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 9)
-                            .background(Color.black.opacity(0.5), in: Capsule())
-                            .padding(16)
+                            .padding(.vertical, 8)
+                            .background(Palette.ground.opacity(0.55), in: Capsule())
+                            .padding(Space.gap)
                     }
                 }
 
@@ -126,113 +176,258 @@ struct PhotoCard: View {
             if !photo.reactors.isEmpty || !photo.raters.isEmpty {
                 Text(reactorsLine)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(reactorsSpoken)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Space.margin)
         .confirmationDialog("Удалить это фото?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Удалить", role: .destructive) { Task { await model.delete(photo) } }
+            Button("Удалить фото", role: .destructive) {
+                Task { await model.delete(photo) }
+            }
+        } message: {
+            Text("Друзья больше его не увидят, оценки за него пропадут.")
         }
     }
 
-    /// "Петя ⭐⭐⭐ 😂 · Оля ⭐ ✍️"
-    private var reactorsLine: String {
+    private var author: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 12) {
+                Avatar(name: photo.authorName, size: 36)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isMine ? "Ты" : photo.authorName)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Palette.text)
+                        .lineLimit(1)
+                    Text(photo.date, format: .relative(presentation: .named))
+                        .font(.footnote)
+                        .foregroundStyle(Palette.muted)
+                }
+            }
+            .accessibilityElement(children: .combine)
+
+            Spacer(minLength: 8)
+
+            if isMine {
+                Menu {
+                    Button("Удалить фото…", systemImage: "trash", role: .destructive) {
+                        confirmDelete = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Palette.muted)
+                        .frame(width: Space.hitTarget, height: Space.hitTarget)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Ещё")
+            }
+        }
+    }
+
+    /// One person's rating of this photo.
+    private struct Given {
+        let name: String
+        var stars = 0
+        var kinds: Set<ReactionKind> = []
+    }
+
+    /// Everyone who rated, in the order they first did.
+    private var given: [Given] {
         var order: [String] = []
-        var names: [String: String] = [:]
-        var stars: [String: Int] = [:]
-        var kinds: [String: Set<ReactionKind>] = [:]
+        var byUser: [String: Given] = [:]
         func note(_ userId: String, _ name: String) {
-            if names[userId] == nil { order.append(userId) }
-            names[userId] = name
+            if byUser[userId] == nil {
+                order.append(userId)
+                byUser[userId] = Given(name: name)
+            }
         }
         for rater in photo.raters {
             note(rater.userId, rater.name)
-            stars[rater.userId] = rater.stars
+            byUser[rater.userId]?.stars = rater.stars
         }
         for reactor in photo.reactors {
             note(reactor.userId, reactor.name)
-            kinds[reactor.userId, default: []].insert(reactor.kind)
+            byUser[reactor.userId]?.kinds.insert(reactor.kind)
         }
-        return order.map { id in
-            let given = String(repeating: "⭐", count: stars[id] ?? 0)
-            let emojis = ReactionKind.allCases.filter { kinds[id]?.contains($0) == true }.map(\.emoji).joined()
-            return [names[id] ?? "", given, emojis].filter { !$0.isEmpty }.joined(separator: " ")
+        return order.compactMap { byUser[$0] }
+    }
+
+    /// "Петя ★★★ 😂 · Оля ★ ✍️"
+    private var reactorsLine: String {
+        given.map { entry -> String in
+            let stars = String(repeating: "★", count: entry.stars)
+            let marks = ReactionKind.allCases.filter { entry.kinds.contains($0) }.map(\.emoji).joined()
+            return [entry.name, stars, marks].filter { !$0.isEmpty }.joined(separator: " ")
         }
         .joined(separator: " · ")
     }
+
+    /// The same line for VoiceOver: "Петя: 3 из 3, Смешно. Оля: 1 из 3, Креатив".
+    private var reactorsSpoken: String {
+        given.map { entry -> String in
+            var parts: [String] = []
+            if entry.stars > 0 { parts.append("\(entry.stars) из \(Stars.max)") }
+            parts += ReactionKind.allCases.filter { entry.kinds.contains($0) }.map(\.title)
+            return "\(entry.name): \(parts.joined(separator: ", "))"
+        }
+        .joined(separator: ". ")
+    }
 }
 
-/// ⭐ 1–3 on the left, ✍️ 😂 🫪 toggles on the right. Own photos and closed weeks are read-only.
+/// Stars 1–3 and the reactions under a photo. Your choice is yellow, filled and marked
+/// selected; your own photo shows its average. Own photos and closed weeks are read-only.
 struct RatingBar: View {
     @Environment(AppModel.self) private var model
     let photo: Photo
     let isMine: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 0) {
                 ForEach(1...Stars.max, id: \.self) { value in
-                    Button {
-                        Task { await model.setStars(value, on: photo) }
-                    } label: {
-                        Image(systemName: value <= shownStars ? "star.fill" : "star")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(value <= shownStars ? Color.locketYellow : Color.white.opacity(0.35))
-                            .frame(width: 44, height: 44)
-                    }
-                    .buttonStyle(.plain)
-                    .allowsHitTesting(photo.canReact)
-                    .accessibilityLabel("\(value) из \(Stars.max)")
+                    star(value)
                 }
-                Text(starsSummary)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 6)
+                if let starsSummary {
+                    Text(starsSummary)
+                        .font(.subheadline)
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.muted)
+                        .padding(.leading, 8)
+                }
                 Spacer(minLength: 0)
             }
-            HStack(spacing: 10) {
-                ForEach(ReactionKind.allCases) { kind in
-                    let active = photo.mine.contains(kind)
-                    let count = photo.counts[kind]
-                    Button {
-                        Task { await model.toggle(kind, on: photo) }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text(kind.emoji).font(.title3)
-                            if count > 0 {
-                                Text("\(count)").font(.subheadline.weight(.bold)).monospacedDigit()
-                            }
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .frame(minWidth: 56, minHeight: 44)
-                        .background(active ? Color.locketYellow.opacity(0.22) : Color.card, in: Capsule())
-                        .overlay(Capsule().strokeBorder(active ? Color.locketYellow : Color.clear, lineWidth: 1.5))
+
+            if isClosed {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        reactions
+                        Spacer(minLength: 8)
+                        closedNote
                     }
-                    .buttonStyle(.plain)
-                    .allowsHitTesting(photo.canReact)
-                    .accessibilityLabel("\(kind.title): \(count)")
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) { reactions }
+                        closedNote
+                    }
                 }
-                Spacer(minLength: 0)
-                if !photo.canReact && !isMine {
-                    Label("неделя закрыта", systemImage: "lock.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            } else {
+                HStack(spacing: 8) { reactions }
             }
         }
         .sensoryFeedback(.selection, trigger: photo.mine)
         .sensoryFeedback(.selection, trigger: photo.myStars)
     }
 
+    private var isClosed: Bool { !photo.canReact && !isMine }
+
     /// Your own photo shows its average; a friend's shows what you gave.
     private var shownStars: Int {
         isMine ? Int(photo.stars.average.rounded()) : photo.myStars
     }
 
-    private var starsSummary: String {
-        guard photo.stars.count > 0 else { return isMine ? "ещё нет оценок" : "" }
+    /// "2,5 · 4 оценки"; nothing for a friend's photo nobody has rated yet.
+    private var starsSummary: String? {
+        guard photo.stars.count > 0 else { return isMine ? "ещё нет оценок" : nil }
         let average = photo.stars.average.formatted(.number.precision(.fractionLength(0...1)).locale(.ru))
-        return "\(average) · \(photo.stars.count) \(Russian.plural(photo.stars.count, "оценка", "оценки", "оценок"))"
+        let count = photo.stars.count
+        return "\(average) · \(count)\(nbsp)\(Russian.plural(count, "оценка", "оценки", "оценок"))"
+    }
+
+    private func star(_ value: Int) -> some View {
+        let lit = value <= shownStars
+        return Button {
+            guard photo.canReact else { return }
+            Task { await model.setStars(value, on: photo) }
+        } label: {
+            Image(systemName: lit ? "star.fill" : "star")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(lit ? Palette.accent : Palette.faint)
+                .frame(width: Space.hitTarget, height: Space.hitTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .allowsHitTesting(photo.canReact)
+        .accessibilityLabel("\(value) из \(Stars.max)")
+        .accessibilityAddTraits(lit ? .isSelected : [])
+        .accessibilityRemoveTraits(photo.canReact ? [] : .isButton)
+    }
+
+    private var reactions: some View {
+        ForEach(ReactionKind.allCases) { kind in
+            chip(kind)
+        }
+    }
+
+    private func chip(_ kind: ReactionKind) -> some View {
+        let active = photo.mine.contains(kind)
+        let count = photo.counts[kind]
+        return Button {
+            guard photo.canReact else { return }
+            Task { await model.toggle(kind, on: photo) }
+        } label: {
+            HStack(spacing: 6) {
+                Text(kind.emoji)
+                    .font(.title3)
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.text)
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(minWidth: 56, minHeight: Space.hitTarget)
+            .background(active ? Palette.accent.opacity(0.18) : Palette.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(active ? Palette.accent : Color.clear, lineWidth: 1.5))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .allowsHitTesting(photo.canReact)
+        .accessibilityLabel(kind.title)
+        .accessibilityValue(String(count))
+        .accessibilityAddTraits(active ? .isSelected : [])
+        .accessibilityRemoveTraits(photo.canReact ? [] : .isButton)
+    }
+
+    private var closedNote: some View {
+        Label("Неделя закрыта", systemImage: "lock")
+            .font(.footnote)
+            .foregroundStyle(Palette.faint)
+    }
+}
+
+/// A photo card's shape while the feed loads: the same sizes in flat raised blocks.
+private struct PhotoCardSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                SkeletonBlock(width: 36, height: 36, cornerRadius: 18)
+                VStack(alignment: .leading, spacing: 6) {
+                    SkeletonBlock(width: 120, height: 14)
+                    SkeletonBlock(width: 72, height: 10)
+                }
+            }
+            .frame(minHeight: Space.hitTarget)
+
+            Color.clear
+                .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    GeometryReader { geometry in
+                        SkeletonBlock(height: geometry.size.height, cornerRadius: Radius.photo)
+                    }
+                }
+
+            VStack(alignment: .leading, spacing: 8) {
+                SkeletonBlock(width: 132, height: 20)
+                    .frame(height: Space.hitTarget)
+                HStack(spacing: 8) {
+                    ForEach(0..<ReactionKind.allCases.count, id: \.self) { _ in
+                        SkeletonBlock(width: 56, height: Space.hitTarget, cornerRadius: Space.hitTarget / 2)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, Space.margin)
     }
 }

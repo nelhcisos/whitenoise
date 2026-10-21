@@ -11,7 +11,7 @@ struct LocketWidgetBundle: WidgetBundle {
 }
 
 /// Locket-style home-screen widget: the newest photo from a friend,
-/// with ⭐ 1–3 and ✍️ 😂 🫪 buttons on the medium and large sizes (iOS 17 interactive widgets).
+/// with stars 1–3 and ✍️ 😂 🫪 buttons on the medium and large sizes (iOS 17 interactive widgets).
 struct FriendPhotoWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "FriendPhoto", provider: PhotoProvider()) { entry in
@@ -140,36 +140,42 @@ struct FriendPhotoView: View {
             content(photo, image)
                 .widgetURL(URL(string: "locket://photo/\(photo.id)"))
         } else {
-            VStack(spacing: 8) {
-                Image(systemName: "heart.fill")
-                    .font(.title)
-                    .foregroundStyle(Color.locketYellow)
-                Text("Здесь появятся фото друзей")
-                    .font(.caption.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.white)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Locket")
+                    .font(.system(.headline, design: .rounded).weight(.bold))
+                    .foregroundStyle(Palette.text)
+                Text("Здесь появится последнее фото друзей")
+                    .font(.footnote)
+                    .foregroundStyle(Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            .padding(16)
         }
     }
+
+    /// Dark scrim under text and buttons on the photo; the one place a translucent fill is allowed.
+    private static let scrim = Color.black.opacity(0.55)
 
     @ViewBuilder
     private func content(_ photo: WidgetPhoto, _ image: UIImage) -> some View {
         switch family {
         case .systemMedium:
             HStack(spacing: 12) {
-                filledImage(image)
+                filledImage(image, label: photo)
                     .aspectRatio(1, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(photo.authorName)
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Palette.text)
                         .lineLimit(1)
-                    Text(photo.caption ?? "")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.8))
-                        .lineLimit(1)
+                    if let caption = photo.caption, !caption.isEmpty {
+                        Text(caption)
+                            .font(.footnote)
+                            .foregroundStyle(Palette.muted)
+                            .lineLimit(1)
+                    }
                     Spacer(minLength: 0)
                     if photo.canReact { ratingButtons(photo, height: 30) }
                 }
@@ -178,35 +184,35 @@ struct FriendPhotoView: View {
             .padding(12)
         default:
             ZStack(alignment: .bottom) {
-                filledImage(image)
-                VStack(spacing: 8) {
-                    if family == .systemLarge, let caption = photo.caption {
+                filledImage(image, label: photo)
+                VStack(alignment: .leading, spacing: 8) {
+                    if family == .systemLarge, let caption = photo.caption, !caption.isEmpty {
                         Text(caption)
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Palette.text)
+                            .lineLimit(2)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color.black.opacity(0.5), in: Capsule())
+                            .background(Self.scrim, in: Capsule())
                     }
-                    HStack {
-                        Text(photo.authorName)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color.black.opacity(0.5), in: Capsule())
-                        Spacer(minLength: 0)
-                    }
+                    Text(photo.authorName)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Palette.text)
+                        .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Self.scrim, in: Capsule())
                     if family == .systemLarge && photo.canReact {
                         ratingButtons(photo, height: 36)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
             }
         }
     }
 
-    private func filledImage(_ image: UIImage) -> some View {
+    private func filledImage(_ image: UIImage, label photo: WidgetPhoto) -> some View {
         Color.clear
             .overlay {
                 Image(uiImage: image)
@@ -214,43 +220,49 @@ struct FriendPhotoView: View {
                     .scaledToFill()
             }
             .clipped()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Фото от \(photo.authorName)")
     }
 
+    /// Stars 1–3 and the three reactions. Your choice is the accent (data); the rest sit on the scrim.
     private func ratingButtons(_ photo: WidgetPhoto, height: CGFloat) -> some View {
         VStack(spacing: 6) {
             HStack(spacing: 6) {
                 ForEach(1...Stars.max, id: \.self) { value in
+                    let lit = value <= photo.myStars
                     Button(intent: RateStarsIntent(photoId: photo.id, stars: value)) {
-                        Image(systemName: value <= photo.myStars ? "star.fill" : "star")
+                        Image(systemName: lit ? "star.fill" : "star")
                             .font(.headline)
-                            .foregroundStyle(value <= photo.myStars ? Color.locketYellow : Color.white)
+                            .foregroundStyle(lit ? Palette.accent : Palette.text)
                             .frame(maxWidth: .infinity)
                             .frame(height: height)
-                            .background(Color.black.opacity(0.45), in: Capsule())
+                            .background(Self.scrim, in: Capsule())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("\(value) из \(Stars.max)")
+                    .accessibilityAddTraits(lit ? .isSelected : [])
                 }
             }
             HStack(spacing: 6) {
                 ForEach(ReactionKind.allCases) { kind in
+                    let active = photo.mine.contains(kind)
                     Button(intent: RateReactionIntent(photoId: photo.id, kind: kind)) {
                         Text(kind.emoji)
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .frame(height: height)
-                            .background(
-                                photo.mine.contains(kind) ? Color.locketYellow : Color.black.opacity(0.45),
-                                in: Capsule()
-                            )
+                            .background(active ? Palette.accent.opacity(0.9) : Self.scrim, in: Capsule())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(kind.title)
+                    .accessibilityAddTraits(active ? .isSelected : [])
                 }
             }
         }
     }
 }
 
-/// ⭐ on the widget. Tapping the stars you already gave clears them.
+/// Stars on the widget. Tapping the stars you already gave clears them.
 struct RateStarsIntent: AppIntent {
     static let title: LocalizedStringResource = "Поставить звёзды"
 
