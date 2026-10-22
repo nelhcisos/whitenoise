@@ -223,7 +223,21 @@
   .found { margin: 0; padding-left: 24px; width: min(100%, 640px); text-align: left; font-size: clamp(8px, 1.5vw, 10px); line-height: 2; color: var(--ok); }
   .found:empty { display: none; }
   #bossScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
-  #s9, #s10 { cursor: default; }
+  #s9, #s10, #s11 { cursor: default; }
+  #vnScene { width: min(100%, 560px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); }
+  .vn-box {
+    position: relative; box-sizing: border-box; width: min(100%, 560px); min-height: 8.5em;
+    padding: 22px 16px 16px; background: #10131c; border: 3px solid var(--fg);
+    text-align: left; cursor: pointer;
+  }
+  .vn-box:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+  .vn-name {
+    position: absolute; top: -14px; left: 12px; padding: 6px 10px;
+    background: var(--gold); color: var(--bg); font-size: 9px;
+  }
+  .vn-text { margin: 0; font-size: clamp(9px, 1.8vw, 12px); line-height: 2; color: var(--fg); }
+  .vn-text.narration { color: #a9b4c8; font-style: italic; }
+  .vn-next { position: absolute; right: 12px; bottom: 8px; font-size: 9px; color: var(--gold); animation: blink .8s steps(1) infinite; }
   #lessonCanvas { width: min(100%, 480px); aspect-ratio: 16 / 9; image-rendering: pixelated; border: 4px solid var(--fg); }
   #payScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
   .cat-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
@@ -387,6 +401,18 @@
   </div>
 </section>
 
+<section class="screen novel" id="s11" hidden>
+  <div class="wrap">
+    <canvas id="vnScene" width="160" height="120" aria-label="Кабинет: на стоматологическом кресле полулежит ассистент, за компьютером сидит врач"></canvas>
+    <div class="vn-box" id="vnBox" role="button" tabindex="0" aria-label="Дальше">
+      <span class="vn-name" id="vnName" hidden></span>
+      <p class="vn-text" id="vnText"></p>
+      <span class="vn-next" id="vnNext">▼</span>
+    </div>
+    <div class="choices" id="vnChoices" hidden></div>
+  </div>
+</section>
+
 <section class="screen" id="s4" hidden>
   <div class="wrap">
     <img id="catImg" class="cat-small" alt="Котик с бантиком на адском троне">
@@ -410,7 +436,7 @@
     "и посмотреть, как они это делают. Только после этого мы сможем допустить тебя " +
     "к игровому процессу. Для начала ты будешь ассистентом.";
 
-  const screens = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"].map(id => document.getElementById(id));
+  const screens = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11"].map(id => document.getElementById(id));
   let current = 0;
 
   // ---------- Tooth logo ----------
@@ -1438,7 +1464,7 @@
     $("payWho").textContent = "КОТ:";
     $("payLine").textContent = st.line;
     const last = i === LESSON.length - 1;
-    payButtons([[last ? `НАЧАТЬ ДЕНЬ ${day}` : "ДАЛЬШЕ ▶", () => last ? show(2) : startLesson(i + 1)]]);
+    payButtons([[last ? "ДАЛЬШЕ ▶" : "ДАЛЬШЕ ▶", () => last ? show(10) : startLesson(i + 1)]]);
     requestAnimationFrame(lessonLoop);
   }
   function lessonLoop(now) {
@@ -1543,6 +1569,122 @@
     src.connect(f); f.connect(g); g.connect(ac.destination);
     src.start();
     setTimeout(() => ac.close().catch(() => {}), 500);
+  }
+
+  // ---------- Arc: a visual novel in the office ----------
+  // You walk in at the wrong moment: the former assistant is lying in the dental chair as if at a
+  // psychologist's, talking; the doctor sits at the computer and says nothing.
+  const NOVEL = [
+    { text: "Ты заходишь в кабинет без стука. Кажется, не вовремя." },
+    { text: "На стоматологическом кресле, закинув ногу на ногу и руку за голову, как у психолога, полулежит ассистент. Тот самый, который давно уже не работает с ней. За столом у компьютера сидит врач." },
+    { who: "АССИСТЕНТ", side: "asst", text: "…и вот я всё это время хотел делать всё для вас. Понимаешь? Вообще всё." },
+    { who: "АССИСТЕНТ", side: "asst", text: "Я пробовал предугадывать. О чём вы думаете. Что вам подать, раньше, чем вы попросите. Что вы скажете, раньше, чем вы скажете." },
+    { who: "ВРАЧ", side: "doc", text: "…", emote: "typing" },
+    { who: "АССИСТЕНТ", side: "asst", text: "Но человек никогда не знает, о чём думает другой человек. Никогда." },
+    { who: "ВРАЧ", side: "doc", text: "*щёлк-щёлк по клавиатуре*", emote: "typing" },
+    { who: "АССИСТЕНТ", side: "asst", text: "А сейчас я начал делать то, что нужно именно мне. Не угадывать за других. И всё наладилось. И у тебя, и у меня." },
+    { who: "ВРАЧ", side: "doc", text: "…", emote: "typing" },
+    { text: "Они замечают тебя.", emote: "notice" },
+    { who: "АССИСТЕНТ", side: "asst", text: "О. Привет." },
+    { who: "ВРАЧ", side: "doc", text: "О, заходи-заходи! Знакомься: это наш самый ответственный ассистент. Золото, а не человек.", emote: "heart" },
+    { who: "ВРАЧ", side: "doc", text: "Ну ладно. Как обычно — всё за него сделаем.", emote: "heart",
+      choices: ["Я, наверное, попозже зайду", "…"] },
+    { text: "Ассистент неспешно встаёт с кресла, поправляет халат и уходит. Дверь закрывается.", leave: true },
+    { text: "Говорят, лет пять назад они работали вместе. Теперь не общаются." },
+    { who: "ВРАЧ", side: "doc", text: "Ответственный, ага. Он однажды перепутал оптрагейт с пылесосом. Лоток за собой не мыл. Расходники не считал. И вообще.", emote: "angry" },
+    { text: "При нём — ни одного плохого слова. Без него — ни одного хорошего.", emote: "angry" },
+  ];
+  const vnCanvas = $("vnScene"), vctx = vnCanvas.getContext("2d");
+  let novel = null; // { i, asstAlpha, leaving, t0 }
+  function startNovel() {
+    novel = { i: -1, asstAlpha: 1, leaving: false, t0: performance.now() };
+    nextNovel();
+    requestAnimationFrame(novelLoop);
+  }
+  function nextNovel() {
+    if (!$("vnChoices").hidden) return;     // answer the choice first
+    novel.i++;
+    if (novel.i >= NOVEL.length) return show(2);   // on to day 2
+    const st = NOVEL[novel.i];
+    $("vnName").hidden = !st.who;
+    $("vnName").textContent = st.who || "";
+    $("vnText").textContent = st.text;
+    $("vnText").classList.toggle("narration", !st.who);
+    if (st.leave) novel.leaving = true;
+    const box = $("vnChoices");
+    if (st.choices) {
+      box.hidden = false; $("vnNext").hidden = true;
+      box.replaceChildren(...st.choices.map(c => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "btn btn-ghost"; b.textContent = c;
+        b.addEventListener("click", () => { box.hidden = true; $("vnNext").hidden = false; nextNovel(); });
+        return b;
+      }));
+    }
+  }
+  $("vnBox").addEventListener("click", nextNovel);
+  $("vnBox").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nextNovel(); } });
+
+  function px(c, color, x, y, w = 1, h = 1) { c.fillStyle = color; c.fillRect(x, y, w, h); }
+  function emoteBubble(c, x, y, kind, now) {
+    px(c, "#ffffff", x, y, 13, 10); px(c, "#ffffff", x + 3, y + 10, 3, 2);
+    px(c, "#20242c", x - 1, y, 1, 10); px(c, "#20242c", x + 13, y, 1, 10); px(c, "#20242c", x, y - 1, 13, 1); px(c, "#20242c", x, y + 10, 3, 1); px(c, "#20242c", x + 6, y + 10, 7, 1);
+    if (kind === "heart") { px(c, "#ff3b6b", x + 3, y + 3, 3, 2); px(c, "#ff3b6b", x + 7, y + 3, 3, 2); px(c, "#ff3b6b", x + 3, y + 5, 7, 1); px(c, "#ff3b6b", x + 4, y + 6, 5, 1); px(c, "#ff3b6b", x + 5, y + 7, 3, 1); }
+    if (kind === "angry") { px(c, "#d0141e", x + 3, y + 2, 2, 2); px(c, "#d0141e", x + 8, y + 2, 2, 2); px(c, "#d0141e", x + 5, y + 4, 3, 2); px(c, "#d0141e", x + 3, y + 6, 2, 2); px(c, "#d0141e", x + 8, y + 6, 2, 2); }
+    if (kind === "typing" || kind === "dots") { const n = Math.floor(now / 300) % 4; for (let k = 0; k < n; k++) px(c, "#20242c", x + 2 + k * 3, y + 5, 2, 2); }
+    if (kind === "notice") { px(c, "#d0141e", x + 6, y + 2, 2, 5); px(c, "#d0141e", x + 6, y + 8, 2, 1); }
+  }
+  function novelLoop(now) {
+    if (current !== 10 || !novel) return;
+    const c = vctx, st = NOVEL[novel.i] || {};
+    // room
+    px(c, "#c9d3dc", 0, 0, 160, 84); px(c, "#b3bfca", 0, 80, 160, 4);
+    px(c, "#8a7f73", 0, 84, 160, 36);
+    for (let x = 0; x < 160; x += 16) px(c, "#7d7368", x, 84, 1, 36);
+    px(c, "#5c4a3a", 104, 14, 26, 18); px(c, "#f4efe0", 106, 16, 22, 14);           // diploma on the wall
+    px(c, "#20242c", 109, 19, 16, 1); px(c, "#20242c", 109, 22, 12, 1); px(c, "#d0141e", 120, 25, 4, 4);
+    px(c, "#eef3fa", 30, 8, 22, 5); px(c, "#ffffff", 32, 9, 18, 3);                 // operating lamp
+    px(c, "#7a8090", 40, 13, 2, 12);
+    // dental chair
+    px(c, "#7a8090", 38, 92, 6, 18); px(c, "#5c6370", 28, 108, 26, 4);
+    px(c, "#2bb3a3", 10, 66, 16, 6); px(c, "#2bb3a3", 22, 72, 30, 8); px(c, "#2bb3a3", 50, 78, 22, 6);
+    px(c, "#1f8a7e", 22, 80, 30, 2);
+    // the former assistant, reclining like on a therapist's couch
+    if (novel.leaving) novel.asstAlpha = Math.max(0, novel.asstAlpha - 0.02);
+    if (novel.asstAlpha > 0) {
+      c.globalAlpha = novel.asstAlpha;
+      const talk = st.side === "asst" && Math.floor(now / 180) % 2 === 0 ? 1 : 0;
+      px(c, "#f2c49b", 12, 56, 9, 9);                     // head
+      px(c, "#3a2a1e", 12, 54, 9, 3);                     // hair
+      px(c, "#20242c", 18, 59, 1, 1);                     // eye
+      px(c, "#7a2a2a", 18, 62 + talk, 2, 1);              // mouth
+      px(c, "#4aa8ff", 20, 64, 26, 9);                    // scrubs, lying along the chair
+      px(c, "#4aa8ff", 8, 50, 4, 10); px(c, "#f2c49b", 8, 48, 4, 3);   // arm behind the head
+      px(c, "#3a6fb0", 44, 66, 12, 6); px(c, "#3a6fb0", 54, 60, 6, 8); // one knee up
+      px(c, "#3a6fb0", 56, 72, 18, 5);                    // the other leg, crossed
+      px(c, "#20242c", 58, 58, 6, 3); px(c, "#20242c", 72, 70, 6, 4);  // shoes
+      if (st.side === "asst") emoteBubble(c, 22, 38, "dots", now);
+      c.globalAlpha = 1;
+    }
+    // desk with a computer, the doctor at it
+    px(c, "#6b4a32", 96, 74, 60, 5); px(c, "#5a3d29", 98, 79, 4, 22); px(c, "#5a3d29", 150, 79, 4, 22);
+    px(c, "#20242c", 122, 50, 28, 20); px(c, "#4aa8ff", 124, 52, 24, 16); px(c, "#bfe8ff", 126, 54, 12, 2); px(c, "#bfe8ff", 126, 58, 18, 1); px(c, "#bfe8ff", 126, 61, 15, 1);
+    px(c, "#20242c", 134, 70, 4, 4); px(c, "#c8cdd6", 112, 72, 14, 2);   // stand, keyboard
+    px(c, "#3a3f4a", 96, 80, 16, 4); px(c, "#3a3f4a", 102, 84, 3, 14);   // office chair
+    const typing = st.emote === "typing" || st.side !== "doc";
+    const hand = typing && Math.floor(now / 140) % 2 === 0 ? 1 : 0;
+    px(c, "#f4f4f4", 96, 58, 14, 22);                   // white coat
+    px(c, "#f2c49b", 100, 46, 10, 11);                  // head
+    px(c, "#2a1a14", 98, 44, 13, 5); px(c, "#2a1a14", 98, 48, 4, 8); px(c, "#2a1a14", 95, 45, 5, 5);   // hair with a bun
+    px(c, "#20242c", 107, 50, 1, 1);                    // eye (facing the screen)
+    px(c, "#f4f4f4", 108, 64, 8, 4); px(c, "#f2c49b", 115, 70 - hand, 3, 3);   // arm to the keyboard
+    px(c, "#20242c", 98, 80, 12, 6);                    // trousers
+    if (st.side === "doc" || st.emote) {
+      const kind = st.emote === "notice" ? "notice" : st.emote || "dots";
+      if (st.side === "doc" || st.emote === "notice" || st.emote === "angry") emoteBubble(c, 104, 30, kind, now);
+      if (st.emote === "notice" && novel.asstAlpha > 0) emoteBubble(c, 16, 38, "notice", now);
+    }
+    requestAnimationFrame(novelLoop);
   }
 
   // ---------- The boss's visitor: a cutscene in the throne room ----------
@@ -1668,6 +1810,7 @@
     if (i === 7) startAssistant();
     if (i === 8) startBossScene();
     if (i === 9) startPayScene();
+    if (i === 10) startNovel();
     if (i === 3) showVerdict();
     if (i === 4) startTools();
   }
@@ -1704,8 +1847,7 @@
   // Update this whenever a new scene goes in.
   function goToLatest() {
     day = 2;
-    show(9);
-    startLesson(0);   // latest: the boss explains the stages of braces treatment
+    show(10);   // latest: the visual-novel arc in the office
   }
   $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS;
   $("latestBtn").addEventListener("click", e => { e.stopPropagation(); goToLatest(); });
