@@ -1,22 +1,17 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
+export const SCHEMA_VERSION = 2;
+
 const SCHEMA = `
-CREATE TABLE IF NOT EXISTS circles (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  invite_code TEXT NOT NULL UNIQUE,
-  owner_id TEXT NOT NULL,
-  created_at INTEGER NOT NULL
-);
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE,
-  name TEXT NOT NULL,
-  password_hash TEXT NOT NULL,
-  circle_id TEXT REFERENCES circles(id) ON DELETE SET NULL,
+  username TEXT,
+  username_key TEXT UNIQUE,
+  password_key TEXT NOT NULL UNIQUE,
   created_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS users_circle ON users(circle_id);
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -29,17 +24,32 @@ CREATE TABLE IF NOT EXISTS devices (
   updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS devices_user ON devices(user_id);
+CREATE TABLE IF NOT EXISTS friend_requests (
+  from_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  to_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (from_id, to_id)
+);
+CREATE INDEX IF NOT EXISTS friend_requests_to ON friend_requests(to_id);
+CREATE TABLE IF NOT EXISTS friendships (
+  user_a TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_b TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_a, user_b),
+  CHECK (user_a < user_b)
+);
+CREATE INDEX IF NOT EXISTS friendships_b ON friendships(user_b);
 CREATE TABLE IF NOT EXISTS photos (
   id TEXT PRIMARY KEY,
-  circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   author_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   week_id TEXT NOT NULL,
   caption TEXT,
   file TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS photos_circle_created ON photos(circle_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS photos_week ON photos(week_id, circle_id);
+CREATE INDEX IF NOT EXISTS photos_author_week ON photos(author_id, week_id, created_at);
+CREATE INDEX IF NOT EXISTS photos_created ON photos(created_at);
+CREATE INDEX IF NOT EXISTS photos_week ON photos(week_id);
 CREATE TABLE IF NOT EXISTS reactions (
   photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -47,6 +57,7 @@ CREATE TABLE IF NOT EXISTS reactions (
   created_at INTEGER NOT NULL,
   PRIMARY KEY (photo_id, user_id, kind)
 );
+CREATE INDEX IF NOT EXISTS reactions_user ON reactions(user_id);
 CREATE TABLE IF NOT EXISTS stars (
   photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -54,12 +65,13 @@ CREATE TABLE IF NOT EXISTS stars (
   updated_at INTEGER NOT NULL,
   PRIMARY KEY (photo_id, user_id)
 );
+CREATE INDEX IF NOT EXISTS stars_user ON stars(user_id);
 CREATE TABLE IF NOT EXISTS weeks (
-  circle_id TEXT NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   week_id TEXT NOT NULL,
   closed_at INTEGER NOT NULL,
   results TEXT NOT NULL,
-  PRIMARY KEY (circle_id, week_id)
+  PRIMARY KEY (user_id, week_id)
 );
 CREATE TABLE IF NOT EXISTS jobs (
   key TEXT PRIMARY KEY,
@@ -67,11 +79,37 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 `;
 
-export function openDb(file) {
+/**
+ * Opens (or creates) the database. A version 1 file — companies, email sign-in —
+ * is moved aside as locket.v1-<time>.db and a fresh one is created next to it:
+ * nothing is deleted, but the old data is not carried over.
+ */
+export function openDb(file, { log = console, stamp = () => new Date().toISOString().replace(/[:.]/g, '-') } = {}) {
+  if (file !== ':memory:' && fs.existsSync(file)) moveAsideIfV1(file, log, stamp);
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   db.exec(SCHEMA);
+  db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
   return db;
+}
+
+function moveAsideIfV1(file, log, stamp) {
+  const probe = new DatabaseSync(file);
+  let isV1;
+  try {
+    const version = probe.prepare('PRAGMA user_version').get().user_version;
+    const circles = probe.prepare("SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = 'circles'").get();
+    isV1 = version < SCHEMA_VERSION && Boolean(circles);
+  } finally {
+    probe.close();
+  }
+  if (!isV1) return;
+  const backup = path.join(path.dirname(file), `locket.v1-${stamp()}.db`);
+  fs.renameSync(file, backup);
+  for (const ext of ['-wal', '-shm']) {
+    if (fs.existsSync(file + ext)) fs.renameSync(file + ext, backup + ext);
+  }
+  log.warn(`Old database (companies + email) moved to ${backup}; starting a fresh one.`);
 }
 
 export function createStore(db) {
@@ -81,7 +119,7 @@ export function createStore(db) {
   const photoRow = (r) =>
     r && {
       id: r.id,
-      circleId: r.circle_id,
+      rowid: r.rid,
       authorId: r.author_id,
       authorName: r.author_name,
       weekId: r.week_id,
@@ -89,9 +127,11 @@ export function createStore(db) {
       file: r.file,
       createdAt: r.created_at,
     };
-  const userRow = (r) => r && { id: r.id, email: r.email, name: r.name, circleId: r.circle_id, passwordHash: r.password_hash };
-  const circleRow = (r) => r && { id: r.id, name: r.name, inviteCode: r.invite_code, ownerId: r.owner_id };
-  const PHOTO_SELECT = 'SELECT p.*, u.name AS author_name FROM photos p JOIN users u ON u.id = p.author_id';
+  const userRow = (r) => r && { id: r.id, username: r.username, usernameKey: r.username_key };
+  const PHOTO_SELECT = 'SELECT p.rowid AS rid, p.*, u.username AS author_name FROM photos p JOIN users u ON u.id = p.author_id';
+  // The other side of a friendship row, for a given user.
+  const FRIEND_IDS = 'SELECT CASE WHEN user_a = ?1 THEN user_b ELSE user_a END AS id, created_at FROM friendships WHERE user_a = ?1 OR user_b = ?1';
+  const pair = (a, b) => (a < b ? [a, b] : [b, a]);
 
   return {
     transaction(fn) {
@@ -106,21 +146,36 @@ export function createStore(db) {
       }
     },
 
-    // Users & sessions
-    createUser({ id, email, name, passwordHash, now }) {
-      q('INSERT INTO users (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)').run(id, email, name, passwordHash, now);
-    },
-    userByEmail: (email) => userRow(q('SELECT * FROM users WHERE email = ?').get(email)),
+    // ---------- users & sessions ----------
+    createUser: ({ id, passwordKey, now }) =>
+      q('INSERT INTO users (id, password_key, created_at) VALUES (?, ?, ?)').run(id, passwordKey, now),
     user: (id) => userRow(q('SELECT * FROM users WHERE id = ?').get(id)),
-    renameUser: (id, name) => q('UPDATE users SET name = ? WHERE id = ?').run(name, id),
-    setUserCircle: (id, circleId) => q('UPDATE users SET circle_id = ? WHERE id = ?').run(circleId, id),
+    userByPasswordKey: (key) => userRow(q('SELECT * FROM users WHERE password_key = ?').get(key)),
+    usernameTaken: (key) => Boolean(q('SELECT 1 AS x FROM users WHERE username_key = ?').get(key)),
+    // Only once: a chosen username never changes. Returns true when it was set.
+    setUsername: (id, username, key) =>
+      q('UPDATE users SET username = ?, username_key = ? WHERE id = ? AND username IS NULL').run(username, key, id).changes > 0,
+    usersWithUsername: () => q('SELECT * FROM users WHERE username IS NOT NULL ORDER BY username_key').all().map(userRow),
+    usersByIds(ids) {
+      if (!ids.length) return [];
+      return q(`SELECT * FROM users WHERE id IN (${placeholders(ids.length)}) ORDER BY username_key`).all(...ids).map(userRow);
+    },
+    // Prefix search on the normalised key; an exact match comes first.
+    searchUsers(prefix, limit) {
+      const like = `${prefix.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      return q(
+        `SELECT * FROM users WHERE username_key LIKE ? ESCAPE '\\'
+         ORDER BY (username_key = ?) DESC, username_key LIMIT ?`,
+      ).all(like, prefix, limit).map(userRow);
+    },
+
     createSession: (tokenHash, userId, now) =>
       q('INSERT INTO sessions (token_hash, user_id, created_at) VALUES (?, ?, ?)').run(tokenHash, userId, now),
     userBySession: (tokenHash) =>
       userRow(q('SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?').get(tokenHash)),
     deleteSession: (tokenHash) => q('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash),
 
-    // Devices (APNs tokens)
+    // ---------- devices (APNs tokens) ----------
     upsertDevice: (token, userId, env, now) =>
       q(
         `INSERT INTO devices (token, user_id, env, updated_at) VALUES (?, ?, ?, ?)
@@ -135,34 +190,83 @@ export function createStore(db) {
       return q(`SELECT token, env, user_id AS userId FROM devices WHERE user_id IN (${placeholders(userIds.length)})`).all(...userIds);
     },
 
-    // Circles
-    createCircle({ id, name, inviteCode, ownerId, now }) {
-      q('INSERT INTO circles (id, name, invite_code, owner_id, created_at) VALUES (?, ?, ?, ?, ?)').run(id, name, inviteCode, ownerId, now);
-    },
-    circle: (id) => circleRow(q('SELECT * FROM circles WHERE id = ?').get(id)),
-    circleByCode: (code) => circleRow(q('SELECT * FROM circles WHERE invite_code = ?').get(code)),
-    renameCircle: (id, name) => q('UPDATE circles SET name = ? WHERE id = ?').run(name, id),
-    members: (circleId) => q('SELECT id, name FROM users WHERE circle_id = ? ORDER BY created_at').all(circleId),
+    // ---------- friends ----------
+    friendIds: (userId) => q(FRIEND_IDS).all(userId).map((r) => r.id),
+    friends: (userId) =>
+      q(
+        `SELECT u.id, u.username, f.created_at AS since FROM (${FRIEND_IDS}) f
+         JOIN users u ON u.id = f.id ORDER BY u.username_key`,
+      ).all(userId),
+    friendCount: (userId) => q('SELECT COUNT(*) AS n FROM friendships WHERE user_a = ?1 OR user_b = ?1').get(userId).n,
+    areFriends: (a, b) => Boolean(q('SELECT 1 AS x FROM friendships WHERE user_a = ? AND user_b = ?').get(...pair(a, b))),
+    addFriendship: (a, b, now) =>
+      q('INSERT OR IGNORE INTO friendships (user_a, user_b, created_at) VALUES (?, ?, ?)').run(...pair(a, b), now),
+    removeFriendship: (a, b) => q('DELETE FROM friendships WHERE user_a = ? AND user_b = ?').run(...pair(a, b)),
 
-    // Photos
-    insertPhoto({ id, circleId, authorId, weekId, caption, file, now }) {
-      q('INSERT INTO photos (id, circle_id, author_id, week_id, caption, file, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-        id, circleId, authorId, weekId, caption, file, now,
+    hasRequest: (fromId, toId) => Boolean(q('SELECT 1 AS x FROM friend_requests WHERE from_id = ? AND to_id = ?').get(fromId, toId)),
+    // Returns true when a new request was stored.
+    createRequest: (fromId, toId, now) =>
+      q('INSERT OR IGNORE INTO friend_requests (from_id, to_id, created_at) VALUES (?, ?, ?)').run(fromId, toId, now).changes > 0,
+    deleteRequestsBetween: (a, b) =>
+      q('DELETE FROM friend_requests WHERE (from_id = ?1 AND to_id = ?2) OR (from_id = ?2 AND to_id = ?1)').run(a, b),
+    incoming: (userId) =>
+      q(
+        `SELECT u.id, u.username, r.created_at AS createdAt FROM friend_requests r JOIN users u ON u.id = r.from_id
+         WHERE r.to_id = ? ORDER BY r.created_at DESC, r.rowid DESC`,
+      ).all(userId),
+    outgoing: (userId) =>
+      q(
+        `SELECT u.id, u.username, r.created_at AS createdAt FROM friend_requests r JOIN users u ON u.id = r.to_id
+         WHERE r.from_id = ? ORDER BY r.created_at DESC, r.rowid DESC`,
+      ).all(userId),
+    incomingCount: (userId) => q('SELECT COUNT(*) AS n FROM friend_requests WHERE to_id = ?').get(userId).n,
+
+    // ---------- photos ----------
+    insertPhoto: ({ id, authorId, weekId, caption, file, now }) =>
+      q('INSERT INTO photos (id, author_id, week_id, caption, file, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+        id, authorId, weekId, caption, file, now,
+      ),
+    photo: (id) => photoRow(q(`${PHOTO_SELECT} WHERE p.id = ?`).get(id)),
+    deletePhoto: (id) => q('DELETE FROM photos WHERE id = ?').run(id),
+    feed(authorIds, before, limit) {
+      if (!authorIds.length) return [];
+      return q(
+        `${PHOTO_SELECT} WHERE p.author_id IN (${placeholders(authorIds.length)}) AND p.created_at < ?
+         ORDER BY p.created_at DESC, p.rowid DESC LIMIT ?`,
+      ).all(...authorIds, before, limit).map(photoRow);
+    },
+    // How many photos the user posted in that week.
+    postsInWeek: (userId, weekId) => q('SELECT COUNT(*) AS n FROM photos WHERE author_id = ? AND week_id = ?').get(userId, weekId).n,
+    // The photo's place among its author's photos of that week, from 0, by (created_at, rowid).
+    rankInWeek: (photo) =>
+      q(
+        `SELECT COUNT(*) AS n FROM photos WHERE author_id = ? AND week_id = ?
+         AND (created_at < ? OR (created_at = ? AND rowid < ?))`,
+      ).get(photo.authorId, photo.weekId, photo.createdAt, photo.createdAt, photo.rowid).n,
+    // All photos of these authors in a week, oldest first per author (rank = position).
+    photosByAuthorsInWeek(authorIds, weekId) {
+      if (!authorIds.length) return [];
+      return q(
+        `${PHOTO_SELECT} WHERE p.week_id = ? AND p.author_id IN (${placeholders(authorIds.length)})
+         ORDER BY p.author_id, p.created_at, p.rowid`,
+      ).all(weekId, ...authorIds).map(photoRow);
+    },
+    // Photos the user has rated or reacted to, among the given ones.
+    ratedBy(userId, photoIds) {
+      if (!photoIds.length) return new Set();
+      const ids = placeholders(photoIds.length);
+      return new Set(
+        q(
+          `SELECT photo_id AS id FROM reactions WHERE user_id = ? AND photo_id IN (${ids})
+           UNION SELECT photo_id AS id FROM stars WHERE user_id = ? AND photo_id IN (${ids})`,
+        ).all(userId, ...photoIds, userId, ...photoIds).map((r) => r.id),
       );
     },
-    photo: (id) => photoRow(q(`${PHOTO_SELECT} WHERE p.id = ?`).get(id)),
-    latestFromOthers: (circleId, userId) =>
-      photoRow(q(`${PHOTO_SELECT} WHERE p.circle_id = ? AND p.author_id <> ? ORDER BY p.created_at DESC LIMIT 1`).get(circleId, userId)),
-    deletePhoto: (id) => q('DELETE FROM photos WHERE id = ?').run(id),
-    feed(circleId, before, limit) {
-      return q(`${PHOTO_SELECT} WHERE p.circle_id = ? AND p.created_at < ? ORDER BY p.created_at DESC LIMIT ?`)
-        .all(circleId, before, limit)
-        .map(photoRow);
-    },
+
     reactionsFor(photoIds) {
       if (!photoIds.length) return [];
       return q(
-        `SELECT r.photo_id AS photoId, r.user_id AS userId, r.kind, u.name
+        `SELECT r.photo_id AS photoId, r.user_id AS userId, r.kind, u.username AS name
          FROM reactions r JOIN users u ON u.id = r.user_id
          WHERE r.photo_id IN (${placeholders(photoIds.length)}) ORDER BY r.created_at, r.rowid`,
       ).all(...photoIds);
@@ -179,7 +283,7 @@ export function createStore(db) {
     starsFor(photoIds) {
       if (!photoIds.length) return [];
       return q(
-        `SELECT s.photo_id AS photoId, s.user_id AS userId, s.value, u.name
+        `SELECT s.photo_id AS photoId, s.user_id AS userId, s.value, u.username AS name
          FROM stars s JOIN users u ON u.id = s.user_id
          WHERE s.photo_id IN (${placeholders(photoIds.length)}) ORDER BY s.updated_at, s.rowid`,
       ).all(...photoIds);
@@ -197,47 +301,44 @@ export function createStore(db) {
       return res.changes > 0;
     },
 
-    // Weeks
-    weekData(circleId, weekId) {
-      const photos = q(`${PHOTO_SELECT} WHERE p.circle_id = ? AND p.week_id = ? ORDER BY p.created_at`).all(circleId, weekId).map(photoRow);
-      const reactions = q(
-        `SELECT r.photo_id AS photoId, r.user_id AS userId, r.kind FROM reactions r
-         JOIN photos p ON p.id = r.photo_id WHERE p.circle_id = ? AND p.week_id = ?`,
-      ).all(circleId, weekId);
-      const stars = q(
-        `SELECT s.photo_id AS photoId, s.user_id AS userId, s.value FROM stars s
-         JOIN photos p ON p.id = s.photo_id WHERE p.circle_id = ? AND p.week_id = ?`,
-      ).all(circleId, weekId);
+    // ---------- weeks ----------
+    /**
+     * Everything a viewer's weekly results need: the week's photos posted by the
+     * circle (viewer + friends), plus photos the circle rated (they only count
+     * towards "given"), and every rating on those photos.
+     */
+    weekData(memberIds, weekId) {
+      if (!memberIds.length) return { photos: [], reactions: [], stars: [] };
+      const ids = placeholders(memberIds.length);
+      const photos = q(
+        `${PHOTO_SELECT} WHERE p.week_id = ? AND (
+           p.author_id IN (${ids})
+           OR EXISTS (SELECT 1 FROM reactions r WHERE r.photo_id = p.id AND r.user_id IN (${ids}))
+           OR EXISTS (SELECT 1 FROM stars s WHERE s.photo_id = p.id AND s.user_id IN (${ids})))
+         ORDER BY p.created_at, p.rowid`,
+      ).all(weekId, ...memberIds, ...memberIds, ...memberIds).map(photoRow);
+      const photoIds = photos.map((p) => p.id);
+      if (!photoIds.length) return { photos, reactions: [], stars: [] };
+      const pids = placeholders(photoIds.length);
+      const reactions = q(`SELECT photo_id AS photoId, user_id AS userId, kind FROM reactions WHERE photo_id IN (${pids})`).all(...photoIds);
+      const stars = q(`SELECT photo_id AS photoId, user_id AS userId, value FROM stars WHERE photo_id IN (${pids})`).all(...photoIds);
       return { photos, reactions, stars };
     },
-    unclosedWeeksBefore: (weekId) =>
-      q(
-        `SELECT DISTINCT p.circle_id AS circleId, p.week_id AS weekId FROM photos p
-         WHERE p.week_id < ? AND NOT EXISTS (SELECT 1 FROM weeks w WHERE w.circle_id = p.circle_id AND w.week_id = p.week_id)
-         ORDER BY p.week_id`,
-      ).all(weekId),
-    circlesWithPhotosIn: (weekId) => q('SELECT DISTINCT circle_id AS circleId FROM photos WHERE week_id = ?').all(weekId).map((r) => r.circleId),
-    unratedCounts(circleId, weekId) {
-      return q(
-        `SELECT u.id AS userId, COUNT(p.id) AS unrated FROM users u
-         JOIN photos p ON p.circle_id = u.circle_id AND p.week_id = ? AND p.author_id <> u.id
-         WHERE u.circle_id = ?
-           AND NOT EXISTS (SELECT 1 FROM reactions r WHERE r.photo_id = p.id AND r.user_id = u.id)
-           AND NOT EXISTS (SELECT 1 FROM stars s WHERE s.photo_id = p.id AND s.user_id = u.id)
-         GROUP BY u.id`,
-      ).all(weekId, circleId);
-    },
-    saveWeek: (circleId, weekId, closedAt, results) =>
-      q('INSERT OR IGNORE INTO weeks (circle_id, week_id, closed_at, results) VALUES (?, ?, ?, ?)').run(circleId, weekId, closedAt, JSON.stringify(results))
+    weeksWithPhotosBefore: (weekId) =>
+      q('SELECT DISTINCT week_id AS weekId FROM photos WHERE week_id < ? ORDER BY week_id').all(weekId).map((r) => r.weekId),
+    // Returns true when this snapshot is new.
+    saveWeek: (userId, weekId, closedAt, results) =>
+      q('INSERT OR IGNORE INTO weeks (user_id, week_id, closed_at, results) VALUES (?, ?, ?, ?)').run(userId, weekId, closedAt, JSON.stringify(results))
         .changes > 0,
-    closedWeeks: (circleId, limit) =>
-      q('SELECT results FROM weeks WHERE circle_id = ? ORDER BY week_id DESC LIMIT ?').all(circleId, limit).map((r) => JSON.parse(r.results)),
-    closedWeek(circleId, weekId) {
-      const row = q('SELECT results FROM weeks WHERE circle_id = ? AND week_id = ?').get(circleId, weekId);
+    closedWeeks: (userId, limit) =>
+      q('SELECT results FROM weeks WHERE user_id = ? ORDER BY week_id DESC LIMIT ?').all(userId, limit).map((r) => JSON.parse(r.results)),
+    closedWeek(userId, weekId) {
+      const row = q('SELECT results FROM weeks WHERE user_id = ? AND week_id = ?').get(userId, weekId);
       return row ? JSON.parse(row.results) : null;
     },
 
-    // One-off jobs (reminders) so a restart doesn't send them twice
+    // ---------- one-off jobs (week closing, reminders) so a restart doesn't repeat them ----------
     claimJob: (key, now) => q('INSERT OR IGNORE INTO jobs (key, done_at) VALUES (?, ?)').run(key, now).changes > 0,
+    jobDone: (key) => Boolean(q('SELECT 1 AS x FROM jobs WHERE key = ?').get(key)),
   };
 }

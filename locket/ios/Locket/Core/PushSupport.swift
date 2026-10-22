@@ -5,9 +5,12 @@ import UserNotifications
 enum PushCategories {
     static let ratePhoto = "PHOTO_RATING"
     static let weeklyResults = "WEEKLY_RESULTS"
+    static let friendRequest = "FRIEND_REQUEST"
+    /// "Принять" on a friend request: runs in the background, even from the lock screen.
+    static let acceptFriendAction = "ACCEPT_FRIEND"
 
     static var all: Set<UNNotificationCategory> {
-        // No action buttons: a long-press opens the NotificationContent extension,
+        // Photos have no action buttons: a long-press opens the NotificationContent extension,
         // which shows the photo with ⭐ 1–3 and ✍️ 😂 🫪 and sends ratings itself.
         let rate = UNNotificationCategory(
             identifier: ratePhoto,
@@ -17,7 +20,9 @@ enum PushCategories {
             options: []
         )
         let weekly = UNNotificationCategory(identifier: weeklyResults, actions: [], intentIdentifiers: [], options: [])
-        return [rate, weekly]
+        let accept = UNNotificationAction(identifier: acceptFriendAction, title: "Принять", options: [])
+        let friend = UNNotificationCategory(identifier: friendRequest, actions: [accept], intentIdentifiers: [], options: [])
+        return [rate, weekly, friend]
     }
 }
 

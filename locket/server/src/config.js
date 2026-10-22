@@ -1,13 +1,20 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
 export function loadConfig(env = process.env) {
   const port = Number(env.PORT || 3000);
+  const dataDir = path.resolve(env.DATA_DIR || 'data');
   return {
     port,
     // Address the iPhone uses to reach this server; photo links are built from it.
     publicUrl: (env.PUBLIC_URL || `http://localhost:${port}`).replace(/\/+$/, ''),
-    dataDir: path.resolve(env.DATA_DIR || 'data'),
+    dataDir,
+    // Secret for password keys. Lose it and nobody can sign in again.
+    passwordPepper: env.PASSWORD_PEPPER || readPepperFile(dataDir),
+    // Behind Caddy: the client address is the first X-Forwarded-For entry.
+    trustProxy: env.TRUST_PROXY === '1',
+    maxFriends: Number(env.MAX_FRIENDS ?? 100),
     week: {
       // Fixed UTC offset of the friends' timezone. Moscow = +180.
       tzOffsetMinutes: Number(env.TZ_OFFSET_MINUTES ?? 180),
@@ -16,9 +23,23 @@ export function loadConfig(env = process.env) {
       endHour: Number(env.WEEK_END_HOUR ?? 21),
     },
     reminderHoursBefore: Number(env.REMINDER_HOURS_BEFORE ?? 3),
-    maxCircleMembers: Number(env.MAX_CIRCLE_MEMBERS ?? 30),
     apns: readApnsConfig(env),
   };
+}
+
+// <DATA_DIR>/pepper: created once with 32 random bytes, then only read. It sits
+// next to the database so a backup of the data folder carries both.
+function readPepperFile(dataDir) {
+  const file = path.join(dataDir, 'pepper');
+  fs.mkdirSync(dataDir, { recursive: true });
+  try {
+    fs.writeFileSync(file, crypto.randomBytes(32).toString('hex'), { flag: 'wx', mode: 0o600 });
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err;
+  }
+  const pepper = fs.readFileSync(file, 'utf8').trim();
+  if (!pepper) throw new Error(`${file} is empty: restore it from a backup, otherwise nobody can sign in`);
+  return pepper;
 }
 
 function readApnsConfig(env) {

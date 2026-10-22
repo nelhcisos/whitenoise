@@ -1,20 +1,12 @@
 import crypto from 'node:crypto';
-import { promisify } from 'node:util';
 
-const scrypt = promisify(crypto.scrypt);
-
-export async function hashPassword(password) {
-  const salt = crypto.randomBytes(16);
-  const hash = await scrypt(password, salt, 64);
-  return `scrypt$${salt.toString('hex')}$${hash.toString('hex')}`;
-}
-
-export async function verifyPassword(password, stored) {
-  const [scheme, saltHex, hashHex] = String(stored).split('$');
-  if (scheme !== 'scrypt' || !saltHex || !hashHex) return false;
-  const expected = Buffer.from(hashHex, 'hex');
-  const actual = await scrypt(password, Buffer.from(saltHex, 'hex'), expected.length);
-  return crypto.timingSafeEqual(expected, actual);
+/**
+ * The account key. A password IS the account (API.md «Модель»), so it is looked
+ * up, not verified: HMAC with a server-side pepper keeps a leaked database
+ * useless without the pepper file.
+ */
+export function passwordKey(pepper, password) {
+  return crypto.createHmac('sha256', pepper).update(String(password).normalize('NFC'), 'utf8').digest('hex');
 }
 
 export function newSessionToken() {
@@ -26,7 +18,8 @@ export function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-// Small in-memory brake on password guessing: N failures per key per window.
+// Small in-memory brake: at most `max` hits per key (client IP) per window.
+// The window starts at the first hit.
 export function createAttemptLimiter({ max = 10, windowMs = 15 * 60_000 } = {}) {
   const hits = new Map();
   return {

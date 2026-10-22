@@ -13,8 +13,10 @@ struct RootView: View {
                 OfflineView(message: message)
             case .signedOut:
                 AuthView()
-            case .needsCircle:
-                CircleSetupView()
+            case .newAccount(let password):
+                FirstPhotoView(password: password)
+            case .needsUsername:
+                UsernamePickerView()
             case .ready:
                 MainTabView()
             }
@@ -139,6 +141,8 @@ struct MainTabView: View {
                 .groundBar(for: .tabBar)
                 .tabItem { Label("Друзья", systemImage: "person.2") }
                 .tag(AppModel.Tab.friends)
+                // Friend requests waiting for an answer; the open tab lists them itself.
+                .badge(model.selectedTab == .friends ? 0 : model.incomingRequestCount)
         }
         .task { await model.refreshAll() }
         .onChange(of: scenePhase) { _, newPhase in

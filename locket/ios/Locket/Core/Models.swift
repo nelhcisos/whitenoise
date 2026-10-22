@@ -1,21 +1,14 @@
 import Foundation
 
+/// `username` is nil until the person picks one of the three suggestions.
 struct User: Codable, Hashable {
     let id: String
-    let name: String
-    let email: String?
+    let username: String?
 }
 
-struct FriendCircle: Codable, Hashable {
+struct Friend: Codable, Hashable, Identifiable {
     let id: String
-    let name: String
-    let inviteCode: String
-    let ownerId: String
-}
-
-struct Member: Codable, Hashable, Identifiable {
-    let id: String
-    let name: String
+    let username: String
 }
 
 struct WeekInfo: Codable, Hashable {
@@ -26,22 +19,81 @@ struct WeekInfo: Codable, Hashable {
 
 struct MeResponse: Codable {
     let user: User
-    let circle: FriendCircle?
-    let members: [Member]
+    let friends: [Friend]
+    let incomingRequests: Int
     let week: WeekInfo
 }
 
-struct AuthResponse: Decodable {
-    let token: String
-    let me: MeResponse
+/// POST api/auth/password and api/auth/register. `token`/`me` are present unless status == .new.
+struct PasswordAuthResponse: Decodable {
+    enum Status: String, Decodable {
+        case signedIn, new, created
+    }
 
-    private enum CodingKeys: String, CodingKey { case token }
+    let status: Status
+    let token: String?
+    /// Decoded from the same JSON object as the token.
+    let me: MeResponse?
+
+    private enum CodingKeys: String, CodingKey { case status, token }
 
     init(from decoder: Decoder) throws {
-        token = try decoder.container(keyedBy: CodingKeys.self).decode(String.self, forKey: .token)
-        me = try MeResponse(from: decoder)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        status = try container.decode(Status.self, forKey: .status)
+        let token = try container.decodeIfPresent(String.self, forKey: .token)
+        self.token = token
+        if token != nil {
+            me = try MeResponse(from: decoder)
+        } else {
+            me = nil
+        }
     }
 }
+
+struct UsernameSuggestion: Codable, Hashable, Identifiable {
+    enum Kind: String, Codable {
+        case animal, swear, name
+    }
+
+    let username: String
+    let kind: Kind
+
+    var id: String { username }
+}
+
+struct UsernameSuggestionsResponse: Decodable { let suggestions: [UsernameSuggestion] }
+
+struct FriendEntry: Codable, Hashable, Identifiable {
+    let id: String
+    let username: String
+    let since: Double
+}
+
+struct FriendRequest: Codable, Hashable, Identifiable {
+    let id: String
+    let username: String
+    let createdAt: Double
+}
+
+/// GET api/friends and every friend action: the whole picture after the change.
+struct FriendsResponse: Codable, Equatable {
+    var friends: [FriendEntry]
+    var incoming: [FriendRequest]
+    var outgoing: [FriendRequest]
+}
+
+struct UserSearchResult: Codable, Hashable, Identifiable {
+    enum Relation: String, Codable {
+        case me = "self"
+        case friend, outgoing, incoming, none
+    }
+
+    let id: String
+    let username: String
+    var relation: Relation
+}
+
+struct UsersResponse: Decodable { let users: [UserSearchResult] }
 
 struct ReactionCounts: Codable, Hashable {
     var creative: Int
@@ -88,8 +140,10 @@ struct Photo: Codable, Hashable, Identifiable {
     let id: String
     let authorId: String
     let authorName: String
+    /// A friend's photo you haven't unlocked yet: no caption, no picture, nothing to rate.
+    let locked: Bool
     let caption: String?
-    let imageUrl: URL
+    let imageUrl: URL?
     let createdAt: Double
     let weekId: String
     var canReact: Bool
@@ -187,6 +241,11 @@ extension Date {
 
 struct PhotosResponse: Decodable { let photos: [Photo] }
 struct PhotoResponse: Decodable { let photo: Photo }
+/// `unlocked`: how many friends' photos of this week the post opened.
+struct UploadResponse: Decodable {
+    let photo: Photo
+    let unlocked: Int
+}
 struct WeeksResponse: Decodable { let weeks: [WeekResults] }
 struct OKResponse: Decodable { let ok: Bool }
 
@@ -195,17 +254,21 @@ struct PushInfo: Sendable {
     var type: String
     var photoId: String?
     var weekId: String?
+    /// friend_request / friend_accepted: the other person.
+    var userId: String?
 
-    init(type: String, photoId: String? = nil, weekId: String? = nil) {
+    init(type: String, photoId: String? = nil, weekId: String? = nil, userId: String? = nil) {
         self.type = type
         self.photoId = photoId
         self.weekId = weekId
+        self.userId = userId
     }
 
     init(_ userInfo: [AnyHashable: Any]) {
         type = userInfo["type"] as? String ?? ""
         photoId = userInfo["photoId"] as? String
         weekId = userInfo["weekId"] as? String
+        userId = userInfo["userId"] as? String
     }
 }
 

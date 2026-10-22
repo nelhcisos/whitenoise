@@ -6,6 +6,8 @@ services:
     env_file: .env
     environment:
       DATA_DIR: /data
+      # Caddy sits in front: the client address is in X-Forwarded-For (rate limits).
+      TRUST_PROXY: "1"
     volumes:
       - ./data:/data
       - ./secrets:/secrets:ro

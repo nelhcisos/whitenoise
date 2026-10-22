@@ -32,7 +32,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         completionHandler([.banner, .list, .sound])
     }
 
-    /// The notification was tapped (ratings themselves are sent by the NotificationContent extension).
+    /// The notification was tapped, or "Принять" was pressed on a friend request (ratings themselves
+    /// are sent by the NotificationContent extension). An action may launch the app in the background:
+    /// the completion handler is called only after the request finishes, so iOS keeps the app alive for it.
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,

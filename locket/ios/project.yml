@@ -46,6 +46,8 @@ targets:
         LSRequiresIPhoneOS: true
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        # Portrait camera app: full screen only, so iOS doesn't ask for every orientation.
+        UIRequiresFullScreen: true
         UIUserInterfaceStyle: Dark
         NSCameraUsageDescription: Чтобы снимать фото для друзей.
         NSLocalNetworkUsageDescription: Чтобы подключиться к тестовому серверу в твоей сети.

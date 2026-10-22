@@ -10,7 +10,9 @@ final class AppModel {
         case launching
         case offline(String)
         case signedOut
-        case needsCircle
+        /// The password is new: the account appears together with its first photo.
+        case newAccount(password: String)
+        case needsUsername
         case ready
     }
 
@@ -41,6 +43,9 @@ final class AppModel {
     private(set) var currentWeek: WeekResults?
     private(set) var history: [WeekResults] = []
     private(set) var weekState: LoadState = .idle
+    /// Friends and requests, for the Friends tab.
+    private(set) var social: FriendsResponse?
+    private(set) var socialState: LoadState = .idle
 
     var selectedTab: Tab = .camera
     var focusPhotoId: String?
@@ -53,12 +58,24 @@ final class AppModel {
     private let pageSize = 30
 
     var myId: String? { me?.user.id }
-    var circle: FriendCircle? { me?.circle }
-    var members: [Member] { me?.members ?? [] }
+    var username: String? { me?.user.username }
+    var friends: [Friend] { me?.friends ?? [] }
+
+    /// Requests waiting for you: the Friends tab badge.
+    var incomingRequestCount: Int {
+        if let social { return social.incoming.count }
+        return me?.incomingRequests ?? 0
+    }
 
     /// Friends' photos of this week you haven't rated yet: the feed's finding.
     var unratedCount: Int {
         feed.filter { $0.canReact && $0.myStars == 0 && $0.mine.isEmpty }.count
+    }
+
+    /// Friends' photos of this week still locked for you.
+    var lockedCount: Int {
+        guard let weekId = me?.week.id else { return 0 }
+        return feed.filter { $0.locked && $0.weekId == weekId }.count
     }
 
     // MARK: - Session
@@ -82,22 +99,51 @@ final class AppModel {
         await start()
     }
 
-    func signIn(email: String, password: String) async throws {
-        let auth = try await api.login(email: email.trimmingCharacters(in: .whitespaces), password: password)
-        TokenStore.token = auth.token
-        apply(auth.me)
+    /// A known password signs in; an unknown one moves on to the first photo.
+    func submitPassword(_ password: String) async throws {
+        let auth = try await api.passwordAuth(password)
+        if auth.status == .new {
+            phase = .newAccount(password: password)
+        } else {
+            try await finishSignIn(auth)
+        }
+    }
+
+    /// Back from the first photo to the password screen.
+    func cancelNewAccount() {
+        phase = .signedOut
+    }
+
+    /// Creates the account together with its first photo, which is published at once.
+    func register(password: String, image: UIImage, caption: String) async throws {
+        guard let jpeg = image.jpegData(compressionQuality: 0.82) else {
+            throw APIError.server("Не получилось подготовить фото.")
+        }
+        let auth = try await api.register(password: password, jpeg: jpeg, caption: caption)
+        try await finishSignIn(auth)
+        // Someone signed up with this password a moment earlier: that account is theirs, the photo went there.
+        if auth.status == .signedIn {
+            show(toast: "Такой пароль уже есть — ты вошёл, фото отправлено друзьям")
+        }
+    }
+
+    private func finishSignIn(_ auth: PasswordAuthResponse) async throws {
+        guard let token = auth.token, let newMe = auth.me else {
+            throw APIError.server("Сервер ответил непонятно. Попробуй ещё раз.")
+        }
+        TokenStore.token = token
+        apply(newMe)
         await uploadDeviceToken()
     }
 
-    func signUp(name: String, email: String, password: String) async throws {
-        let auth = try await api.register(
-            name: name.trimmingCharacters(in: .whitespaces),
-            email: email.trimmingCharacters(in: .whitespaces),
-            password: password
-        )
-        TokenStore.token = auth.token
-        apply(auth.me)
-        await uploadDeviceToken()
+    /// Three free usernames: an animal, a swear word, a name.
+    func usernameSuggestions() async throws -> [UsernameSuggestion] {
+        try await signedIn { try await self.api.usernameSuggestions() }
+    }
+
+    func chooseUsername(_ username: String) async throws {
+        let newMe = try await signedIn { try await self.api.chooseUsername(username) }
+        apply(newMe)
     }
 
     func signOut() async {
@@ -108,12 +154,12 @@ final class AppModel {
     private func signOutLocally() {
         TokenStore.token = nil
         me = nil
-        resetCircleData()
+        resetUserData()
         selectedTab = .camera
         phase = .signedOut
     }
 
-    private func resetCircleData() {
+    private func resetUserData() {
         feed = []
         feedHasMore = true
         loadMoreError = nil
@@ -121,13 +167,15 @@ final class AppModel {
         currentWeek = nil
         history = []
         weekState = .idle
+        social = nil
+        socialState = .idle
         WidgetRefresh.now()
     }
 
     private func apply(_ newMe: MeResponse) {
-        if let old = me, old.circle?.id != newMe.circle?.id { resetCircleData() }
+        if let old = me, old.user.id != newMe.user.id { resetUserData() }
         me = newMe
-        phase = newMe.circle == nil ? .needsCircle : .ready
+        phase = newMe.user.username == nil ? .needsUsername : .ready
         if phase == .ready {
             Task { await PushRegistrar.requestPermissionAndRegister() }
         }
@@ -146,45 +194,74 @@ final class AppModel {
         await refreshMe()
         await refreshFeed()
         await refreshWeek()
+        await refreshSocial()
     }
 
-    // MARK: - Circle & profile
-
-    func createCircle(name: String) async throws {
-        apply(try await api.createCircle(name: name))
-    }
-
-    func joinCircle(code: String) async throws {
-        apply(try await api.joinCircle(code: code))
-    }
-
-    func leaveCircle() async {
-        await perform { self.apply(try await self.api.leaveCircle()) }
-    }
-
-    /// Throws so the edit sheet can show the error under its field.
+    /// For calls that throw so the screen can show the error next to what failed.
     /// A lapsed session signs out and throws CancellationError (nothing to show).
-    func renameMe(_ name: String) async throws {
-        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        try await signedIn { self.apply(try await self.api.rename(name)) }
-    }
-
-    /// Throws so the edit sheet can show the error under its field.
-    /// A lapsed session signs out and throws CancellationError (nothing to show).
-    func renameCircle(_ name: String) async throws {
-        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        try await signedIn { self.apply(try await self.api.renameCircle(name)) }
-    }
-
-    private func signedIn(_ work: () async throws -> Void) async throws {
+    private func signedIn<T>(_ work: () async throws -> T) async throws -> T {
         do {
-            try await work()
+            return try await work()
         } catch {
             if (error as? APIError) == .unauthorized {
                 signOutLocally()
                 throw CancellationError()
             }
             throw error
+        }
+    }
+
+    // MARK: - Friends
+
+    /// A background load: the Friends tab shows the error inline with a Retry.
+    func refreshSocial() async {
+        guard phase == .ready else { return }
+        if socialState != .loaded { socialState = .loading }
+        do {
+            social = try await api.friends()
+            socialState = .loaded
+        } catch {
+            if let message = loadFailure(error) { socialState = .failed(message) }
+        }
+    }
+
+    func searchUsers(_ query: String) async throws -> [UserSearchResult] {
+        try await signedIn { try await self.api.searchUsers(query) }
+    }
+
+    /// If they had already asked you, this makes you friends at once.
+    func sendFriendRequest(to userId: String) async throws {
+        let response = try await signedIn { try await self.api.sendFriendRequest(userId: userId) }
+        let becameFriends = response.friends.contains { $0.id == userId }
+        friendsChanged(response, refreshPhotos: becameFriends)
+    }
+
+    func acceptFriendRequest(from userId: String) async throws {
+        let response = try await signedIn { try await self.api.acceptFriendRequest(userId: userId) }
+        friendsChanged(response, refreshPhotos: true)
+    }
+
+    /// Declines an incoming request or cancels an outgoing one.
+    func deleteFriendRequest(with userId: String) async throws {
+        let response = try await signedIn { try await self.api.deleteFriendRequest(userId: userId) }
+        friendsChanged(response, refreshPhotos: false)
+    }
+
+    func removeFriend(_ userId: String) async throws {
+        let response = try await signedIn { try await self.api.removeFriend(userId: userId) }
+        friendsChanged(response, refreshPhotos: true)
+    }
+
+    /// Shows the server's answer at once; the rest catches up in the background.
+    private func friendsChanged(_ response: FriendsResponse, refreshPhotos: Bool) {
+        social = response
+        socialState = .loaded
+        Task {
+            await refreshMe()
+            if refreshPhotos {
+                await refreshFeed()
+                await refreshWeek()
+            }
         }
     }
 
@@ -230,10 +307,21 @@ final class AppModel {
         guard let jpeg = image.jpegData(compressionQuality: 0.82) else {
             throw APIError.server("Не получилось подготовить фото.")
         }
-        let photo = try await api.upload(jpeg: jpeg, caption: caption)
-        feed.insert(photo, at: 0)
-        show(toast: "Фото отправлено друзьям")
-        Task { await refreshWeek() }
+        let response = try await api.upload(jpeg: jpeg, caption: caption)
+        feed.removeAll { $0.id == response.photo.id }
+        feed.insert(response.photo, at: 0)
+        let unlocked = response.unlocked
+        if unlocked > 0 {
+            // "фото" doesn't decline, so no plural forms are needed.
+            show(toast: "Фото отправлено — открылось \(unlocked)\(nbsp)фото друзей")
+        } else {
+            show(toast: "Фото отправлено друзьям")
+        }
+        // Posting opens friends' locked photos, so the whole feed changes.
+        Task {
+            await refreshFeed()
+            await refreshWeek()
+        }
     }
 
     func toggle(_ kind: ReactionKind, on photo: Photo) async {
@@ -318,15 +406,37 @@ final class AppModel {
     /// A push arrived while the app is on screen.
     func pushArrived(_ push: PushInfo) {
         switch push.type {
-        case "photo", "reaction": Task { await refreshFeed() }
-        case "weekly": Task { await refreshWeek() }
-        case "join": Task { await refreshMe() }
-        default: break
+        case "photo", "reaction", "locked":
+            Task { await refreshFeed() }
+        case "friend_request":
+            Task {
+                await refreshMe()
+                await refreshSocial()
+            }
+        case "friend_accepted":
+            Task {
+                await refreshMe()
+                await refreshSocial()
+                await refreshFeed()
+                await refreshWeek()
+            }
+        case "weekly":
+            Task { await refreshWeek() }
+        default:
+            break
         }
     }
 
+    /// A tap on the notification, or "Принять" on a friend request — which may run
+    /// with the app launched in the background: the request only needs the stored token.
     func handleNotificationResponse(action: String, push: PushInfo) async {
-        if action == UNNotificationDefaultActionIdentifier { open(push) }
+        if action == PushCategories.acceptFriendAction {
+            if let userId = push.userId {
+                try? await acceptFriendRequest(from: userId)
+            }
+        } else if action == UNNotificationDefaultActionIdentifier {
+            open(push)
+        }
     }
 
     func open(_ push: PushInfo) {
@@ -339,10 +449,15 @@ final class AppModel {
             selectedTab = .week
             pendingWeekId = push.weekId
             Task { await refreshWeek() }
+        case "locked":
+            // Posting is what opens it.
+            selectedTab = .camera
+            Task { await refreshFeed() }
         case "reminder":
             selectedTab = .feed
-        case "join":
+        case "friend_request", "friend_accepted":
             selectedTab = .friends
+            Task { await refreshSocial() }
         default:
             break
         }

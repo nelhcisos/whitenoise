@@ -2,7 +2,7 @@
   "name": "locket-server",
   "version": "1.0.0",
   "private": true,
-  "description": "Backend for the Locket friends app: accounts, circles, photos, ratings, weekly awards and APNs push",
+  "description": "Backend for the Locket friends app: password accounts, usernames, friends, locked photos, ratings, weekly awards and APNs push",
   "type": "module",
   "engines": {
     "node": ">=22.13"

@@ -15,7 +15,7 @@ struct WeekView: View {
                         }
                         status
                     }
-                    if let week = model.currentWeek, week.photoCount != 0 {
+                    if !model.friends.isEmpty, let week = model.currentWeek, week.photoCount != 0 {
                         NominationsSection(results: week)
                         bestPhoto(of: week)
                         LeaderboardSection(standings: week.leaderboard, myId: model.myId)
@@ -51,7 +51,14 @@ struct WeekView: View {
                 Task { await model.refreshWeek() }
             }
         }
-        if let week = model.currentWeek {
+        if model.friends.isEmpty {
+            // Results are counted among you and your friends: alone there is no one to compare.
+            EmptyState(
+                text: "Итоги считаются среди друзей — найди их во вкладке «Друзья».",
+                actionTitle: "Найти друзей",
+                action: { model.selectedTab = .friends }
+            )
+        } else if let week = model.currentWeek {
             if week.photoCount == 0 {
                 EmptyState(
                     text: "На этой неделе ещё нет фото — выложи первое.",
@@ -304,7 +311,7 @@ private struct BestPhotoSection: View {
     }
 }
 
-/// Everyone in the circle by points, with the breakdown under each name.
+/// You and your friends by points, with the breakdown under each name.
 private struct LeaderboardSection: View {
     let standings: [Standing]
     let myId: String?

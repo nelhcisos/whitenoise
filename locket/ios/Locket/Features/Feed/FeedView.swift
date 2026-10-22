@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Friends' photos, newest first, grouped by week. The finding is how many still wait for your rating.
+/// Friends' photos, newest first, grouped by week. The finding is how many still wait for
+/// your rating and how many are still locked.
 struct FeedView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -48,6 +49,16 @@ struct FeedView: View {
 
     @ViewBuilder
     private var content: some View {
+        if model.friends.isEmpty {
+            // Without friends the feed holds only your own photos (a new account starts
+            // with one), so this shows above them, not only when the feed is empty.
+            EmptyState(
+                text: "Пока у тебя нет друзей — найди их по юзернейму.",
+                actionTitle: "Найти друзей",
+                action: { model.selectedTab = .friends }
+            )
+            .padding(.horizontal, Space.margin)
+        }
         if model.feed.isEmpty {
             switch model.feedState {
             case .idle, .loading:
@@ -59,12 +70,14 @@ struct FeedView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Загружаю ленту…")
             case .loaded:
-                EmptyState(
-                    text: "Пока никто ничего не выложил — сделай первое фото.",
-                    actionTitle: "Открыть камеру",
-                    action: { model.selectedTab = .camera }
-                )
-                .padding(.horizontal, Space.margin)
+                if !model.friends.isEmpty {
+                    EmptyState(
+                        text: "Пока никто ничего не выложил — сделай первое фото.",
+                        actionTitle: "Открыть камеру",
+                        action: { model.selectedTab = .camera }
+                    )
+                    .padding(.horizontal, Space.margin)
+                }
             case .failed:
                 EmptyView()
             }
@@ -76,7 +89,11 @@ struct FeedView: View {
                             SectionHeader(section.title)
                                 .padding(.horizontal, Space.margin)
                         }
-                        PhotoCard(photo: photo)
+                        if photo.locked {
+                            LockedPhotoCard(photo: photo)
+                        } else {
+                            PhotoCard(photo: photo)
+                        }
                     }
                     .id(photo.id)
                     .task { await model.loadMoreIfNeeded(after: photo) }
@@ -96,12 +113,23 @@ struct FeedView: View {
         }
     }
 
-    /// "3 фото ждут твоей оценки", or that this week's friends' photos are all rated.
+    /// "3 фото ждут твоей оценки · 2 закрыты" (only the parts that aren't zero),
+    /// or that this week's friends' photos are all rated.
     private var finding: String? {
         let unrated = model.unratedCount
+        let locked = model.lockedCount
+        var parts: [String] = []
         if unrated > 0 {
             let waiting = Russian.plural(unrated, "фото ждёт", "фото ждут", "фото ждут")
-            return "\(unrated)\(nbsp)\(waiting) твоей оценки"
+            parts.append("\(unrated)\(nbsp)\(waiting) твоей оценки")
+        }
+        if locked > 0 {
+            let closed = Russian.plural(locked, "закрыто", "закрыты", "закрыты")
+            // On its own the number needs its noun: "2 фото закрыты".
+            parts.append(unrated > 0 ? "\(locked)\(nbsp)\(closed)" : "\(locked)\(nbsp)фото \(closed)")
+        }
+        if !parts.isEmpty {
+            return parts.joined(separator: " · ")
         }
         // Only friends' photos of this week can be rated.
         if model.feed.contains(where: { $0.canReact }) {
@@ -162,6 +190,14 @@ struct PhotoCard: View {
             author
 
             SquarePhoto(url: photo.imageUrl)
+                .overlay {
+                    // Open photos always carry a picture; this only guards a bad response.
+                    if photo.imageUrl == nil {
+                        Image(systemName: "photo")
+                            .font(.title3)
+                            .foregroundStyle(Palette.faint)
+                    }
+                }
                 .overlay(alignment: .bottom) {
                     if let caption = photo.caption, !caption.isBlank {
                         Text(caption)
@@ -201,20 +237,8 @@ struct PhotoCard: View {
 
     private var author: some View {
         HStack(spacing: 12) {
-            HStack(spacing: 12) {
-                Avatar(name: photo.authorName, size: AvatarSize.small)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(isMine ? "Ты" : photo.authorName)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Palette.text)
-                        .lineLimit(1)
-                    Text(postedAgo)
-                        .font(.footnote)
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.muted)
-                }
-            }
-            .accessibilityElement(children: .combine)
+            PhotoByline(photo: photo, isMine: isMine)
+                .accessibilityElement(children: .combine)
 
             Spacer(minLength: 8)
 
@@ -235,14 +259,9 @@ struct PhotoCard: View {
         }
     }
 
-    /// "5 минут назад", with the number kept next to its unit.
-    private var postedAgo: String {
-        photo.date.formatted(.relative(presentation: .named).locale(.ru))
-            .replacingOccurrences(of: #"(\d) "#, with: "$1\(nbsp)", options: .regularExpression)
-    }
-
     /// "Фото, подпись «…»" for VoiceOver.
     private var photoSpoken: String {
+        if photo.imageUrl == nil { return "Фото не загрузилось" }
         guard let caption = photo.caption, !caption.isBlank else { return "Фото" }
         return "Фото, подпись «\(caption)»"
     }
@@ -297,6 +316,88 @@ struct PhotoCard: View {
     }
 }
 
+/// A friend's photo you haven't opened yet: who posted it, when, and how to open it.
+/// Posting your own photo opens one more from each friend. Nothing to rate here.
+private struct LockedPhotoCard: View {
+    @Environment(AppModel.self) private var model
+    let photo: Photo
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // VoiceOver hears who and when in the tile's own label.
+            PhotoByline(photo: photo, isMine: false)
+                .accessibilityHidden(true)
+
+            ZStack {
+                // At least square, like an open photo; taller if large text needs the room.
+                Color.clear
+                    .aspectRatio(1, contentMode: .fit)
+                VStack(spacing: Space.gap) {
+                    VStack(spacing: 8) {
+                        Image(systemName: "lock")
+                            .font(.title)
+                            .foregroundStyle(Palette.muted)
+                        Text("Закрыто")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Palette.text)
+                        Text("Выложи своё фото — и откроется ещё одно")
+                            .font(.subheadline)
+                            .foregroundStyle(Palette.muted)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(spoken)
+
+                    Button("Открыть камеру") {
+                        model.selectedTab = .camera
+                    }
+                    .buttonStyle(LocketButtonStyle(.secondary, fullWidth: false))
+                }
+                .padding(Space.cardPadding)
+                .frame(maxWidth: .infinity)
+            }
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.photo, style: .continuous))
+        }
+        .padding(.horizontal, Space.margin)
+    }
+
+    /// "Закрытое фото от барсук, 5 минут назад. Выложи своё, чтобы открыть"
+    private var spoken: String {
+        "Закрытое фото от \(photo.authorName), \(photo.postedAgo). Выложи своё, чтобы открыть"
+    }
+}
+
+/// Avatar, name and how long ago: the top row of every card.
+private struct PhotoByline: View {
+    let photo: Photo
+    let isMine: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Avatar(name: photo.authorName, size: AvatarSize.small)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isMine ? "Ты" : photo.authorName)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Palette.text)
+                    .lineLimit(1)
+                Text(photo.postedAgo)
+                    .font(.footnote)
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.muted)
+            }
+        }
+    }
+}
+
+private extension Photo {
+    /// "5 минут назад", with the number kept next to its unit.
+    var postedAgo: String {
+        date.formatted(.relative(presentation: .named).locale(.ru))
+            .replacingOccurrences(of: #"(\d) "#, with: "$1\(nbsp)", options: .regularExpression)
+    }
+}
+
 /// Stars 1–3 and the reactions under a photo. Your choice is yellow, filled and marked
 /// selected; your own photo shows its average. Own photos and closed weeks are read-only.
 struct RatingBar: View {
@@ -310,12 +411,13 @@ struct RatingBar: View {
                 ForEach(1...Stars.max, id: \.self) { value in
                     star(value)
                 }
-                if let starsSummary {
-                    Text(starsSummary)
+                if let summary = starsSummary(spoken: false) {
+                    Text(summary)
                         .font(.subheadline)
                         .monospacedDigit()
                         .foregroundStyle(Palette.muted)
                         .padding(.leading, 8)
+                        .accessibilityLabel(starsSummary(spoken: true) ?? summary)
                 }
                 Spacer(minLength: 0)
             }
@@ -347,12 +449,17 @@ struct RatingBar: View {
         isMine ? Int(photo.stars.average.rounded()) : photo.myStars
     }
 
-    /// "2,5 · 4 оценки"; nothing for a friend's photo nobody has rated yet.
-    private var starsSummary: String? {
-        guard photo.stars.count > 0 else { return isMine ? "ещё нет оценок" : nil }
-        let average = photo.stars.average.formatted(.number.precision(.fractionLength(0...1)).locale(.ru))
+    /// "2,5 · 4 оценки"; spoken "Средняя оценка 2,5 из 3, 4 оценки".
+    /// Nothing for a friend's photo nobody has rated yet.
+    private func starsSummary(spoken: Bool) -> String? {
         let count = photo.stars.count
-        return "\(average) · \(count)\(nbsp)\(Russian.plural(count, "оценка", "оценки", "оценок"))"
+        guard count > 0 else {
+            guard isMine else { return nil }
+            return spoken ? "Ещё нет оценок" : "ещё нет оценок"
+        }
+        let average = photo.stars.average.formatted(.number.precision(.fractionLength(0...1)).locale(.ru))
+        let ratings = "\(count)\(nbsp)\(Russian.plural(count, "оценка", "оценки", "оценок"))"
+        return spoken ? "Средняя оценка \(average) из \(Stars.max), \(ratings)" : "\(average) · \(ratings)"
     }
 
     private func star(_ value: Int) -> some View {

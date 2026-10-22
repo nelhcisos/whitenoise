@@ -2,9 +2,18 @@ import AVFoundation
 import PhotosUI
 import SwiftUI
 
-/// The first tab: take or pick a square photo, add a caption, send it to the circle.
+/// The first tab: take or pick a square photo, add a caption, send it to friends.
+/// Also the new account's first photo, which creates the account.
 /// The viewfinder is the largest thing on screen; "Send" is its one accent control.
 struct CameraScreen: View {
+    enum Purpose: Equatable {
+        case post
+        /// The password is new: this photo creates the account and is published at once.
+        case firstPhoto(password: String)
+    }
+
+    var purpose: Purpose = .post
+
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
@@ -20,6 +29,10 @@ struct CameraScreen: View {
     private let sideControl: CGFloat = 60
     private let mainControl: CGFloat = 84
 
+    init(purpose: Purpose = .post) {
+        self.purpose = purpose
+    }
+
     var body: some View {
         VStack(spacing: Space.gap) {
             header
@@ -28,7 +41,7 @@ struct CameraScreen: View {
                 .padding(.top, Space.gap)
             if sending {
                 // Shown without animation: `sending` never changes inside withAnimation.
-                Text("Отправляю…")
+                Text(progressText)
                     .font(.footnote)
                     .foregroundStyle(Palette.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -49,13 +62,23 @@ struct CameraScreen: View {
 
     // MARK: - Parts
 
+    @ViewBuilder
     private var header: some View {
+        switch purpose {
+        case .post:
+            postHeader
+        case .firstPhoto(let password):
+            firstPhotoHeader(password)
+        }
+    }
+
+    private var postHeader: some View {
         HStack(alignment: .center, spacing: Space.gap) {
-            ScreenTitle(title: model.circle?.name ?? "Locket", subtitle: audience)
+            ScreenTitle(title: "Камера", subtitle: audience)
             if !friends.isEmpty {
                 HStack(spacing: -10) {
                     ForEach(friends.prefix(4)) { friend in
-                        Avatar(name: friend.name, size: AvatarSize.small)
+                        Avatar(name: friend.username, size: AvatarSize.small)
                             .padding(2)
                             .background(Palette.ground, in: Circle())
                     }
@@ -66,14 +89,54 @@ struct CameraScreen: View {
         }
     }
 
-    private var friends: [Member] {
-        model.members.filter { $0.id != model.myId }
+    private var friends: [Friend] {
+        model.friends
     }
 
     private var audience: String {
         let count = friends.count
-        guard count > 0 else { return "Друзей пока нет — позови их во вкладке «Друзья»" }
+        guard count > 0 else { return "Друзей пока нет — найди их во вкладке «Друзья»" }
         return "Увидят: \(count)\(nbsp)\(Russian.plural(count, "друг", "друга", "друзей"))"
+    }
+
+    /// The typed password stays in sight, so a typo is caught now and not at the next sign-in.
+    private func firstPhotoHeader(_ password: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ScreenTitle(
+                title: "Новый аккаунт",
+                subtitle: "Такого пароля ещё нет. Сделай первое фото — оно сразу опубликуется, и аккаунт готов."
+            )
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Твой пароль — запомни его")
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.muted)
+                HStack(alignment: .center, spacing: 12) {
+                    // An exact string, so monospaced; spelled out for VoiceOver.
+                    Text(password)
+                        .font(.body.monospaced())
+                        .foregroundStyle(Palette.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .accessibilityLabel(password.map { String($0) }.joined(separator: " "))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
+                    Spacer(minLength: 8)
+                    Button {
+                        model.cancelNewAccount()
+                    } label: {
+                        Text("Другой пароль")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(sending ? Palette.faint : Palette.text)
+                            .fixedSize()
+                            .frame(minHeight: Space.hitTarget)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(sending)
+                }
+            }
+        }
     }
 
     private var viewfinder: some View {
@@ -215,8 +278,8 @@ struct CameraScreen: View {
         }
         .buttonStyle(RoundControlStyle(dimsWhenDisabled: false))
         .disabled(sending)
-        .accessibilityLabel("Отправить друзьям")
-        .accessibilityValue(sending ? "Отправляю…" : "")
+        .accessibilityLabel(sendLabel)
+        .accessibilityValue(sending ? progressText : "")
     }
 
     private func roundButton(_ icon: String, label: String, action: @escaping () -> Void) -> some View {
@@ -242,7 +305,28 @@ struct CameraScreen: View {
     }
 
     private func failureText(_ message: String) -> String {
-        "Не отправилось: \(message) Фото на месте — нажми «Отправить» ещё раз."
+        switch purpose {
+        case .post:
+            return "Не отправилось: \(message) Фото на месте — нажми «Отправить» ещё раз."
+        case .firstPhoto:
+            return "Аккаунт не создан: \(message) Фото на месте — нажми «Опубликовать» ещё раз."
+        }
+    }
+
+    /// The send button's VoiceOver label.
+    private var sendLabel: String {
+        switch purpose {
+        case .post: return "Отправить друзьям"
+        case .firstPhoto: return "Опубликовать"
+        }
+    }
+
+    /// The line under the controls while the photo goes out.
+    private var progressText: String {
+        switch purpose {
+        case .post: return "Отправляю…"
+        case .firstPhoto: return "Создаю аккаунт…"
+        }
     }
 
     // MARK: - Actions
@@ -265,9 +349,16 @@ struct CameraScreen: View {
         sendError = nil
         captionFocused = false
         defer { sending = false }
+        let text = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            try await model.upload(image, caption: caption.trimmingCharacters(in: .whitespacesAndNewlines))
-            discard()
+            switch purpose {
+            case .post:
+                try await model.upload(image, caption: text)
+                discard()
+            case .firstPhoto(let password):
+                // On success the app moves on to the username, so nothing to reset here.
+                try await model.register(password: password, image: image, caption: text)
+            }
         } catch is CancellationError {
         } catch {
             let message = sentence(error.localizedDescription)

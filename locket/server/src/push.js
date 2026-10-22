@@ -1,8 +1,9 @@
 import crypto from 'node:crypto';
 
-// Identifiers shared with the iOS app (PushManager.swift).
+// Identifiers shared with the iOS app (Locket/Core/PushSupport.swift).
 export const CATEGORY_RATE_PHOTO = 'PHOTO_RATING';
 export const CATEGORY_WEEKLY = 'WEEKLY_RESULTS';
+export const CATEGORY_FRIEND_REQUEST = 'FRIEND_REQUEST'; // has the «Принять» button
 
 // Reaction marks are the app's rating scale (data), the only emoji in push copy.
 const EMOJI = { creative: '✍️', funny: '😂', wild: '🫪' };
@@ -39,8 +40,9 @@ export function createPushService({ store, apns, log = console }) {
   return { sendToUsers };
 }
 
-// A friend posted a photo: rich notification. The app's extensions download the
-// image and show stars 1–3 plus ✍️ / 😂 / 🫪 when it is long-pressed, even on the lock screen.
+// A friend posted a photo that is open for you: rich notification. The app's
+// extensions download the image and show stars 1–3 plus ✍️ / 😂 / 🫪 when it is
+// long-pressed, even on the lock screen.
 export function newPhotoMessage({ photo, imageUrl }) {
   return {
     aps: {
@@ -63,6 +65,20 @@ export function newPhotoMessage({ photo, imageUrl }) {
   };
 }
 
+// A friend posted a photo that is locked for you: no picture, no caption —
+// post your own to open it.
+export function lockedPhotoMessage({ photo }) {
+  return {
+    aps: {
+      alert: { title: photo.authorName, body: 'Новое фото закрыто — выложи своё, и оно откроется' },
+      sound: 'default',
+      'thread-id': 'photos',
+    },
+    type: 'locked',
+    photoId: photo.id,
+  };
+}
+
 // Someone rated your photo. One notification per (photo, friend): later taps
 // replace it via apns-collapse-id instead of stacking up.
 export function reactionMessage({ photo, reactor, stars, kinds, imageUrl }) {
@@ -73,7 +89,7 @@ export function reactionMessage({ photo, reactor, stars, kinds, imageUrl }) {
   return {
     payload: {
       aps: {
-        alert: { title: reactor.name, body: `${parts.join(' · ')} — твоему фото` },
+        alert: { title: reactor.username, body: `${parts.join(' · ')} — твоему фото` },
         sound: 'default',
         'mutable-content': 1,
         'thread-id': 'reactions',
@@ -111,24 +127,40 @@ export function weeklyResultsMessage(results) {
   };
 }
 
-export function reminderMessage({ unrated, hours }) {
-  const word = plural(unrated, 'фото ждёт', 'фото ждут', 'фото ждут');
+// Before the week closes: friends' photos still waiting for your rating, and
+// the ones you can't see until you post.
+export function reminderMessage({ unrated, locked = 0, hours }) {
+  const closed = (n) => `${n}${NBSP}${plural(n, 'закрыто', 'закрыты', 'закрыты')}`;
+  let body;
+  if (unrated > 0) {
+    body = `${unrated}${NBSP}${plural(unrated, 'фото ждёт', 'фото ждут', 'фото ждут')} твоей оценки — успей до итогов`;
+    if (locked > 0) body += ` · ещё ${closed(locked)} — выложи своё`;
+  } else {
+    body = `${locked}${NBSP}фото друзей ${plural(locked, 'закрыто', 'закрыты', 'закрыты')} — выложи своё, чтобы открыть`;
+  }
   return {
-    aps: {
-      alert: {
-        title: `До итогов недели ${hours}${NBSP}ч`,
-        body: `${unrated}${NBSP}${word} твоей оценки — успей до итогов`,
-      },
-      sound: 'default',
-      'thread-id': 'weekly',
-    },
+    aps: { alert: { title: `До итогов недели ${hours}${NBSP}ч`, body }, sound: 'default', 'thread-id': 'weekly' },
     type: 'reminder',
   };
 }
 
-export function joinedMessage({ user, circle }) {
+export function friendRequestMessage({ from }) {
   return {
-    aps: { alert: { title: circle.name, body: `${user.name} теперь с вами` }, sound: 'default', 'thread-id': 'circle' },
-    type: 'join',
+    aps: {
+      alert: { title: 'Заявка в друзья', body: `${from.username} хочет дружить` },
+      sound: 'default',
+      category: CATEGORY_FRIEND_REQUEST,
+      'thread-id': 'friends',
+    },
+    type: 'friend_request',
+    userId: from.id,
+  };
+}
+
+export function friendAcceptedMessage({ user }) {
+  return {
+    aps: { alert: { title: 'Новый друг', body: `${user.username} теперь в друзьях` }, sound: 'default', 'thread-id': 'friends' },
+    type: 'friend_accepted',
+    userId: user.id,
   };
 }
