@@ -6,7 +6,7 @@
 <title>Симулятор ортодонта</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:ital,wght@0,600;0,800;1,600&display=swap">
 <style>
   /* Layout: one screen at a time, centered on a black arcade monitor */
   :root {
@@ -224,20 +224,58 @@
   .found:empty { display: none; }
   #bossScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
   #s9, #s10, #s11 { cursor: default; }
-  #vnScene { width: min(100%, 560px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); }
-  .vn-box {
-    position: relative; box-sizing: border-box; width: min(100%, 560px); min-height: 8.5em;
-    padding: 22px 16px 16px; background: #10131c; border: 3px solid var(--fg);
-    text-align: left; cursor: pointer;
+  /* Visual novel, mobile romance-story look: full-bleed art, big sprite, rounded speech bubble */
+  .novel { padding-block: 12px; }
+  .vn-stage {
+    --vn-teal: #1fa9b8; --vn-teal-dark: #127c88; --vn-ink: #1c2230; --vn-paper: #ffffff;
+    position: relative; width: min(100%, 440px); aspect-ratio: 2 / 3; max-height: calc(100vh - 24px);
+    overflow: hidden; border-radius: 14px; background: #0b0d14;
+    font-family: "Nunito", "Segoe UI", system-ui, sans-serif; text-align: left; user-select: none;
   }
+  .vn-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .4s; }
+  .vn-bg.dim { filter: brightness(.75) blur(1.5px); }
+  .vn-sprite {
+    position: absolute; bottom: 0; height: 86%; max-width: none;
+    filter: drop-shadow(0 0 10px rgba(31, 169, 184, .55));
+    animation: vn-in .35s ease-out;
+  }
+  .vn-sprite.left { left: -6%; }
+  .vn-sprite.right { right: -6%; }
+  .vn-sprite.leaving { animation: vn-out .6s ease-in forwards; }
+  @keyframes vn-in { from { opacity: 0; transform: translateY(12px); } }
+  @keyframes vn-out { to { opacity: 0; transform: translateX(-30px); } }
+  .vn-box {
+    position: absolute; left: 4%; right: 4%; bottom: 3.5%; min-height: 22%;
+    box-sizing: border-box; padding: 22px 18px 16px;
+    background: var(--vn-paper); border: 3px solid var(--vn-teal); border-radius: 16px;
+    box-shadow: 0 0 14px rgba(31, 169, 184, .6); cursor: pointer;
+  }
+  .vn-box::before {
+    content: ""; position: absolute; top: -16px; left: var(--tail, 22%);
+    border: 10px solid transparent; border-bottom: 14px solid var(--vn-teal); border-top: 0;
+  }
+  .vn-box.no-tail::before { display: none; }
+  .vn-box.narration { background: rgba(16, 20, 30, .88); border-color: rgba(255, 255, 255, .35); box-shadow: none; }
   .vn-box:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   .vn-name {
-    position: absolute; top: -14px; left: 12px; padding: 6px 10px;
-    background: var(--gold); color: var(--bg); font-size: 9px;
+    position: absolute; top: -15px; right: 16px; padding: 4px 18px;
+    background: var(--vn-teal); color: #fff; border-radius: 10px 10px 0 0;
+    font-weight: 800; font-size: 15px; letter-spacing: .02em;
   }
-  .vn-text { margin: 0; font-size: clamp(9px, 1.8vw, 12px); line-height: 2; color: var(--fg); }
-  .vn-text.narration { color: #a9b4c8; font-style: italic; }
-  .vn-next { position: absolute; right: 12px; bottom: 8px; font-size: 9px; color: var(--gold); animation: blink .8s steps(1) infinite; }
+  .vn-text { margin: 0; font-size: 17px; line-height: 1.4; font-weight: 600; color: var(--vn-ink); }
+  .vn-box.narration .vn-text { color: #e8edf5; font-style: italic; }
+  .vn-choices {
+    position: absolute; left: 6%; right: 6%; bottom: 30%;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .vn-choices button {
+    font: 600 16px "Nunito", "Segoe UI", system-ui, sans-serif; text-align: left;
+    color: #fff; background: linear-gradient(var(--vn-teal), var(--vn-teal-dark));
+    border: 2px solid rgba(255, 255, 255, .55); border-radius: 12px; padding: 12px 16px; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+  }
+  .vn-choices button:hover, .vn-choices button:focus-visible { border-color: #fff; outline: none; }
+  @media (max-width: 380px) { .vn-text { font-size: 15px; } .vn-choices button { font-size: 14px; } }
   #lessonCanvas { width: min(100%, 480px); aspect-ratio: 16 / 9; image-rendering: pixelated; border: 4px solid var(--fg); }
   #payScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
   .cat-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
@@ -402,14 +440,14 @@
 </section>
 
 <section class="screen novel" id="s11" hidden>
-  <div class="wrap">
-    <canvas id="vnScene" width="160" height="120" aria-label="Кабинет: на стоматологическом кресле полулежит ассистент, за компьютером сидит врач"></canvas>
+  <div class="vn-stage" id="vnStage">
+    <img class="vn-bg" id="vnBg" alt="">
+    <img class="vn-sprite" id="vnSprite" alt="" hidden>
+    <div class="vn-choices" id="vnChoices" hidden></div>
     <div class="vn-box" id="vnBox" role="button" tabindex="0" aria-label="Дальше">
       <span class="vn-name" id="vnName" hidden></span>
       <p class="vn-text" id="vnText"></p>
-      <span class="vn-next" id="vnNext">▼</span>
     </div>
-    <div class="choices" id="vnChoices" hidden></div>
   </div>
 </section>
 
@@ -1572,120 +1610,72 @@
   }
 
   // ---------- Arc: a visual novel in the office ----------
-  // You walk in at the wrong moment: the former assistant is lying in the dental chair as if at a
+  // Mobile romance-story style: illustrated background, a big character sprite, a speech bubble.
+  // You walk in at the wrong moment: the former assistant sprawls in the dental chair as if at a
   // psychologist's, talking; the doctor sits at the computer and says nothing.
+  const VN = "assets/vn/";
   const NOVEL = [
-    { text: "Ты заходишь в кабинет без стука. Кажется, не вовремя." },
-    { text: "На стоматологическом кресле, закинув ногу на ногу и руку за голову, как у психолога, полулежит ассистент. Тот самый, который давно уже не работает с ней. За столом у компьютера сидит врач." },
-    { who: "АССИСТЕНТ", side: "asst", text: "…и вот я всё это время хотел делать всё для вас. Понимаешь? Вообще всё." },
-    { who: "АССИСТЕНТ", side: "asst", text: "Я пробовал предугадывать. О чём вы думаете. Что вам подать, раньше, чем вы попросите. Что вы скажете, раньше, чем вы скажете." },
-    { who: "ВРАЧ", side: "doc", text: "…", emote: "typing" },
-    { who: "АССИСТЕНТ", side: "asst", text: "Но человек никогда не знает, о чём думает другой человек. Никогда." },
-    { who: "ВРАЧ", side: "doc", text: "*щёлк-щёлк по клавиатуре*", emote: "typing" },
-    { who: "АССИСТЕНТ", side: "asst", text: "А сейчас я начал делать то, что нужно именно мне. Не угадывать за других. И всё наладилось. И у тебя, и у меня." },
-    { who: "ВРАЧ", side: "doc", text: "…", emote: "typing" },
-    { text: "Они замечают тебя.", emote: "notice" },
-    { who: "АССИСТЕНТ", side: "asst", text: "О. Привет." },
-    { who: "ВРАЧ", side: "doc", text: "О, заходи-заходи! Знакомься: это наш самый ответственный ассистент. Золото, а не человек.", emote: "heart" },
-    { who: "ВРАЧ", side: "doc", text: "Ну ладно. Как обычно — всё за него сделаем.", emote: "heart",
-      choices: ["Я, наверное, попозже зайду", "…"] },
-    { text: "Ассистент неспешно встаёт с кресла, поправляет халат и уходит. Дверь закрывается.", leave: true },
-    { text: "Говорят, лет пять назад они работали вместе. Теперь не общаются." },
-    { who: "ВРАЧ", side: "doc", text: "Ответственный, ага. Он однажды перепутал оптрагейт с пылесосом. Лоток за собой не мыл. Расходники не считал. И вообще.", emote: "angry" },
-    { text: "При нём — ни одного плохого слова. Без него — ни одного хорошего.", emote: "angry" },
+    { bg: "cg", text: "Ты заходишь в кабинет без стука. Кажется, не вовремя." },
+    { bg: "cg", text: "На стоматологическом кресле, закинув ногу на ногу и руку за голову, как у психолога, развалился ассистент. Тот самый, который давно уже не работает с ней. За столом у компьютера сидит врач." },
+    { bg: "cg", who: "Ассистент", tail: "22%", text: "…и вот я всё это время хотел делать всё для вас. Понимаешь? Вообще всё." },
+    { bg: "cg", who: "Ассистент", tail: "22%", text: "Я пробовал предугадывать. О чём вы думаете. Что вам подать, раньше, чем вы попросите. Что вы скажете, раньше, чем вы скажете." },
+    { bg: "cg", who: "Врач", tail: "78%", text: "…" },
+    { bg: "cg", who: "Ассистент", tail: "22%", text: "Но человек никогда не знает, о чём думает другой человек. Никогда." },
+    { bg: "cg", who: "Врач", tail: "78%", text: "*щёлк-щёлк по клавиатуре*" },
+    { bg: "cg", who: "Ассистент", tail: "22%", text: "А сейчас я начал делать то, что нужно именно мне. Не угадывать за других. И всё наладилось. И у тебя, и у меня." },
+    { bg: "cg", who: "Врач", tail: "78%", text: "…" },
+    { bg: "bg", text: "Они замечают тебя." },
+    { bg: "bg", who: "Ассистент", sprite: "asst", side: "left", text: "О. Привет." },
+    { bg: "bg", who: "Врач", sprite: "doc_smile", side: "right", text: "О, заходи-заходи! Знакомься: это наш самый ответственный ассистент. Золото, а не человек." },
+    { bg: "bg", who: "Врач", sprite: "doc_smile", side: "right", text: "Ну ладно. Как обычно — всё за него сделаем.",
+      choices: ["Я, наверное, попозже зайду.", "…"] },
+    { bg: "bg", sprite: "asst", side: "left", leave: true, text: "Ассистент неспешно встаёт, поправляет халат и уходит. Дверь закрывается." },
+    { bg: "bg", text: "Говорят, лет пять назад они работали вместе. Теперь не общаются." },
+    { bg: "bg", who: "Врач", sprite: "doc_angry", side: "right", text: "Ответственный, ага. Он однажды перепутал оптрагейт с пылесосом. Лоток за собой не мыл. Расходники не считал. И вообще." },
+    { bg: "bg", sprite: "doc", side: "right", text: "При нём — ни одного плохого слова. Без него — ни одного хорошего." },
   ];
-  const vnCanvas = $("vnScene"), vctx = vnCanvas.getContext("2d");
-  let novel = null; // { i, asstAlpha, leaving, t0 }
+  // preload the art so lines switch without flicker
+  for (const n of ["bg", "cg", "asst", "doc", "doc_smile", "doc_angry"]) { const i = new Image(); i.src = VN + n + ".webp"; }
+  let novel = null; // { i }
   function startNovel() {
-    novel = { i: -1, asstAlpha: 1, leaving: false, t0: performance.now() };
+    novel = { i: -1 };
+    $("vnChoices").hidden = true;
     nextNovel();
-    requestAnimationFrame(novelLoop);
   }
   function nextNovel() {
     if (!$("vnChoices").hidden) return;     // answer the choice first
     novel.i++;
     if (novel.i >= NOVEL.length) return show(2);   // on to day 2
     const st = NOVEL[novel.i];
+    const bg = $("vnBg"), sp = $("vnSprite"), box = $("vnBox");
+    const bgSrc = VN + st.bg + ".webp";
+    if (!bg.src.endsWith(bgSrc)) bg.src = bgSrc;
+    bg.classList.toggle("dim", st.bg === "bg" && !!st.sprite);
+    if (st.sprite) {
+      const src = VN + st.sprite + ".webp";
+      if (sp.hidden || !sp.src.endsWith(src)) { sp.hidden = false; sp.src = src; sp.style.animation = "none"; void sp.offsetWidth; sp.style.animation = ""; }
+      sp.className = "vn-sprite " + st.side + (st.leave ? " leaving" : "");
+      sp.alt = st.who || "";
+    } else sp.hidden = true;
     $("vnName").hidden = !st.who;
     $("vnName").textContent = st.who || "";
     $("vnText").textContent = st.text;
-    $("vnText").classList.toggle("narration", !st.who);
-    if (st.leave) novel.leaving = true;
-    const box = $("vnChoices");
+    box.classList.toggle("narration", !st.who);
+    box.classList.toggle("no-tail", !st.who);
+    box.style.setProperty("--tail", st.tail || (st.side === "left" ? "22%" : "74%"));
+    const ch = $("vnChoices");
     if (st.choices) {
-      box.hidden = false; $("vnNext").hidden = true;
-      box.replaceChildren(...st.choices.map(c => {
+      ch.hidden = false;
+      ch.replaceChildren(...st.choices.map(c => {
         const b = document.createElement("button");
-        b.type = "button"; b.className = "btn btn-ghost"; b.textContent = c;
-        b.addEventListener("click", () => { box.hidden = true; $("vnNext").hidden = false; nextNovel(); });
+        b.type = "button"; b.textContent = c;
+        b.addEventListener("click", e => { e.stopPropagation(); ch.hidden = true; nextNovel(); });
         return b;
       }));
-    }
+    } else ch.hidden = true;
   }
   $("vnBox").addEventListener("click", nextNovel);
   $("vnBox").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nextNovel(); } });
-
-  function px(c, color, x, y, w = 1, h = 1) { c.fillStyle = color; c.fillRect(x, y, w, h); }
-  function emoteBubble(c, x, y, kind, now) {
-    px(c, "#ffffff", x, y, 13, 10); px(c, "#ffffff", x + 3, y + 10, 3, 2);
-    px(c, "#20242c", x - 1, y, 1, 10); px(c, "#20242c", x + 13, y, 1, 10); px(c, "#20242c", x, y - 1, 13, 1); px(c, "#20242c", x, y + 10, 3, 1); px(c, "#20242c", x + 6, y + 10, 7, 1);
-    if (kind === "heart") { px(c, "#ff3b6b", x + 3, y + 3, 3, 2); px(c, "#ff3b6b", x + 7, y + 3, 3, 2); px(c, "#ff3b6b", x + 3, y + 5, 7, 1); px(c, "#ff3b6b", x + 4, y + 6, 5, 1); px(c, "#ff3b6b", x + 5, y + 7, 3, 1); }
-    if (kind === "angry") { px(c, "#d0141e", x + 3, y + 2, 2, 2); px(c, "#d0141e", x + 8, y + 2, 2, 2); px(c, "#d0141e", x + 5, y + 4, 3, 2); px(c, "#d0141e", x + 3, y + 6, 2, 2); px(c, "#d0141e", x + 8, y + 6, 2, 2); }
-    if (kind === "typing" || kind === "dots") { const n = Math.floor(now / 300) % 4; for (let k = 0; k < n; k++) px(c, "#20242c", x + 2 + k * 3, y + 5, 2, 2); }
-    if (kind === "notice") { px(c, "#d0141e", x + 6, y + 2, 2, 5); px(c, "#d0141e", x + 6, y + 8, 2, 1); }
-  }
-  function novelLoop(now) {
-    if (current !== 10 || !novel) return;
-    const c = vctx, st = NOVEL[novel.i] || {};
-    // room
-    px(c, "#c9d3dc", 0, 0, 160, 84); px(c, "#b3bfca", 0, 80, 160, 4);
-    px(c, "#8a7f73", 0, 84, 160, 36);
-    for (let x = 0; x < 160; x += 16) px(c, "#7d7368", x, 84, 1, 36);
-    px(c, "#5c4a3a", 104, 14, 26, 18); px(c, "#f4efe0", 106, 16, 22, 14);           // diploma on the wall
-    px(c, "#20242c", 109, 19, 16, 1); px(c, "#20242c", 109, 22, 12, 1); px(c, "#d0141e", 120, 25, 4, 4);
-    px(c, "#eef3fa", 30, 8, 22, 5); px(c, "#ffffff", 32, 9, 18, 3);                 // operating lamp
-    px(c, "#7a8090", 40, 13, 2, 12);
-    // dental chair
-    px(c, "#7a8090", 38, 92, 6, 18); px(c, "#5c6370", 28, 108, 26, 4);
-    px(c, "#2bb3a3", 10, 66, 16, 6); px(c, "#2bb3a3", 22, 72, 30, 8); px(c, "#2bb3a3", 50, 78, 22, 6);
-    px(c, "#1f8a7e", 22, 80, 30, 2);
-    // the former assistant, reclining like on a therapist's couch
-    if (novel.leaving) novel.asstAlpha = Math.max(0, novel.asstAlpha - 0.02);
-    if (novel.asstAlpha > 0) {
-      c.globalAlpha = novel.asstAlpha;
-      const talk = st.side === "asst" && Math.floor(now / 180) % 2 === 0 ? 1 : 0;
-      px(c, "#f2c49b", 12, 56, 9, 9);                     // head
-      px(c, "#3a2a1e", 12, 54, 9, 3);                     // hair
-      px(c, "#20242c", 18, 59, 1, 1);                     // eye
-      px(c, "#7a2a2a", 18, 62 + talk, 2, 1);              // mouth
-      px(c, "#4aa8ff", 20, 64, 26, 9);                    // scrubs, lying along the chair
-      px(c, "#4aa8ff", 8, 50, 4, 10); px(c, "#f2c49b", 8, 48, 4, 3);   // arm behind the head
-      px(c, "#3a6fb0", 44, 66, 12, 6); px(c, "#3a6fb0", 54, 60, 6, 8); // one knee up
-      px(c, "#3a6fb0", 56, 72, 18, 5);                    // the other leg, crossed
-      px(c, "#20242c", 58, 58, 6, 3); px(c, "#20242c", 72, 70, 6, 4);  // shoes
-      if (st.side === "asst") emoteBubble(c, 22, 38, "dots", now);
-      c.globalAlpha = 1;
-    }
-    // desk with a computer, the doctor at it
-    px(c, "#6b4a32", 96, 74, 60, 5); px(c, "#5a3d29", 98, 79, 4, 22); px(c, "#5a3d29", 150, 79, 4, 22);
-    px(c, "#20242c", 122, 50, 28, 20); px(c, "#4aa8ff", 124, 52, 24, 16); px(c, "#bfe8ff", 126, 54, 12, 2); px(c, "#bfe8ff", 126, 58, 18, 1); px(c, "#bfe8ff", 126, 61, 15, 1);
-    px(c, "#20242c", 134, 70, 4, 4); px(c, "#c8cdd6", 112, 72, 14, 2);   // stand, keyboard
-    px(c, "#3a3f4a", 96, 80, 16, 4); px(c, "#3a3f4a", 102, 84, 3, 14);   // office chair
-    const typing = st.emote === "typing" || st.side !== "doc";
-    const hand = typing && Math.floor(now / 140) % 2 === 0 ? 1 : 0;
-    px(c, "#f4f4f4", 96, 58, 14, 22);                   // white coat
-    px(c, "#f2c49b", 100, 46, 10, 11);                  // head
-    px(c, "#2a1a14", 98, 44, 13, 5); px(c, "#2a1a14", 98, 48, 4, 8); px(c, "#2a1a14", 95, 45, 5, 5);   // hair with a bun
-    px(c, "#20242c", 107, 50, 1, 1);                    // eye (facing the screen)
-    px(c, "#f4f4f4", 108, 64, 8, 4); px(c, "#f2c49b", 115, 70 - hand, 3, 3);   // arm to the keyboard
-    px(c, "#20242c", 98, 80, 12, 6);                    // trousers
-    if (st.side === "doc" || st.emote) {
-      const kind = st.emote === "notice" ? "notice" : st.emote || "dots";
-      if (st.side === "doc" || st.emote === "notice" || st.emote === "angry") emoteBubble(c, 104, 30, kind, now);
-      if (st.emote === "notice" && novel.asstAlpha > 0) emoteBubble(c, 16, 38, "notice", now);
-    }
-    requestAnimationFrame(novelLoop);
-  }
 
   // ---------- The boss's visitor: a cutscene in the throne room ----------
   // A bald man in a black suit and sunglasses asks the cat to "add a zero" to the report.
