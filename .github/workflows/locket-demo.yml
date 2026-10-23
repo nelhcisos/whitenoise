@@ -40,6 +40,18 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Check that Appetize accepts the token
+        if: steps.token.outputs.present == 'true'
+        run: |
+          token=$(printf '%s' "$APPETIZE_API_TOKEN" | tr -d '[:space:]')
+          echo "Token: ${#token} characters"
+          code=$(curl -sS -o "$RUNNER_TEMP/check.json" -w '%{http_code}' https://api.appetize.io/v1/apps -H "X-API-KEY: $token")
+          echo "Appetize answered HTTP $code: $(head -c 300 "$RUNNER_TEMP/check.json")"
+          if [ "$code" != "200" ]; then
+            echo "::error title=Appetize не принял токен::HTTP $code. Создай токен заново (Organization → API Tokens) и обнови секрет APPETIZE_API_TOKEN."
+            exit 1
+          fi
+
       - name: Build the demo for the simulator
         if: steps.token.outputs.present == 'true'
         run: |
@@ -66,24 +78,38 @@ jobs:
       - name: Upload to Appetize
         if: steps.token.outputs.present == 'true'
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          # A token pasted from a phone often carries a trailing space or newline.
+          token=$(printf '%s' "$APPETIZE_API_TOKEN" | tr -d '[:space:]')
+          echo "Token: ${#token} characters"
           products="$RUNNER_TEMP/dd/Build/Products/Release-iphonesimulator"
           (cd "$products" && zip -qry "$RUNNER_TEMP/Locket-demo.zip" Locket.app)
+          ls -lh "$RUNNER_TEMP/Locket-demo.zip"
           api=https://api.appetize.io/v1/apps
+
           # Reuse the app uploaded before, so the link never changes.
-          key=$(curl -sS --fail-with-body "$api" -H "X-API-KEY: $APPETIZE_API_TOKEN" \
-            | jq -r '[.data[]? | select(.note == "Locket demo")][0].publicKey // empty')
+          code=$(curl -sS -o "$RUNNER_TEMP/apps.json" -w '%{http_code}' "$api" -H "X-API-KEY: $token")
+          if [ "$code" != "200" ]; then
+            echo "::error title=Appetize не принял токен::Список приложений: HTTP $code — $(head -c 500 "$RUNNER_TEMP/apps.json")"
+            exit 1
+          fi
+          key=$(jq -r '[.data[]? | select(.note == "Locket demo")][0].publicKey // empty' "$RUNNER_TEMP/apps.json")
           target=$api
           if [ -n "$key" ]; then target="$api/$key"; fi
-          response=$(curl -sS --fail-with-body -X POST "$target" \
-            -H "X-API-KEY: $APPETIZE_API_TOKEN" \
+
+          code=$(curl -sS -o "$RUNNER_TEMP/upload.json" -w '%{http_code}' -X POST "$target" \
+            -H "X-API-KEY: $token" \
             -F "file=@$RUNNER_TEMP/Locket-demo.zip" \
             -F "platform=ios" \
             -F "note=Locket demo" \
             -F "appPermissions.run=public")
-          key=$(echo "$response" | jq -r '.publicKey')
-          if [ -z "$key" ] || [ "$key" = "null" ]; then
-            echo "Appetize did not return a publicKey: $response"
+          if [ "$code" != "200" ]; then
+            echo "::error title=Загрузка в Appetize не удалась::HTTP $code — $(head -c 500 "$RUNNER_TEMP/upload.json")"
+            exit 1
+          fi
+          key=$(jq -r '.publicKey // empty' "$RUNNER_TEMP/upload.json")
+          if [ -z "$key" ]; then
+            echo "::error::Appetize не вернул publicKey: $(head -c 500 "$RUNNER_TEMP/upload.json")"
             exit 1
           fi
           link="https://appetize.io/app/$key"
