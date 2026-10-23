@@ -175,7 +175,13 @@ struct CameraScreen: View {
                 .foregroundStyle(Palette.muted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            if opensSettings {
+            if AppConfig.isDemo {
+                // The browser demo has no camera: a generated picture stands in for a shot.
+                Button("Сделать демо-фото") {
+                    withAnimation(motion) { captured = DemoArt.samplePhoto() }
+                }
+                .buttonStyle(LocketButtonStyle(.secondary, fullWidth: false))
+            } else if opensSettings {
                 Button("Открыть настройки") { openSettings() }
                     .buttonStyle(LocketButtonStyle(.secondary, fullWidth: false))
             }

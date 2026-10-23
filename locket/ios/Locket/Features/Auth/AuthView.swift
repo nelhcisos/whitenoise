@@ -51,6 +51,13 @@ struct AuthView: View {
                 .foregroundStyle(Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if AppConfig.isDemo {
+                Label("Демо: пароль 1234 — готовый аккаунт «барсук», любой другой — новый аккаунт.", systemImage: "info.circle")
+                    .font(.footnote)
+                    .foregroundStyle(Palette.text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Button(action: submit) {
                 ButtonLabel(title: "Войти", isLoading: busy)
             }

@@ -176,7 +176,8 @@ final class AppModel {
         if let old = me, old.user.id != newMe.user.id { resetUserData() }
         me = newMe
         phase = newMe.user.username == nil ? .needsUsername : .ready
-        if phase == .ready {
+        // The browser demo has no pushes: skip the permission prompt there.
+        if phase == .ready && !AppConfig.isDemo {
             Task { await PushRegistrar.requestPermissionAndRegister() }
         }
     }

@@ -55,18 +55,26 @@ final class APIClient: @unchecked Sendable {
         }
 
         let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch let error as URLError where error.code == .cancelled {
-            throw CancellationError()
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            throw APIError.offline
+        let status: Int
+        if AppConfig.isDemo {
+            // Browser demo: the in-app stand-in answers like the server would.
+            let answer = await DemoBackend.shared.respond(method: method, path: path, query: query, body: request.httpBody)
+            data = answer.data
+            status = answer.status
+        } else {
+            let response: URLResponse
+            do {
+                (data, response) = try await URLSession.shared.data(for: request)
+            } catch let error as URLError where error.code == .cancelled {
+                throw CancellationError()
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                throw APIError.offline
+            }
+            status = (response as? HTTPURLResponse)?.statusCode ?? 0
         }
 
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
             // A wrong password on api/auth/* is the server's own message, not a lapsed session.
             if status == 401 && !path.hasPrefix("api/auth/") { throw APIError.unauthorized }

@@ -1,0 +1,97 @@
+name: Locket → demo in the browser
+
+# Builds the app in demo mode (no server: data lives in the app) for the iOS
+# simulator and uploads it to Appetize, which streams it to a web page.
+# Needs the repository secret APPETIZE_API_TOKEN (see locket/README.md).
+# The link stays the same between builds; it is printed in the run summary.
+
+on:
+  push:
+    paths:
+      - "locket/ios/**"
+      - ".github/workflows/locket-demo.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: locket-demo
+  cancel-in-progress: true
+
+jobs:
+  demo:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: locket/ios
+    env:
+      APPETIZE_API_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check the Appetize token
+        id: token
+        run: |
+          if [ -z "$APPETIZE_API_TOKEN" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Демо не загружено"
+              echo "Добавь секрет **APPETIZE_API_TOKEN** — как это сделать, написано в locket/README.md, раздел «Демо в браузере»."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the demo for the simulator
+        if: steps.token.outputs.present == 'true'
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          set +e
+          xcodebuild build \
+            -project Locket.xcodeproj \
+            -scheme Locket \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            LOCKET_DEMO=YES \
+            BUNDLE_ID=com.example.locketdemo \
+            API_BASE_URL=https://demo.invalid > demo.log 2>&1
+          status=$?
+          grep -E "/locket/ios/.*: (warning|error):" demo.log | sort -u
+          tail -n 20 demo.log
+          exit $status
+
+      - name: Upload to Appetize
+        if: steps.token.outputs.present == 'true'
+        run: |
+          set -euo pipefail
+          products="$RUNNER_TEMP/dd/Build/Products/Release-iphonesimulator"
+          (cd "$products" && zip -qry "$RUNNER_TEMP/Locket-demo.zip" Locket.app)
+          api=https://api.appetize.io/v1/apps
+          # Reuse the app uploaded before, so the link never changes.
+          key=$(curl -sS --fail-with-body "$api" -H "X-API-KEY: $APPETIZE_API_TOKEN" \
+            | jq -r '[.data[]? | select(.note == "Locket demo")][0].publicKey // empty')
+          target=$api
+          if [ -n "$key" ]; then target="$api/$key"; fi
+          response=$(curl -sS --fail-with-body -X POST "$target" \
+            -H "X-API-KEY: $APPETIZE_API_TOKEN" \
+            -F "file=@$RUNNER_TEMP/Locket-demo.zip" \
+            -F "platform=ios" \
+            -F "note=Locket demo" \
+            -F "appPermissions.run=public")
+          key=$(echo "$response" | jq -r '.publicKey')
+          if [ -z "$key" ] || [ "$key" = "null" ]; then
+            echo "Appetize did not return a publicKey: $response"
+            exit 1
+          fi
+          link="https://appetize.io/app/$key"
+          echo "::notice title=Демо в браузере::$link"
+          {
+            echo "### Демо Locket в браузере"
+            echo ""
+            echo "$link"
+            echo ""
+            echo "Пароль **1234** — готовый аккаунт «барсук». Любой другой — новый аккаунт."
+          } >> "$GITHUB_STEP_SUMMARY"
