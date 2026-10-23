@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 export const CATEGORY_RATE_PHOTO = 'PHOTO_RATING';
 export const CATEGORY_WEEKLY = 'WEEKLY_RESULTS';
 export const CATEGORY_FRIEND_REQUEST = 'FRIEND_REQUEST'; // has the «Принять» button
+export const CATEGORY_DUEL = 'FRIEND_DUEL'; // «Кто лучше?»: the content extension shows two friends
 
 // Reaction marks are the app's rating scale (data), the only emoji in push copy.
 const EMOJI = { creative: '✍️', funny: '😂', wild: '🫪' };
@@ -106,6 +107,7 @@ export function weeklyResultsMessage(results) {
   const lines = [];
   if (results.friendOfWeek) lines.push(`Друг недели — ${results.friendOfWeek.name}`);
   if (results.bestPhoto) lines.push(`Фото недели — ${results.bestPhoto.authorName}`);
+  if (results.favoriteFriend) lines.push(`Самый любимый друг — ${results.favoriteFriend.name}`);
   const nominations = [
     results.mostCreative && `✍️ ${results.mostCreative.name}`,
     results.mostFunny && `😂 ${results.mostFunny.name}`,
@@ -141,6 +143,22 @@ export function reminderMessage({ unrated, locked = 0, hours }) {
   return {
     aps: { alert: { title: `До итогов недели ${hours}${NBSP}ч`, body }, sound: 'default', 'thread-id': 'weekly' },
     type: 'reminder',
+  };
+}
+
+// Once a day at a random moment: pick one of two friends. Long-press shows both.
+export function duelMessage(duel) {
+  return {
+    aps: {
+      alert: { title: 'Кто лучше?', body: `${duel.left.username} или ${duel.right.username} — выбери одного` },
+      sound: 'default',
+      category: CATEGORY_DUEL,
+      'thread-id': 'duel',
+    },
+    type: 'duel',
+    duelId: duel.id,
+    left: duel.left,
+    right: duel.right,
   };
 }
 

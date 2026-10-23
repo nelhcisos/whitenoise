@@ -39,7 +39,9 @@ async function harness(t, overrides = {}) {
     ...overrides,
   };
   const log = { info() {}, warn() {}, error: console.error };
-  const app = createApp({ config, db: openDb(':memory:'), apns, now: () => clock.now, log });
+  // Fixed "randomness": duels go out halfway through their window, pairs are predictable.
+  const randomValues = { next: overrides.random ?? (() => 0.5) };
+  const app = createApp({ config, db: openDb(':memory:'), apns, now: () => clock.now, log, random: () => randomValues.next() });
   const server = http.createServer(app.handle);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -95,7 +97,7 @@ async function harness(t, overrides = {}) {
   const pushesTo = (deviceToken) => sent.filter((s) => s.token === deviceToken).map((s) => s.payload);
   const lastPushTo = (deviceToken) => pushesTo(deviceToken).at(-1);
 
-  return { app, api, sent, deadTokens, clock, config, signUp, befriend, upload, feedOf, pushesTo, lastPushTo };
+  return { app, api, sent, deadTokens, clock, config, signUp, befriend, upload, feedOf, pushesTo, lastPushTo, random: randomValues };
 }
 
 test('the password is the account: new → first photo → username → back in by password alone', async (t) => {
@@ -598,15 +600,16 @@ test('a full week: photos, ratings on the lock screen, reminder, awards', async 
   h.clock.now = Date.UTC(2026, 9, 18, 18, 0, 30);
   sent.length = 0;
   await h.app.runDue();
-  assert.equal(sent.length, 3);
-  const weekly = lastPushTo(token('c'));
+  const weeklies = () => sent.filter((s) => s.payload.type === 'weekly');
+  assert.equal(weeklies().length, 3);
+  const weekly = weeklies().find((s) => s.token === token('c')).payload;
   assert.equal(weekly.aps.alert.title, 'Итоги недели');
   assert.equal(weekly.aps.alert.body, 'Друг недели — барсук\nФото недели — барсук\n✍️ барсук · 😂 ярослава · 🫪 барсук · самый активный — ёжик');
   assert.equal(weekly.aps.category, 'WEEKLY_RESULTS');
   assert.equal(weekly.weekId, '2026-W42');
   assert.equal(weekly.imageUrl, p1.imageUrl);
   await h.app.runDue();
-  assert.equal(sent.length, 3, 'results are announced once');
+  assert.equal(weeklies().length, 3, 'results are announced once');
 
   const weeks = (await api('GET', '/api/weeks', { auth: petya.token })).body.weeks;
   assert.deepEqual(weeks.map((w) => w.weekId), ['2026-W42', '2026-W41']);
@@ -707,4 +710,89 @@ test('rate your day: 1–5 stars, what got in the way or what you liked, private
   assert.equal((await put(me, '2026-12-31', { stars: 3 })).body.error, 'Эту дату оценить нельзя');
   assert.equal((await put(me, '2026-10-16', { stars: 3 })).status, 200, 'tomorrow is fine: time zones');
   assert.equal((await api('PUT', '/api/days/2026-10-14', { json: { stars: 3 } })).status, 401);
+});
+
+test('«Кто лучше?»: once a day at a random moment, pick one of two friends; the favourite is announced, the rest stays secret', async (t) => {
+  const h = await harness(t);
+  const { api } = h;
+  const me = await h.signUp('me-pass', 'барсук', { device: token('a') });
+  const yara = await h.signUp('yara-pass', 'ярослава', { device: token('b') });
+  const ezh = await h.signUp('ezh-pass', 'ёжик');
+  const dobr = await h.signUp('dobr-pass', 'добрыня');
+  await h.befriend(me, yara);
+  await h.befriend(me, ezh);
+  await h.befriend(me, dobr);
+  const names = new Map([[yara.id, 'ярослава'], [ezh.id, 'ёжик'], [dobr.id, 'добрыня']]);
+  const at = (day, hour, minute = 0) => Date.UTC(2026, 9, day, hour - 3, minute); // Moscow time
+  const today = (who) => api('GET', '/api/duels/today', { auth: who.token });
+  const choose = (who, id, pick) => api('POST', `/api/duels/${id}/choice`, { auth: who.token, json: { pick } });
+
+  // Wednesday 12:00: planned for a random moment before 21:00 (here halfway: 16:30), not sent yet.
+  h.clock.now = at(14, 12);
+  await h.app.runDue();
+  assert.deepEqual((await today(me)).body, { duel: null }, 'the moment stays a surprise');
+  const planned = h.app.store.duelFor(me.id, '2026-10-14');
+  assert.equal(planned.sendAt, at(14, 16, 30));
+  assert.equal((await choose(me, planned.id, 'left')).status, 404, 'not sent yet');
+
+  h.clock.now = at(14, 16, 30);
+  h.sent.length = 0;
+  await h.app.runDue();
+  const push = h.lastPushTo(token('a'));
+  assert.equal(push.type, 'duel');
+  assert.equal(push.aps.category, 'FRIEND_DUEL');
+  assert.equal(push.aps.alert.title, 'Кто лучше?');
+  assert.equal(push.aps.alert.body, `${push.left.username} или ${push.right.username} — выбери одного`);
+  assert.notEqual(push.left.id, push.right.id);
+  assert.equal(names.get(push.left.id), push.left.username);
+  assert.equal(names.get(push.right.id), push.right.username);
+  assert.equal(push.duelId, planned.id);
+  assert.equal(h.pushesTo(token('b')).length, 0, 'ярослава has one friend: no pair to choose from');
+
+  let duel = (await today(me)).body.duel;
+  assert.deepEqual(duel, { id: planned.id, date: '2026-10-14', left: push.left, right: push.right, choice: null });
+  assert.equal((await choose(yara, duel.id, 'left')).status, 404, "someone else's pick");
+  assert.equal((await choose(me, duel.id, 'middle')).body.error, 'Выбери левого или правого');
+  const favourite = duel.left;
+  duel = (await choose(me, duel.id, 'left')).body.duel;
+  assert.equal(duel.choice, 'left');
+  assert.equal((await choose(me, duel.id, 'right')).body.error, 'Выбор уже сделан');
+
+  // Once a day only.
+  await h.app.runDue();
+  h.clock.now = at(14, 20);
+  await h.app.runDue();
+  assert.equal(h.pushesTo(token('a')).filter((p) => p.type === 'duel').length, 1);
+
+  // Thursday: the same pair comes up (fixed randomness), the same friend wins again.
+  h.clock.now = at(15, 9);
+  await h.app.runDue();
+  assert.equal(h.app.store.duelFor(me.id, '2026-10-15').sendAt, at(15, 16), 'before 11:00 the window is 11:00–21:00');
+  h.clock.now = at(15, 16);
+  await h.app.runDue();
+  duel = (await today(me)).body.duel;
+  await choose(me, duel.id, duel.left.id === favourite.id ? 'left' : 'right');
+
+  // Friday: two friends removed before the moment, so no pair is left and nothing is sent.
+  h.clock.now = at(16, 12);
+  await h.app.runDue();
+  await api('DELETE', `/api/friends/${ezh.id}`, { auth: me.token });
+  await api('DELETE', `/api/friends/${dobr.id}`, { auth: me.token });
+  h.clock.now = at(16, 17);
+  const before = h.pushesTo(token('a')).length;
+  await h.app.runDue();
+  assert.equal(h.pushesTo(token('a')).length, before);
+  assert.deepEqual((await today(me)).body, { duel: null });
+  await h.befriend(me, ezh);
+  await h.befriend(me, dobr);
+
+  // The week's results name the favourite, with nothing about the others.
+  const live = (await api('GET', '/api/week/current', { auth: me.token })).body;
+  assert.deepEqual(live.favoriteFriend, { userId: favourite.id, name: favourite.username, value: 2 });
+  assert.ok(!JSON.stringify(live).includes('picks'));
+
+  h.clock.now = Date.UTC(2026, 9, 18, 18, 0, 30);
+  await h.app.runDue();
+  const weekly = h.pushesTo(token('a')).find((p) => p.type === 'weekly');
+  assert.ok(weekly.aps.alert.body.includes(`Самый любимый друг — ${favourite.username}`));
 });

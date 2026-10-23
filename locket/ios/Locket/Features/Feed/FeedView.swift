@@ -49,6 +49,10 @@ struct FeedView: View {
 
     @ViewBuilder
     private var content: some View {
+        if let duel = model.todayDuel, duel.choice == nil {
+            DuelPrompt(duel: duel)
+                .padding(.horizontal, Space.margin)
+        }
         if model.friends.isEmpty {
             // Without friends the feed holds only your own photos (a new account starts
             // with one), so this shows above them, not only when the feed is empty.
@@ -560,5 +564,50 @@ private struct PhotoCardSkeleton: View {
             }
         }
         .padding(.horizontal, Space.margin)
+    }
+}
+
+/// Today's «Кто лучше?» when it wasn't answered from the lock screen.
+private struct DuelPrompt: View {
+    @Environment(AppModel.self) private var model
+    let duel: Duel
+    @State private var busy = false
+    @State private var error: String?
+
+    var body: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Кто лучше?")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Palette.text)
+                    .accessibilityAddTraits(.isHeader)
+                Text("Выбери одного — кого не выбрал, никто не узнает")
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            DuelChoiceView(duel: duel, busy: busy) { pick in
+                Task { await choose(pick) }
+            }
+            if let error {
+                Label(error, systemImage: "exclamationmark.circle")
+                    .font(.footnote)
+                    .foregroundStyle(Palette.negative)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func choose(_ pick: DuelPick) async {
+        guard !busy else { return }
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            try await model.chooseDuel(pick)
+        } catch is CancellationError {
+        } catch {
+            self.error = "Не сохранилось: \(error.localizedDescription)"
+        }
     }
 }

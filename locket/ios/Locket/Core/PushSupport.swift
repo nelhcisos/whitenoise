@@ -30,7 +30,15 @@ enum PushCategories {
             hiddenPreviewsBodyPlaceholder: "Оцени свой день",
             options: []
         )
-        return [rate, weekly, friend, day]
+        // «Кто лучше?»: a long-press shows the two friends to pick from.
+        let duel = UNNotificationCategory(
+            identifier: DuelID.category,
+            actions: [],
+            intentIdentifiers: [],
+            hiddenPreviewsBodyPlaceholder: "Кто лучше?",
+            options: []
+        )
+        return [rate, weekly, friend, day, duel]
     }
 }
 

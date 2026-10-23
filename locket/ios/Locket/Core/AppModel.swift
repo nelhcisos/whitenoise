@@ -46,6 +46,8 @@ final class AppModel {
     /// Friends and requests, for the Friends tab.
     private(set) var social: FriendsResponse?
     private(set) var socialState: LoadState = .idle
+    /// Today's «Кто лучше?» once it has arrived: shown at the top of the feed until you pick.
+    private(set) var todayDuel: Duel?
     /// Your rated days, newest first: private, only you see them.
     private(set) var days: [DayRating] = []
     private(set) var daysState: LoadState = .idle
@@ -174,6 +176,7 @@ final class AppModel {
         socialState = .idle
         days = []
         daysState = .idle
+        todayDuel = nil
         WidgetRefresh.now()
     }
 
@@ -206,6 +209,29 @@ final class AppModel {
         await refreshWeek()
         await refreshSocial()
         await refreshDays()
+        await refreshDuel()
+    }
+
+    // MARK: - «Кто лучше?»
+
+    /// A background load: nothing to show on failure, the card simply doesn't appear.
+    func refreshDuel() async {
+        guard phase == .ready else { return }
+        do {
+            todayDuel = try await api.todayDuel()
+        } catch {
+            _ = loadFailure(error)
+        }
+    }
+
+    /// Throws so the card can say what went wrong.
+    func chooseDuel(_ pick: DuelPick) async throws {
+        guard let duel = todayDuel, duel.choice == nil else { return }
+        let saved = try await signedIn { try await self.api.chooseDuel(id: duel.id, pick: pick) }
+        todayDuel = saved
+        if let name = saved?.chosen?.username {
+            show(toast: "Выбор сохранён: \(name)")
+        }
     }
 
     // MARK: - Day rating
@@ -460,6 +486,8 @@ final class AppModel {
             }
         case "weekly":
             Task { await refreshWeek() }
+        case "duel":
+            Task { await refreshDuel() }
         default:
             break
         }
@@ -499,6 +527,10 @@ final class AppModel {
         case "day":
             selectedTab = .day
             Task { await refreshDays() }
+        case "duel":
+            // The pick waits at the top of the feed.
+            selectedTab = .feed
+            Task { await refreshDuel() }
         default:
             break
         }

@@ -23,6 +23,11 @@ export function loadConfig(env = process.env) {
       endHour: Number(env.WEEK_END_HOUR ?? 21),
     },
     reminderHoursBefore: Number(env.REMINDER_HOURS_BEFORE ?? 3),
+    // «Кто лучше?» arrives once a day at a random moment between these local hours.
+    duel: {
+      fromHour: Number(env.DUEL_FROM_HOUR ?? 11),
+      toHour: Number(env.DUEL_TO_HOUR ?? 21),
+    },
     apns: readApnsConfig(env),
   };
 }

@@ -5,13 +5,16 @@ import UserNotificationsUI
 
 /// Shown when a notification is long-pressed (also on the lock screen):
 /// - a new photo: the photo, ⭐ 1–3 and ✍️ 😂 🫪;
-/// - the evening «Оцени свой день»: 1–5 stars and what got in the way.
+/// - the evening «Оцени свой день»: 1–5 stars and what got in the way;
+/// - «Кто лучше?»: two friends, pick one.
 /// Taps go straight to the server; the app stays closed.
 final class NotificationViewController: UIViewController, UNNotificationContentExtension {
     private let model = RatingCardModel()
     private let dayModel = DayCardModel()
-    private var isDay = false
-    private var dayHeight: CGFloat = 0
+    private let duelModel = DuelCardModel()
+    /// The day and duel cards report their own height; the photo card is computed.
+    private var isMeasured = false
+    private var cardHeight: CGFloat = 0
     private var host: UIViewController?
 
     override func viewDidLoad() {
@@ -46,9 +49,9 @@ final class NotificationViewController: UIViewController, UNNotificationContentE
         let width = view.bounds.width
         guard width > 0 else { return }
         let size: CGSize
-        if isDay {
-            // The day card grows with its chips; it reports its own height.
-            size = CGSize(width: width, height: max(dayHeight, 160))
+        if isMeasured {
+            // The day card grows with its chips; both cards report their own height.
+            size = CGSize(width: width, height: max(cardHeight, 160))
         } else {
             // Square photo plus header, two button rows and the status line.
             size = CGSize(width: width, height: width + RatingCard.extraHeight)
@@ -59,12 +62,19 @@ final class NotificationViewController: UIViewController, UNNotificationContentE
     func didReceive(_ notification: UNNotification) {
         let content = notification.request.content
         if content.categoryIdentifier == DayReminderID.category {
-            isDay = true
+            isMeasured = true
             dayModel.show(day: notification.date)
             embed(DayRatingCard(model: dayModel, openApp: { [weak self] in self?.openApp() }, onHeight: { [weak self] height in
-                guard let self, abs(self.dayHeight - height) > 0.5 else { return }
-                self.dayHeight = height
-                self.view.setNeedsLayout()
+                self?.cardHeightChanged(height)
+            }))
+            view.setNeedsLayout()
+            return
+        }
+        if content.categoryIdentifier == DuelID.category {
+            isMeasured = true
+            duelModel.duel = Self.duel(from: content.userInfo)
+            embed(DuelCard(model: duelModel, openApp: { [weak self] in self?.openApp() }, onHeight: { [weak self] height in
+                self?.cardHeightChanged(height)
             }))
             view.setNeedsLayout()
             return
@@ -86,6 +96,24 @@ final class NotificationViewController: UIViewController, UNNotificationContentE
                 }
             }
         }
+    }
+
+    private func cardHeightChanged(_ height: CGFloat) {
+        guard abs(cardHeight - height) > 0.5 else { return }
+        cardHeight = height
+        view.setNeedsLayout()
+    }
+
+    /// The push's duelId, left and right ({id, username}).
+    private static func duel(from info: [AnyHashable: Any]) -> Duel? {
+        func person(_ key: String) -> DuelPerson? {
+            guard let raw = info[key] as? [String: Any],
+                  let id = raw["id"] as? String,
+                  let username = raw["username"] as? String else { return nil }
+            return DuelPerson(id: id, username: username)
+        }
+        guard let id = info["duelId"] as? String, let left = person("left"), let right = person("right") else { return nil }
+        return Duel(id: id, date: "", left: left, right: right, choice: nil)
     }
 
     private static func loadImage(_ url: URL) -> UIImage? {

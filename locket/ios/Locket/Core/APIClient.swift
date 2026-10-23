@@ -210,6 +210,17 @@ extension APIClient {
         return response.days
     }
 
+    /// Today's «Кто лучше?», once it has been sent; nil otherwise.
+    func todayDuel() async throws -> Duel? {
+        let response: DuelResponse = try await request("GET", "api/duels/today")
+        return response.duel
+    }
+
+    func chooseDuel(id: String, pick: DuelPick) async throws -> Duel? {
+        let response: DuelResponse = try await request("POST", "api/duels/\(segment(id))/choice", json: ["pick": pick.rawValue])
+        return response.duel
+    }
+
     func currentWeek() async throws -> WeekResults {
         try await request("GET", "api/week/current")
     }

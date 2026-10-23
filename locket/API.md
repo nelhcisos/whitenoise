@@ -199,11 +199,24 @@ Photo = {
 **`GET /api/weeks`** → `{ "weeks": [WeekResults] }` — снимки закрытых недель этого зрителя, от новых, не больше 52.
 **`GET /api/weeks/:weekId`** → снимок, или живые итоги текущей недели, или `404 Неделя не найдена`.
 
-Форма `WeekResults` прежняя: `weekId`, `startsAt`, `endsAt`, `closedAt`, `photoCount`, `leaderboard`, `bestPhoto`, `friendOfWeek`, `mostCreative`, `mostFunny`, `mostWild`, `mostActive`.
+Форма `WeekResults`: `weekId`, `startsAt`, `endsAt`, `closedAt`, `photoCount`, `leaderboard`, `bestPhoto`, `friendOfWeek`, `favoriteFriend` (см. «Кто лучше?»), `mostCreative`, `mostFunny`, `mostWild`, `mostActive`.
 
 **Закрытие недели.** Каждую закрытую неделю, в которой есть фото, обходят один раз: метка `close:<weekId>` в `jobs` ставится после обхода. Для каждого пользователя с юзернеймом считаются итоги. Если `photoCount > 0`, снимок сохраняется в `weeks(user_id, week_id)`, повтор игнорируется. Если неделя только что закончилась, а снимок новый, уходит пуш `weekly`.
 
 **Напоминание** за `REMINDER_HOURS_BEFORE` часов до конца недели, один раз за неделю (метка `reminder:<weekId>`). Каждому пользователю, у которого есть `unrated` (открытые фото друзей, которые он не оценил) или `locked` (закрытые фото друзей).
+
+### «Кто лучше?»
+
+Раз в день, в случайный момент между `DUEL_FROM_HOUR` и `DUEL_TO_HOUR` (по умолчанию 11:00–21:00 по времени недели), сервер присылает каждому, у кого не меньше двух друзей, пуш `duel`: два случайных друга, выбери одного. Если удерживать уведомление, на экране блокировки откроется карточка с двумя друзьями. Выбрать можно один раз.
+
+- Планирование идёт в `runDue`. Если человек зарегистрировался утром, момент выбирается между «сейчас» и концом окна; после конца окна — на следующий день. Если к моменту отправки пары уже нет среди друзей, сервер выбирает новую; если друзей меньше двух, выбор отменяется. Вчерашний выбор после простоя сервера не досылается.
+- **`GET /api/duels/today`** → `{ "duel": Duel | null }`. Возвращается только уже отправленный выбор, чтобы случайный момент оставался сюрпризом.
+- **`POST /api/duels/:id/choice`** `{ "pick": "left" | "right" }` → `{ "duel": Duel }`. Ошибки:
+  - чужой или ещё не отправленный выбор — `404 Выбор не найден`;
+  - повторный выбор — `409 Выбор уже сделан`;
+  - другое значение `pick` — `400 Выбери левого или правого`.
+- `Duel = { "id", "date": "2026-10-23", "left": { "id", "username" }, "right": { "id", "username" }, "choice": "left" | "right" | null }`.
+- В итогах недели (`WeekResults.favoriteFriend`) — самый часто выбранный за неделю человек в круге зрителя: `{ "userId", "name", "value": сколько раз выбран }`. Ничьи решаются порядком таблицы. **Кого выбирали меньше всех, не сообщается нигде**: другие счётчики выборов ни в одном ответе не появляются.
 
 ### Оценка дня
 
@@ -250,6 +263,7 @@ Photo = {
 | `reaction` | автору фото | как раньше; title — юзернейм того, кто оценил | `photoId`, `imageUrl` |
 | `friend_request` | тому, кому пришла заявка | title «Заявка в друзья», body «барсук хочет дружить», `category: FRIEND_REQUEST`, `thread-id: friends` | `userId` — кто зовёт |
 | `friend_accepted` | автору заявки | title «Новый друг», body «ярослава теперь в друзьях», `thread-id: friends` | `userId` |
+| `duel` | раз в день в случайный момент | title «Кто лучше?», body «барсук или ярослава — выбери одного», `category: FRIEND_DUEL`, `thread-id: duel` | `duelId`, `left` и `right` — `{ id, username }` |
 | `weekly` | каждому, у кого есть снимок | как раньше, итоги его круга | `weekId`, `imageUrl` |
 | `reminder` | см. выше | title «До итогов недели 3 ч». Body: «2 фото ждут твоей оценки — успей до итогов»; если есть закрытые, добавляется « · ещё 3 закрыты — выложи своё». Если ждущих оценки нет: «3 фото друзей закрыты — выложи своё, чтобы открыть» | |
 
@@ -273,6 +287,7 @@ photos(id TEXT PRIMARY KEY, author_id → users, week_id, caption, file, created
 reactions, stars, jobs — как раньше
 weeks(user_id → users ON DELETE CASCADE, week_id, closed_at, results, PRIMARY KEY(user_id, week_id))
 days(user_id → users ON DELETE CASCADE, date, stars 1–5, reasons JSON, liked JSON, condition, place, updated_at, PRIMARY KEY(user_id, date))
+duels(id PRIMARY KEY, user_id, date, left_id, right_id, send_at, sent_at, choice, chosen_id, week_id, chosen_at, UNIQUE(user_id, date))
 ```
 
 **Старая база.** Если в файле нет `user_version = 2`, но есть таблица `circles`, это база первой версии с компаниями и email. Её файл (и `-wal`, `-shm`) переименовывается в `locket.v1-<время>.db`, а рядом создаётся новая. Старые данные не удаляются, но и не используются.
@@ -284,6 +299,7 @@ days(user_id → users ON DELETE CASCADE, date, stars 1–5, reasons JSON, liked
 | `PASSWORD_PEPPER` | файл `<DATA_DIR>/pepper` | секрет для `password_key` |
 | `TRUST_PROXY` | `0` | `1` — брать IP клиента из `X-Forwarded-For` (за Caddy) |
 | `MAX_FRIENDS` | `100` | лимит друзей |
+| `DUEL_FROM_HOUR`, `DUEL_TO_HOUR` | `11`, `21` | окно, в котором приходит «Кто лучше?» |
 | `PORT`, `PUBLIC_URL`, `DATA_DIR`, `TZ_OFFSET_MINUTES`, `WEEK_END_DAY`, `WEEK_END_HOUR`, `REMINDER_HOURS_BEFORE`, `APNS_*` | как раньше | |
 
 `MAX_CIRCLE_MEMBERS` больше не нужна.

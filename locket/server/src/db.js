@@ -84,6 +84,22 @@ CREATE TABLE IF NOT EXISTS days (
   updated_at INTEGER NOT NULL,
   PRIMARY KEY (user_id, date)
 );
+CREATE TABLE IF NOT EXISTS duels (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  left_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  right_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  send_at INTEGER NOT NULL,
+  sent_at INTEGER,
+  choice TEXT CHECK (choice IN ('left', 'right')),
+  chosen_id TEXT,
+  week_id TEXT,
+  chosen_at INTEGER,
+  UNIQUE (user_id, date)
+);
+CREATE INDEX IF NOT EXISTS duels_due ON duels(sent_at, send_at);
+CREATE INDEX IF NOT EXISTS duels_week ON duels(week_id, chosen_id);
 CREATE TABLE IF NOT EXISTS jobs (
   key TEXT PRIMARY KEY,
   done_at INTEGER NOT NULL
@@ -125,6 +141,19 @@ function moveAsideIfV1(file, log, stamp) {
 
 const boolToInt = (value) => (value === null || value === undefined ? null : value ? 1 : 0);
 const intToBool = (value) => (value === null || value === undefined ? null : value === 1);
+const DUEL_SELECT = `SELECT d.*, l.username AS left_name, r.username AS right_name FROM duels d
+  JOIN users l ON l.id = d.left_id JOIN users r ON r.id = d.right_id`;
+const duelRow = (r) =>
+  r && {
+    id: r.id,
+    userId: r.user_id,
+    date: r.date,
+    left: { id: r.left_id, username: r.left_name },
+    right: { id: r.right_id, username: r.right_name },
+    sendAt: r.send_at,
+    sentAt: r.sent_at,
+    choice: r.choice,
+  };
 const dayRow = (r) =>
   r && {
     date: r.date,
@@ -370,6 +399,31 @@ export function createStore(db) {
       ).run(userId, date, stars, JSON.stringify(reasons), JSON.stringify(liked), boolToInt(condition), boolToInt(place), now),
     day: (userId, date) => dayRow(q('SELECT * FROM days WHERE user_id = ? AND date = ?').get(userId, date)),
     days: (userId, limit) => q('SELECT * FROM days WHERE user_id = ? ORDER BY date DESC LIMIT ?').all(userId, limit).map(dayRow),
+
+    // ---------- «Кто лучше?»: one pick between two friends a day ----------
+    createDuel: ({ id, userId, date, leftId, rightId, sendAt }) =>
+      q('INSERT OR IGNORE INTO duels (id, user_id, date, left_id, right_id, send_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+        id, userId, date, leftId, rightId, sendAt,
+      ),
+    duel: (id) => duelRow(q(`${DUEL_SELECT} WHERE d.id = ?`).get(id)),
+    duelFor: (userId, date) => duelRow(q(`${DUEL_SELECT} WHERE d.user_id = ? AND d.date = ?`).get(userId, date)),
+    duelsDue: (now) => q(`${DUEL_SELECT} WHERE d.sent_at IS NULL AND d.send_at <= ? ORDER BY d.send_at`).all(now).map(duelRow),
+    setDuelPair: (id, leftId, rightId) => q('UPDATE duels SET left_id = ?, right_id = ? WHERE id = ?').run(leftId, rightId, id),
+    deleteDuel: (id) => q('DELETE FROM duels WHERE id = ?').run(id),
+    markDuelSent: (id, now) => q('UPDATE duels SET sent_at = ? WHERE id = ?').run(now, id),
+    // Only once: returns true when the pick was stored.
+    chooseDuel: (id, choice, chosenId, weekId, now) =>
+      q('UPDATE duels SET choice = ?, chosen_id = ?, week_id = ?, chosen_at = ? WHERE id = ? AND choice IS NULL').run(
+        choice, chosenId, weekId, now, id,
+      ).changes > 0,
+    // How often each of these people was picked that week (by anyone).
+    picksInWeek(weekId, userIds) {
+      if (!userIds.length) return [];
+      return q(
+        `SELECT chosen_id AS userId, COUNT(*) AS picks FROM duels
+         WHERE week_id = ? AND chosen_id IN (${placeholders(userIds.length)}) GROUP BY chosen_id`,
+      ).all(weekId, ...userIds);
+    },
 
     // ---------- one-off jobs (week closing, reminders) so a restart doesn't repeat them ----------
     claimJob: (key, now) => q('INSERT OR IGNORE INTO jobs (key, done_at) VALUES (?, ?)').run(key, now).changes > 0,

@@ -63,6 +63,19 @@ actor DemoBackend {
     private var stars: [Star] = []
     private var reactions: [Reaction] = []
     private var events: [(due: Date, event: Event)] = []
+    /// «Кто лучше?»: every pick made, and today's pair per person.
+    private struct DuelRecord {
+        let id: String
+        let userId: String
+        let date: String
+        let left: String
+        let right: String
+        var choice: String?
+        var chosenId: String?
+        var weekId: String?
+    }
+    private var duels: [DuelRecord] = []
+
     /// userId → date → the day's rating JSON, as the server would return it.
     private var days: [String: [String: [String: Any]]] = [:]
     private var currentUserId: String?
@@ -178,6 +191,23 @@ actor DemoBackend {
             return react(ids[0], viewer: me.id, kind: ids[1], on: false)
         }
 
+        // «Кто лучше?»: in the demo today's pair is waiting at once (no push, no random moment).
+        if route("GET", "api/duels/today") != nil {
+            return reply(["duel": todayDuel(for: me.id).map { duelJSON($0) as Any } ?? NSNull()])
+        }
+        if let ids = route("POST", "api/duels/*/choice") {
+            guard let index = duels.firstIndex(where: { $0.id == ids[0] && $0.userId == me.id }) else {
+                return failure(404, "Выбор не найден")
+            }
+            let pick = string(input["pick"])
+            guard pick == "left" || pick == "right" else { return failure(400, "Выбери левого или правого") }
+            guard duels[index].choice == nil else { return failure(409, "Выбор уже сделан") }
+            duels[index].choice = pick
+            duels[index].chosenId = pick == "left" ? duels[index].left : duels[index].right
+            duels[index].weekId = currentWeek
+            return reply(["duel": duelJSON(duels[index])])
+        }
+
         // The day rating: private, only its owner reads it.
         if let ids = route("PUT", "api/days/*") {
             return saveDay(user: me.id, date: ids[0], input: input)
@@ -219,6 +249,43 @@ actor DemoBackend {
             }
         }
         return captured
+    }
+
+    // MARK: - «Кто лучше?»
+
+    private func todayDuel(for userId: String) -> DuelRecord? {
+        let date = DayRating.key(for: Date())
+        if let existing = duels.first(where: { $0.userId == userId && $0.date == date }) { return existing }
+        let friends = friendIds(userId).shuffled()
+        guard friends.count >= 2 else { return nil }
+        let record = DuelRecord(id: UUID().uuidString.lowercased(), userId: userId, date: date, left: friends[0], right: friends[1])
+        duels.append(record)
+        return record
+    }
+
+    private func duelJSON(_ d: DuelRecord) -> [String: Any] {
+        [
+            "id": d.id,
+            "date": d.date,
+            "left": ["id": d.left, "username": users[d.left]?.username ?? ""],
+            "right": ["id": d.right, "username": users[d.right]?.username ?? ""],
+            "choice": d.choice.map { $0 as Any } ?? NSNull(),
+        ]
+    }
+
+    /// Most picked in the week among these people; ties go by the leaderboard. Only the winner is told.
+    private func favoriteFriend(weekId: String, circle: Set<String>, order: [Stat]) -> Any {
+        var picks: [String: Int] = [:]
+        for d in duels where d.weekId == weekId {
+            if let chosen = d.chosenId, circle.contains(chosen) { picks[chosen, default: 0] += 1 }
+        }
+        var winner: (id: String, name: String, count: Int)?
+        for s in order {
+            let count = picks[s.userId] ?? 0
+            if count > 0 && count > (winner?.count ?? 0) { winner = (s.userId, s.name, count) }
+        }
+        guard let winner else { return NSNull() }
+        return ["userId": winner.id, "name": winner.name, "value": winner.count] as [String: Any]
     }
 
     // MARK: - Day rating
@@ -685,6 +752,7 @@ actor DemoBackend {
             },
             "bestPhoto": bestJSON,
             "friendOfWeek": leader("points"),
+            "favoriteFriend": favoriteFriend(weekId: weekId, circle: circle, order: leaderboard),
             "mostCreative": leader("creative"),
             "mostFunny": leader("funny"),
             "mostWild": leader("wild"),
@@ -783,6 +851,17 @@ actor DemoBackend {
         rateSeed(b1, by: "u-yara", stars: 2, kinds: ["wild"])
         rateSeed(y3, by: "u-dobr", stars: 3, kinds: ["funny"])
         seedDays()
+        // Picks friends made in «Кто лучше?»: ярослава is this week's favourite, ёжик was last week's.
+        for (who, left, right, pick, week) in [
+            ("u-ezh", "u-yara", "u-barsuk", "left", currentWeek), ("u-dobr", "u-yara", "u-barsuk", "left", currentWeek),
+            ("u-barsuk", "u-ezh", "u-yara", "right", currentWeek), ("u-yara", "u-ezh", "u-barsuk", "left", previousWeek),
+            ("u-barsuk", "u-ezh", "u-yara", "left", previousWeek),
+        ] {
+            duels.append(DuelRecord(
+                id: UUID().uuidString.lowercased(), userId: who, date: "", left: left, right: right,
+                choice: pick, chosenId: pick == "left" ? left : right, weekId: week
+            ))
+        }
     }
 
     private func seedDays() {

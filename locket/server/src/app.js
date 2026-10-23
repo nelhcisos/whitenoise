@@ -7,6 +7,7 @@ import { createStore } from './db.js';
 import { HttpError, createRouter, readBody, readJson, sendJson } from './http.js';
 import {
   createPushService,
+  duelMessage,
   friendAcceptedMessage,
   friendRequestMessage,
   lockedPhotoMessage,
@@ -29,7 +30,7 @@ const DAY_MS = 24 * 60 * MINUTE;
 export const DAY_REASONS = ['unchanged', 'distracted', 'awkward', 'odor', 'issues', 'reckless', 'noChance', 'fatigued', 'gps', 'rude'];
 export const DAY_HIGHLIGHTS = ['advice', 'polite', 'comfort', 'clean', 'conversation', 'music'];
 
-export function createApp({ config, db, apns = null, now = () => Date.now(), log = console }) {
+export function createApp({ config, db, apns = null, now = () => Date.now(), log = console, random = Math.random }) {
   if (!config.passwordPepper) throw new Error('config.passwordPepper is required');
   const store = createStore(db);
   const calendar = makeWeekCalendar(config.week);
@@ -51,6 +52,13 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
   };
 
   const mediaUrl = (file) => `${config.publicUrl}/media/${file}`;
+  // The friends' local day ("2026-10-23") and its midnight, in the same time zone as the week.
+  const tz = (config.week?.tzOffsetMinutes ?? 180) * MINUTE;
+  const localDate = (ms) => new Date(ms + tz).toISOString().slice(0, 10);
+  const localMidnight = (ms) => {
+    const d = new Date(ms + tz);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - tz;
+  };
   const currentWeekId = () => calendar.weekIdFor(now());
 
   // ---------- locked photos ----------
@@ -154,6 +162,17 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     });
   }
 
+  /** Most picked in «Кто лучше?» that week, among these people; ties go by the leaderboard. */
+  function favoriteFriend(weekId, memberIds, leaderboard) {
+    const picks = new Map(store.picksInWeek(weekId, memberIds).map((r) => [r.userId, r.picks]));
+    let best = null;
+    for (const s of leaderboard) {
+      const count = picks.get(s.userId) ?? 0;
+      if (count > 0 && (!best || count > best.value)) best = { userId: s.userId, name: s.name, value: count };
+    }
+    return best;
+  }
+
   /** Weekly results as one viewer sees them: the viewer and their friends right now. */
   function weekResults(viewer, weekId, closedAt = null) {
     const memberIds = [viewer.id, ...store.friendIds(viewer.id)];
@@ -182,6 +201,8 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
         wild: best.wild,
       },
       friendOfWeek: s.friendOfWeek,
+      // «Кто лучше?»: only the most picked is told; the least picked stays a secret.
+      favoriteFriend: favoriteFriend(weekId, memberIds, s.leaderboard),
       mostCreative: s.mostCreative,
       mostFunny: s.mostFunny,
       mostWild: s.mostWild,
@@ -548,6 +569,28 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     return { photo: serializePhotos([photo], user.id)[0] };
   });
 
+  // ----- «Кто лучше?»: once a day, pick one of two friends -----
+
+  const duelJSON = (d) => ({ id: d.id, date: d.date, left: d.left, right: d.right, choice: d.choice ?? null });
+
+  // Today's pick, once it has been sent (the random moment stays a surprise).
+  router.get('/api/duels/today', ({ user }) => {
+    const duel = store.duelFor(user.id, localDate(now()));
+    return { duel: duel && duel.sentAt ? duelJSON(duel) : null };
+  });
+
+  router.post('/api/duels/:id/choice', ({ user, params, body }) => {
+    const duel = store.duel(params.id);
+    if (!duel || duel.userId !== user.id || !duel.sentAt) throw new HttpError(404, 'Выбор не найден');
+    if (body.pick !== 'left' && body.pick !== 'right') throw new HttpError(400, 'Выбери левого или правого');
+    if (duel.choice) throw new HttpError(409, 'Выбор уже сделан');
+    const chosen = body.pick === 'left' ? duel.left : duel.right;
+    if (!store.chooseDuel(duel.id, body.pick, chosen.id, calendar.weekIdFor(now()), now())) {
+      throw new HttpError(409, 'Выбор уже сделан');
+    }
+    return { duel: duelJSON(store.duel(duel.id)) };
+  });
+
   // ----- the day rating: «оцени свой день, как поездку» -----
 
   /** "2026-10-23", a real calendar date from two months ago to tomorrow (the phone's own date). */
@@ -684,8 +727,53 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     store.claimJob(`close:${weekId}`, now());
   }
 
+  /** Two different friends at random. */
+  function pickPair(ids) {
+    const first = Math.floor(random() * ids.length);
+    let second = Math.floor(random() * (ids.length - 1));
+    if (second >= first) second++;
+    return [ids[first], ids[second]];
+  }
+
+  /**
+   * Plans each person's «Кто лучше?» for today at a random moment between the
+   * configured hours, and sends the ones that are due. Needs two friends.
+   */
+  function runDuels(t) {
+    const date = localDate(t);
+    const midnight = localMidnight(t);
+    const from = midnight + (config.duel?.fromHour ?? 11) * 60 * MINUTE;
+    const to = midnight + (config.duel?.toHour ?? 21) * 60 * MINUTE;
+    if (t < to) {
+      for (const user of store.usersWithUsername()) {
+        if (store.duelFor(user.id, date)) continue;
+        const friends = store.friendIds(user.id);
+        if (friends.length < 2) continue;
+        const start = Math.max(t, from);
+        const [leftId, rightId] = pickPair(friends);
+        store.createDuel({ id: crypto.randomUUID(), userId: user.id, date, leftId, rightId, sendAt: Math.floor(start + random() * (to - start)) });
+      }
+    }
+    for (const duel of store.duelsDue(t)) {
+      // Friends may have changed since the morning: pick again from the current ones.
+      const friends = store.friendIds(duel.userId);
+      if (!friends.includes(duel.left.id) || !friends.includes(duel.right.id)) {
+        if (friends.length < 2) {
+          store.deleteDuel(duel.id);
+          continue;
+        }
+        const [leftId, rightId] = pickPair(friends);
+        store.setDuelPair(duel.id, leftId, rightId);
+      }
+      store.markDuelSent(duel.id, t);
+      // After a long outage yesterday's pick is not sent late.
+      if (duel.date === date) background(push.sendToUsers([duel.userId], duelMessage(store.duel(duel.id))));
+    }
+  }
+
   async function runDue() {
     const t = now();
+    runDuels(t);
     const weekId = calendar.weekIdFor(t);
     const { startsAt, endsAt } = calendar.weekBounds(weekId);
     const previousWeekId = calendar.weekIdFor(startsAt - 1);

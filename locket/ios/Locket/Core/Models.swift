@@ -216,6 +216,8 @@ struct WeekResults: Codable, Hashable, Identifiable {
     let leaderboard: [Standing]
     let bestPhoto: BestPhoto?
     let friendOfWeek: Nominee?
+    /// «Кто лучше?»: the most picked friend. Who was picked least is never sent.
+    let favoriteFriend: Nominee?
     let mostCreative: Nominee?
     let mostFunny: Nominee?
     let mostWild: Nominee?
@@ -248,6 +250,7 @@ struct UploadResponse: Decodable {
 }
 struct WeeksResponse: Decodable { let weeks: [WeekResults] }
 struct DayResponse: Decodable { let day: DayRating }
+struct DuelResponse: Decodable { let duel: Duel? }
 struct DaysResponse: Decodable { let days: [DayRating] }
 struct OKResponse: Decodable { let ok: Bool }
 

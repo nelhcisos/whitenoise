@@ -197,6 +197,11 @@ private struct NominationsSection: View {
             SectionHeader("Номинации")
             // The friend of the week leads the screen in its own card, so it is not repeated here.
             Card {
+                // «Кто лучше?»: only the most picked is named, never the least.
+                if results.favoriteFriend != nil {
+                    NominationRow(title: "Самый любимый друг", nominee: results.favoriteFriend, value: WeekFormat.picks)
+                    WeekDivider()
+                }
                 ForEach(ReactionKind.allCases) { kind in
                     NominationRow(mark: kind.emoji, title: kind.nomination, nominee: nominee(for: kind), value: WeekFormat.reactions)
                     WeekDivider()
@@ -559,6 +564,7 @@ private enum WeekFormat {
     static func reactions(_ n: Int) -> String { quantity(n, "реакция", "реакции", "реакций") }
     static func stars(_ n: Int) -> String { quantity(n, "звезда", "звезды", "звёзд") }
     static func ratings(_ n: Int) -> String { quantity(n, "оценка", "оценки", "оценок") }
+    static func picks(_ n: Int) -> String { quantity(n, "выбор", "выбора", "выборов") }
 
     /// "✍️ 3": the reaction's mark is the unit. Spoken it is "Креатив 3":
     /// VoiceOver has no name for 🫪 before iOS 26.4.
