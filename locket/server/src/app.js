@@ -24,6 +24,10 @@ const MEDIA_FILE = /^[a-f0-9]{32}\.jpg$/;
 const PASSWORD_MIN = 4;
 const PASSWORD_MAX = 64;
 const MINUTE = 60_000;
+const DAY_MS = 24 * 60 * MINUTE;
+// The day rating's option ids, shared with the iOS app (Shared/DayRating.swift).
+export const DAY_REASONS = ['unchanged', 'distracted', 'awkward', 'odor', 'issues', 'reckless', 'noChance', 'fatigued', 'gps', 'rude'];
+export const DAY_HIGHLIGHTS = ['advice', 'polite', 'comfort', 'clean', 'conversation', 'music'];
 
 export function createApp({ config, db, apns = null, now = () => Date.now(), log = console }) {
   if (!config.passwordPepper) throw new Error('config.passwordPepper is required');
@@ -542,6 +546,50 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     const photo = ratablePhoto(user, params.id);
     store.setStars(photo.id, user.id, 0, now());
     return { photo: serializePhotos([photo], user.id)[0] };
+  });
+
+  // ----- the day rating: «оцени свой день, как поездку» -----
+
+  /** "2026-10-23", a real calendar date from two months ago to tomorrow (the phone's own date). */
+  function cleanDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value ?? ''));
+    const time = match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : NaN;
+    if (!match || new Date(time).toISOString().slice(0, 10) !== value) throw new HttpError(400, 'Неверная дата');
+    if (time > now() + 2 * DAY_MS || time < now() - 62 * DAY_MS) throw new HttpError(400, 'Эту дату оценить нельзя');
+    return value;
+  }
+
+  function cleanOptions(value, allowed) {
+    const list = Array.isArray(value) ? value : [];
+    for (const item of list) if (!allowed.includes(item)) throw new HttpError(400, 'Неизвестный вариант оценки');
+    return allowed.filter((item) => list.includes(item));
+  }
+
+  const cleanAnswer = (value) => (value === true || value === false ? value : null);
+
+  router.put('/api/days/:date', ({ user, params, body }) => {
+    const date = cleanDate(params.date);
+    const stars = Number(body.stars);
+    if (!Number.isInteger(stars) || stars < 1 || stars > 5) throw new HttpError(400, 'Звёзд может быть от 1 до 5');
+    const reasons = cleanOptions(body.reasons, DAY_REASONS);
+    const liked = cleanOptions(body.liked, DAY_HIGHLIGHTS);
+    store.saveDay({
+      userId: user.id,
+      date,
+      stars,
+      // Below five stars you say what got in the way; at five, what you liked most.
+      reasons: stars < 5 ? reasons : [],
+      liked: stars === 5 ? liked : [],
+      condition: cleanAnswer(body.condition),
+      place: cleanAnswer(body.place),
+      now: now(),
+    });
+    return { day: store.day(user.id, date) };
+  });
+
+  router.get('/api/days', ({ user, url }) => {
+    const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 30, 1), 120);
+    return { days: store.days(user.id, limit) };
   });
 
   // ----- weeks -----

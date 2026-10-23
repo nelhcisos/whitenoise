@@ -22,7 +22,15 @@ enum PushCategories {
         let weekly = UNNotificationCategory(identifier: weeklyResults, actions: [], intentIdentifiers: [], options: [])
         let accept = UNNotificationAction(identifier: acceptFriendAction, title: "Принять", options: [])
         let friend = UNNotificationCategory(identifier: friendRequest, actions: [accept], intentIdentifiers: [], options: [])
-        return [rate, weekly, friend]
+        // The evening «Оцени свой день»: a long-press opens the stars 1–5 card.
+        let day = UNNotificationCategory(
+            identifier: DayReminderID.category,
+            actions: [],
+            intentIdentifiers: [],
+            hiddenPreviewsBodyPlaceholder: "Оцени свой день",
+            options: []
+        )
+        return [rate, weekly, friend, day]
     }
 }
 

@@ -17,7 +17,7 @@ final class AppModel {
     }
 
     enum Tab: Hashable {
-        case camera, feed, week, friends
+        case camera, feed, week, day, friends
     }
 
     /// Where a block's data stands. Each block shows its own loading and error state.
@@ -46,6 +46,9 @@ final class AppModel {
     /// Friends and requests, for the Friends tab.
     private(set) var social: FriendsResponse?
     private(set) var socialState: LoadState = .idle
+    /// Your rated days, newest first: private, only you see them.
+    private(set) var days: [DayRating] = []
+    private(set) var daysState: LoadState = .idle
 
     var selectedTab: Tab = .camera
     var focusPhotoId: String?
@@ -169,6 +172,8 @@ final class AppModel {
         weekState = .idle
         social = nil
         socialState = .idle
+        days = []
+        daysState = .idle
         WidgetRefresh.now()
     }
 
@@ -178,7 +183,11 @@ final class AppModel {
         phase = newMe.user.username == nil ? .needsUsername : .ready
         // The browser demo has no pushes: skip the permission prompt there.
         if phase == .ready && !AppConfig.isDemo {
-            Task { await PushRegistrar.requestPermissionAndRegister() }
+            Task {
+                await PushRegistrar.requestPermissionAndRegister()
+                // The evening «Оцени свой день» lives on the phone.
+                await DayReminder.schedule()
+            }
         }
     }
 
@@ -196,6 +205,34 @@ final class AppModel {
         await refreshFeed()
         await refreshWeek()
         await refreshSocial()
+        await refreshDays()
+    }
+
+    // MARK: - Day rating
+
+    /// A rated day by its "yyyy-MM-dd" key.
+    func day(_ key: String) -> DayRating? {
+        days.first { $0.date == key }
+    }
+
+    /// A background load: the «День» tab shows the error inline with a Retry.
+    func refreshDays() async {
+        guard phase == .ready else { return }
+        if daysState != .loaded { daysState = .loading }
+        do {
+            days = try await api.days()
+            daysState = .loaded
+        } catch {
+            if let message = loadFailure(error) { daysState = .failed(message) }
+        }
+    }
+
+    /// Throws so the «День» tab can show the error under the form.
+    func saveDay(_ rating: DayRating) async throws {
+        let saved = try await signedIn { try await self.api.saveDay(rating) }
+        days.removeAll { $0.date == saved.date }
+        days.append(saved)
+        days.sort { $0.date > $1.date }
     }
 
     /// For calls that throw so the screen can show the error next to what failed.
@@ -459,6 +496,9 @@ final class AppModel {
         case "friend_request", "friend_accepted":
             selectedTab = .friends
             Task { await refreshSocial() }
+        case "day":
+            selectedTab = .day
+            Task { await refreshDays() }
         default:
             break
         }

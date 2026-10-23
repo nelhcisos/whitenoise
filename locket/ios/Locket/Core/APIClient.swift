@@ -198,6 +198,18 @@ extension APIClient {
 
     // MARK: Week
 
+    func saveDay(_ rating: DayRating) async throws -> DayRating {
+        let response: DayResponse = try await request(
+            "PUT", "api/days/\(segment(rating.date))", body: rating.body(), contentType: "application/json"
+        )
+        return response.day
+    }
+
+    func days(limit: Int = 60) async throws -> [DayRating] {
+        let response: DaysResponse = try await request("GET", "api/days", query: [URLQueryItem(name: "limit", value: String(limit))])
+        return response.days
+    }
+
     func currentWeek() async throws -> WeekResults {
         try await request("GET", "api/week/current")
     }

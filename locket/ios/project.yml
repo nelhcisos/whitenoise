@@ -115,11 +115,13 @@ targets:
           NSAllowsLocalNetworking: true
         APIBaseURL: $(API_BASE_URL)
         KeychainGroup: $(AppIdentifierPrefix)$(BUNDLE_ID).shared
+        LocketDemo: $(LOCKET_DEMO)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationViewController
           NSExtensionAttributes:
-            UNNotificationExtensionCategory: PHOTO_RATING
+            # A new photo (stars 1–3 + reactions) and the evening «Оцени свой день» (stars 1–5).
+            UNNotificationExtensionCategory: [PHOTO_RATING, DAY_RATING]
             UNNotificationExtensionDefaultContentHidden: true
             UNNotificationExtensionUserInteractionEnabled: true
             UNNotificationExtensionInitialContentSizeRatio: 1.6

@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS weeks (
   results TEXT NOT NULL,
   PRIMARY KEY (user_id, week_id)
 );
+CREATE TABLE IF NOT EXISTS days (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
+  reasons TEXT NOT NULL,
+  liked TEXT NOT NULL,
+  condition INTEGER,
+  place INTEGER,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, date)
+);
 CREATE TABLE IF NOT EXISTS jobs (
   key TEXT PRIMARY KEY,
   done_at INTEGER NOT NULL
@@ -111,6 +122,19 @@ function moveAsideIfV1(file, log, stamp) {
   }
   log.warn(`Old database (companies + email) moved to ${backup}; starting a fresh one.`);
 }
+
+const boolToInt = (value) => (value === null || value === undefined ? null : value ? 1 : 0);
+const intToBool = (value) => (value === null || value === undefined ? null : value === 1);
+const dayRow = (r) =>
+  r && {
+    date: r.date,
+    stars: r.stars,
+    reasons: JSON.parse(r.reasons),
+    liked: JSON.parse(r.liked),
+    condition: intToBool(r.condition),
+    place: intToBool(r.place),
+    updatedAt: r.updated_at,
+  };
 
 export function createStore(db) {
   const q = (sql) => db.prepare(sql);
@@ -336,6 +360,16 @@ export function createStore(db) {
       const row = q('SELECT results FROM weeks WHERE user_id = ? AND week_id = ?').get(userId, weekId);
       return row ? JSON.parse(row.results) : null;
     },
+
+    // ---------- the day rating (private: only its owner reads it) ----------
+    saveDay: ({ userId, date, stars, reasons, liked, condition, place, now }) =>
+      q(
+        `INSERT INTO days (user_id, date, stars, reasons, liked, condition, place, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, date) DO UPDATE SET stars = excluded.stars, reasons = excluded.reasons, liked = excluded.liked,
+           condition = excluded.condition, place = excluded.place, updated_at = excluded.updated_at`,
+      ).run(userId, date, stars, JSON.stringify(reasons), JSON.stringify(liked), boolToInt(condition), boolToInt(place), now),
+    day: (userId, date) => dayRow(q('SELECT * FROM days WHERE user_id = ? AND date = ?').get(userId, date)),
+    days: (userId, limit) => q('SELECT * FROM days WHERE user_id = ? ORDER BY date DESC LIMIT ?').all(userId, limit).map(dayRow),
 
     // ---------- one-off jobs (week closing, reminders) so a restart doesn't repeat them ----------
     claimJob: (key, now) => q('INSERT OR IGNORE INTO jobs (key, done_at) VALUES (?, ?)').run(key, now).changes > 0,

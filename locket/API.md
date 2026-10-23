@@ -205,6 +205,42 @@ Photo = {
 
 **Напоминание** за `REMINDER_HOURS_BEFORE` часов до конца недели, один раз за неделю (метка `reminder:<weekId>`). Каждому пользователю, у которого есть `unrated` (открытые фото друзей, которые он не оценил) или `locked` (закрытые фото друзей).
 
+### Оценка дня
+
+«Оцени свой день, как поездку». Каждый вечер (по умолчанию в 23:00, время меняется во вкладке «День») телефон сам показывает уведомление с категорией `DAY_RATING`. Это локальное уведомление, сервер его не шлёт. Если удерживать его, откроется карточка: 1–5 звёзд, ниже — что помешало дню стать твоим (меньше 5) или что понравилось больше всего (5), и два вопроса «да/нет». Оценки видит только их автор.
+
+**`PUT /api/days/:date`** — `date` в виде `2026-10-23`, это день по календарю телефона.
+
+```json
+{ "stars": 4, "reasons": ["fatigued", "gps"], "liked": [], "condition": true, "place": null }
+```
+
+→ `{ "day": Day }`. Повторный запрос заменяет оценку.
+
+- `stars` — от 1 до 5, иначе `400 Звёзд может быть от 1 до 5`.
+- `reasons` учитываются только при `stars < 5`, `liked` — только при `stars = 5`. Порядок берётся из списков ниже, повторы убираются. Неизвестный id — `400 Неизвестный вариант оценки`.
+- `condition` («В хорошей форме?») и `place` («В хорошем месте?») — `true`, `false` или `null`.
+- Дата — настоящая, от двух месяцев назад до завтра (часовые пояса), иначе `400 Неверная дата` / `400 Эту дату оценить нельзя`.
+
+**`GET /api/days?limit=30`** → `{ "days": [Day] }`, сначала новые, не больше 120.
+
+`Day = { "date", "stars", "reasons": [id], "liked": [id], "condition": bool|null, "place": bool|null, "updatedAt": ms }`.
+
+| `reasons` — что помешало | | `liked` — что понравилось | |
+| --- | --- | --- | --- |
+| `unchanged` | Ничего не поменялось | `advice` | Полезный совет |
+| `distracted` | Всё отвлекало | `polite` | Вежливые люди |
+| `awkward` | Было неловко | `comfort` | Зона комфорта |
+| `odor` | Сильный запах | `clean` | Чистый салон |
+| `issues` | Проблемы с бла-бла-бла | `conversation` | Хороший разговор |
+| `reckless` | Безрассудство | `music` | Приятная музыка |
+| `noChance` | Не было шанса | | |
+| `fatigued` | Усталость | | |
+| `gps` | Ошибка GPS: место — отстой | | |
+| `rude` | Грубые люди | | |
+
+Русские подписи — в `ios/Shared/DayRating.swift`; ids — в `server/src/app.js` (`DAY_REASONS`, `DAY_HIGHLIGHTS`).
+
 ## Пуши
 
 | `type` | Кому | `aps` | Остальные поля |
@@ -236,6 +272,7 @@ photos(id TEXT PRIMARY KEY, author_id → users, week_id, caption, file, created
   -- индексы: (author_id, week_id, created_at), (created_at)
 reactions, stars, jobs — как раньше
 weeks(user_id → users ON DELETE CASCADE, week_id, closed_at, results, PRIMARY KEY(user_id, week_id))
+days(user_id → users ON DELETE CASCADE, date, stars 1–5, reasons JSON, liked JSON, condition, place, updated_at, PRIMARY KEY(user_id, date))
 ```
 
 **Старая база.** Если в файле нет `user_version = 2`, но есть таблица `circles`, это база первой версии с компаниями и email. Её файл (и `-wal`, `-shm`) переименовывается в `locket.v1-<время>.db`, а рядом создаётся новая. Старые данные не удаляются, но и не используются.

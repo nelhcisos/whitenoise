@@ -63,6 +63,8 @@ actor DemoBackend {
     private var stars: [Star] = []
     private var reactions: [Reaction] = []
     private var events: [(due: Date, event: Event)] = []
+    /// userId → date → the day's rating JSON, as the server would return it.
+    private var days: [String: [String: [String: Any]]] = [:]
     private var currentUserId: String?
     private var seeded = false
     private var seq = 0
@@ -176,6 +178,16 @@ actor DemoBackend {
             return react(ids[0], viewer: me.id, kind: ids[1], on: false)
         }
 
+        // The day rating: private, only its owner reads it.
+        if let ids = route("PUT", "api/days/*") {
+            return saveDay(user: me.id, date: ids[0], input: input)
+        }
+        if route("GET", "api/days") != nil {
+            let limit = min(max(Int(q["limit"] ?? "") ?? 30, 1), 120)
+            let list = (days[me.id] ?? [:]).values.sorted { ($0["date"] as? String ?? "") > ($1["date"] as? String ?? "") }
+            return reply(["days": Array(list.prefix(limit))])
+        }
+
         // Weeks
         if route("GET", "api/week/current") != nil {
             return reply(weekResults(viewer: me.id, weekId: currentWeek, closedAt: nil))
@@ -207,6 +219,33 @@ actor DemoBackend {
             }
         }
         return captured
+    }
+
+    // MARK: - Day rating
+
+    private static let dayReasons = ["unchanged", "distracted", "awkward", "odor", "issues", "reckless", "noChance", "fatigued", "gps", "rude"]
+    private static let dayHighlights = ["advice", "polite", "comfort", "clean", "conversation", "music"]
+
+    private func saveDay(user: String, date: String, input: [String: Any]) -> Reply {
+        guard date.count == 10, DayRating.date(of: date) != nil else { return failure(400, "Неверная дата") }
+        let stars = int(input["stars"])
+        guard (1...5).contains(stars) else { return failure(400, "Звёзд может быть от 1 до 5") }
+        let reasons = (input["reasons"] as? [String]) ?? []
+        let liked = (input["liked"] as? [String]) ?? []
+        if reasons.contains(where: { !Self.dayReasons.contains($0) }) || liked.contains(where: { !Self.dayHighlights.contains($0) }) {
+            return failure(400, "Неизвестный вариант оценки")
+        }
+        let day: [String: Any] = [
+            "date": date,
+            "stars": stars,
+            "reasons": stars < 5 ? Self.dayReasons.filter { reasons.contains($0) } : [String](),
+            "liked": stars == 5 ? Self.dayHighlights.filter { liked.contains($0) } : [String](),
+            "condition": (input["condition"] as? Bool).map { $0 as Any } ?? NSNull(),
+            "place": (input["place"] as? Bool).map { $0 as Any } ?? NSNull(),
+            "updatedAt": nowMs(),
+        ]
+        days[user, default: [:]][date] = day
+        return reply(["day": day])
     }
 
     // MARK: - Sign-in and usernames
@@ -743,6 +782,24 @@ actor DemoBackend {
         rateSeed(d1, by: "u-yara", stars: 1, kinds: [])
         rateSeed(b1, by: "u-yara", stars: 2, kinds: ["wild"])
         rateSeed(y3, by: "u-dobr", stars: 3, kinds: ["funny"])
+        seedDays()
+    }
+
+    private func seedDays() {
+        let samples: [(daysAgo: Int, stars: Int, reasons: [String], liked: [String])] = [
+            (1, 4, ["fatigued"], []),
+            (2, 5, [], ["conversation", "music"]),
+            (3, 2, ["rude", "gps"], []),
+            (5, 3, ["unchanged"], []),
+        ]
+        for sample in samples {
+            let date = Calendar.current.date(byAdding: .day, value: -sample.daysAgo, to: Date()) ?? Date()
+            let key = DayRating.key(for: date)
+            days["u-barsuk", default: [:]][key] = [
+                "date": key, "stars": sample.stars, "reasons": sample.reasons, "liked": sample.liked,
+                "condition": NSNull(), "place": NSNull(), "updatedAt": date.timeIntervalSince1970 * 1000,
+            ] as [String: Any]
+        }
     }
 
     private func rateSeed(_ photo: Photo, by userId: String, stars value: Int, kinds: [String]) {

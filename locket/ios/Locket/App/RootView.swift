@@ -137,6 +137,10 @@ struct MainTabView: View {
                 .groundBar(for: .tabBar)
                 .tabItem { Label("Неделя", systemImage: "trophy") }
                 .tag(AppModel.Tab.week)
+            DayView()
+                .groundBar(for: .tabBar)
+                .tabItem { Label("День", systemImage: "sun.max") }
+                .tag(AppModel.Tab.day)
             FriendsView()
                 .groundBar(for: .tabBar)
                 .tabItem { Label("Друзья", systemImage: "person.2") }

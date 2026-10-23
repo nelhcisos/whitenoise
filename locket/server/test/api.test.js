@@ -660,3 +660,51 @@ test('oversized uploads are rejected cleanly', async (t) => {
   assert.equal(res.status, 413);
   assert.equal((await h.api('POST', '/api/auth/password', { json: { password: 'другой' } })).body.status, 'new');
 });
+
+test('rate your day: 1–5 stars, what got in the way or what you liked, private to you', async (t) => {
+  const h = await harness(t);
+  const { api } = h;
+  const me = await h.signUp('day-pass', 'барсук');
+  const friend = await h.signUp('friend-pass', 'ярослава');
+  await h.befriend(me, friend);
+  const put = (who, date, body) => api('PUT', `/api/days/${date}`, { auth: who.token, json: body });
+
+  // Four stars: what got in the way; liked is dropped below five.
+  let res = await put(me, '2026-10-14', { stars: 4, reasons: ['fatigued', 'gps'], liked: ['music'], condition: false, place: true });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.deepEqual(res.body.day, {
+    date: '2026-10-14',
+    stars: 4,
+    reasons: ['fatigued', 'gps'],
+    liked: [],
+    condition: false,
+    place: true,
+    updatedAt: h.clock.now,
+  });
+
+  // Rated again: replaced. Five stars: what you liked; reasons are dropped.
+  h.clock.now += 60_000;
+  res = await put(me, '2026-10-14', { stars: 5, reasons: ['rude'], liked: ['music', 'advice', 'music'] });
+  assert.deepEqual(res.body.day.reasons, []);
+  assert.deepEqual(res.body.day.liked, ['advice', 'music'], 'list order, no duplicates');
+  assert.equal(res.body.day.condition, null);
+  assert.equal(res.body.day.place, null);
+
+  await put(me, '2026-10-13', { stars: 2, reasons: ['unchanged'] });
+  res = await api('GET', '/api/days', { auth: me.token });
+  assert.deepEqual(res.body.days.map((d) => [d.date, d.stars]), [['2026-10-14', 5], ['2026-10-13', 2]]);
+  assert.deepEqual((await api('GET', '/api/days?limit=1', { auth: me.token })).body.days.length, 1);
+
+  // Private: a friend sees only their own days.
+  assert.deepEqual((await api('GET', '/api/days', { auth: friend.token })).body.days, []);
+
+  // Validation.
+  assert.equal((await put(me, '2026-10-14', { stars: 0 })).body.error, 'Звёзд может быть от 1 до 5');
+  assert.equal((await put(me, '2026-10-14', { stars: 6 })).status, 400);
+  assert.equal((await put(me, '2026-10-14', { stars: 3, reasons: ['boredom'] })).body.error, 'Неизвестный вариант оценки');
+  assert.equal((await put(me, '2026-02-30', { stars: 3 })).body.error, 'Неверная дата');
+  assert.equal((await put(me, '14.10.2026', { stars: 3 })).status, 400);
+  assert.equal((await put(me, '2026-12-31', { stars: 3 })).body.error, 'Эту дату оценить нельзя');
+  assert.equal((await put(me, '2026-10-16', { stars: 3 })).status, 200, 'tomorrow is fine: time zones');
+  assert.equal((await api('PUT', '/api/days/2026-10-14', { json: { stars: 3 } })).status, 401);
+});
