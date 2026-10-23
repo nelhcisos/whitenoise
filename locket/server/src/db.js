@@ -416,14 +416,13 @@ export function createStore(db) {
       q('UPDATE duels SET choice = ?, chosen_id = ?, week_id = ?, chosen_at = ? WHERE id = ? AND choice IS NULL').run(
         choice, chosenId, weekId, now, id,
       ).changes > 0,
-    // How often each of these people was picked that week (by anyone).
-    picksInWeek(weekId, userIds) {
-      if (!userIds.length) return [];
-      return q(
-        `SELECT chosen_id AS userId, COUNT(*) AS picks FROM duels
-         WHERE week_id = ? AND chosen_id IN (${placeholders(userIds.length)}) GROUP BY chosen_id`,
-      ).all(weekId, ...userIds);
-    },
+    // The week's most picked person: most picks, then alphabetical. Nobody else's count leaves here.
+    mostPickedInWeek: (weekId) =>
+      q(
+        `SELECT d.chosen_id AS userId, u.username AS name, COUNT(*) AS picks FROM duels d
+         JOIN users u ON u.id = d.chosen_id
+         WHERE d.week_id = ? GROUP BY d.chosen_id ORDER BY picks DESC, u.username_key LIMIT 1`,
+      ).get(weekId),
 
     // ---------- one-off jobs (week closing, reminders) so a restart doesn't repeat them ----------
     claimJob: (key, now) => q('INSERT OR IGNORE INTO jobs (key, done_at) VALUES (?, ?)').run(key, now).changes > 0,

@@ -162,15 +162,13 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     });
   }
 
-  /** Most picked in «Кто лучше?» that week, among these people; ties go by the leaderboard. */
-  function favoriteFriend(weekId, memberIds, leaderboard) {
-    const picks = new Map(store.picksInWeek(weekId, memberIds).map((r) => [r.userId, r.picks]));
-    let best = null;
-    for (const s of leaderboard) {
-      const count = picks.get(s.userId) ?? 0;
-      if (count > 0 && (!best || count > best.value)) best = { userId: s.userId, name: s.name, value: count };
-    }
-    return best;
+  /**
+   * Most picked in «Кто лучше?» that week. For now everyone using the app is one
+   * company, so this is the same for every viewer (see duelPool).
+   */
+  function favoriteFriend(weekId) {
+    const top = store.mostPickedInWeek(weekId);
+    return top ? { userId: top.userId, name: top.name, value: top.picks } : null;
   }
 
   /** Weekly results as one viewer sees them: the viewer and their friends right now. */
@@ -202,7 +200,7 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
       },
       friendOfWeek: s.friendOfWeek,
       // «Кто лучше?»: only the most picked is told; the least picked stays a secret.
-      favoriteFriend: favoriteFriend(weekId, memberIds, s.leaderboard),
+      favoriteFriend: favoriteFriend(weekId),
       mostCreative: s.mostCreative,
       mostFunny: s.mostFunny,
       mostWild: s.mostWild,
@@ -736,33 +734,43 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
   }
 
   /**
+   * Who «Кто лучше?» picks pairs from. For now everyone using the app is one
+   * company; later a group (a few people who invited each other) will narrow this,
+   * and the week's favourite will be counted inside that group.
+   */
+  function duelPool(userId, everyone) {
+    return everyone.filter((id) => id !== userId);
+  }
+
+  /**
    * Plans each person's «Кто лучше?» for today at a random moment between the
-   * configured hours, and sends the ones that are due. Needs two friends.
+   * configured hours, and sends the ones that are due. Needs two other people.
    */
   function runDuels(t) {
     const date = localDate(t);
     const midnight = localMidnight(t);
     const from = midnight + (config.duel?.fromHour ?? 11) * 60 * MINUTE;
     const to = midnight + (config.duel?.toHour ?? 21) * 60 * MINUTE;
+    const everyone = store.usersWithUsername().map((u) => u.id);
     if (t < to) {
-      for (const user of store.usersWithUsername()) {
-        if (store.duelFor(user.id, date)) continue;
-        const friends = store.friendIds(user.id);
-        if (friends.length < 2) continue;
+      for (const userId of everyone) {
+        if (store.duelFor(userId, date)) continue;
+        const pool = duelPool(userId, everyone);
+        if (pool.length < 2) continue;
         const start = Math.max(t, from);
-        const [leftId, rightId] = pickPair(friends);
-        store.createDuel({ id: crypto.randomUUID(), userId: user.id, date, leftId, rightId, sendAt: Math.floor(start + random() * (to - start)) });
+        const [leftId, rightId] = pickPair(pool);
+        store.createDuel({ id: crypto.randomUUID(), userId, date, leftId, rightId, sendAt: Math.floor(start + random() * (to - start)) });
       }
     }
     for (const duel of store.duelsDue(t)) {
-      // Friends may have changed since the morning: pick again from the current ones.
-      const friends = store.friendIds(duel.userId);
-      if (!friends.includes(duel.left.id) || !friends.includes(duel.right.id)) {
-        if (friends.length < 2) {
+      // Someone may have gone since the morning: pick again from who is here now.
+      const pool = duelPool(duel.userId, everyone);
+      if (!pool.includes(duel.left.id) || !pool.includes(duel.right.id)) {
+        if (pool.length < 2) {
           store.deleteDuel(duel.id);
           continue;
         }
-        const [leftId, rightId] = pickPair(friends);
+        const [leftId, rightId] = pickPair(pool);
         store.setDuelPair(duel.id, leftId, rightId);
       }
       store.markDuelSent(duel.id, t);

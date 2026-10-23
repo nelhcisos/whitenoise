@@ -256,9 +256,10 @@ actor DemoBackend {
     private func todayDuel(for userId: String) -> DuelRecord? {
         let date = DayRating.key(for: Date())
         if let existing = duels.first(where: { $0.userId == userId && $0.date == date }) { return existing }
-        let friends = friendIds(userId).shuffled()
-        guard friends.count >= 2 else { return nil }
-        let record = DuelRecord(id: UUID().uuidString.lowercased(), userId: userId, date: date, left: friends[0], right: friends[1])
+        // No groups yet: everyone using the app is one company, friends or not.
+        let pool = users.values.filter { $0.id != userId && $0.username != nil }.map(\.id).shuffled()
+        guard pool.count >= 2 else { return nil }
+        let record = DuelRecord(id: UUID().uuidString.lowercased(), userId: userId, date: date, left: pool[0], right: pool[1])
         duels.append(record)
         return record
     }
@@ -273,18 +274,18 @@ actor DemoBackend {
         ]
     }
 
-    /// Most picked in the week among these people; ties go by the leaderboard. Only the winner is told.
-    private func favoriteFriend(weekId: String, circle: Set<String>, order: [Stat]) -> Any {
+    /// Most picked in the week across the whole app; ties go alphabetically. Only the winner is told.
+    private func favoriteFriend(weekId: String) -> Any {
         var picks: [String: Int] = [:]
         for d in duels where d.weekId == weekId {
-            if let chosen = d.chosenId, circle.contains(chosen) { picks[chosen, default: 0] += 1 }
+            if let chosen = d.chosenId { picks[chosen, default: 0] += 1 }
         }
-        var winner: (id: String, name: String, count: Int)?
-        for s in order {
-            let count = picks[s.userId] ?? 0
-            if count > 0 && count > (winner?.count ?? 0) { winner = (s.userId, s.name, count) }
+        var ranked: [(id: String, name: String, count: Int)] = []
+        for (id, count) in picks {
+            if let name = users[id]?.username { ranked.append((id: id, name: name, count: count)) }
         }
-        guard let winner else { return NSNull() }
+        ranked.sort { $0.count != $1.count ? $0.count > $1.count : usernameKey($0.name) < usernameKey($1.name) }
+        guard let winner = ranked.first else { return NSNull() }
         return ["userId": winner.id, "name": winner.name, "value": winner.count] as [String: Any]
     }
 
@@ -752,7 +753,7 @@ actor DemoBackend {
             },
             "bestPhoto": bestJSON,
             "friendOfWeek": leader("points"),
-            "favoriteFriend": favoriteFriend(weekId: weekId, circle: circle, order: leaderboard),
+            "favoriteFriend": favoriteFriend(weekId: weekId),
             "mostCreative": leader("creative"),
             "mostFunny": leader("funny"),
             "mostWild": leader("wild"),

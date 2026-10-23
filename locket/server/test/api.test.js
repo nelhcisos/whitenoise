@@ -712,17 +712,15 @@ test('rate your day: 1–5 stars, what got in the way or what you liked, private
   assert.equal((await api('PUT', '/api/days/2026-10-14', { json: { stars: 3 } })).status, 401);
 });
 
-test('«Кто лучше?»: once a day at a random moment, pick one of two friends; the favourite is announced, the rest stays secret', async (t) => {
+test('«Кто лучше?»: once a day at a random moment, pick one of two people; the favourite is announced, the rest stays secret', async (t) => {
   const h = await harness(t);
   const { api } = h;
+  // No groups yet: everyone using the app is one company, friends or not.
   const me = await h.signUp('me-pass', 'барсук', { device: token('a') });
   const yara = await h.signUp('yara-pass', 'ярослава', { device: token('b') });
   const ezh = await h.signUp('ezh-pass', 'ёжик');
   const dobr = await h.signUp('dobr-pass', 'добрыня');
-  await h.befriend(me, yara);
-  await h.befriend(me, ezh);
-  await h.befriend(me, dobr);
-  const names = new Map([[yara.id, 'ярослава'], [ezh.id, 'ёжик'], [dobr.id, 'добрыня']]);
+  const nameOf = new Map([[me.id, 'барсук'], [yara.id, 'ярослава'], [ezh.id, 'ёжик'], [dobr.id, 'добрыня']]);
   const at = (day, hour, minute = 0) => Date.UTC(2026, 9, day, hour - 3, minute); // Moscow time
   const today = (who) => api('GET', '/api/duels/today', { auth: who.token });
   const choose = (who, id, pick) => api('POST', `/api/duels/${id}/choice`, { auth: who.token, json: { pick } });
@@ -744,10 +742,11 @@ test('«Кто лучше?»: once a day at a random moment, pick one of two fri
   assert.equal(push.aps.alert.title, 'Кто лучше?');
   assert.equal(push.aps.alert.body, `${push.left.username} или ${push.right.username} — выбери одного`);
   assert.notEqual(push.left.id, push.right.id);
-  assert.equal(names.get(push.left.id), push.left.username);
-  assert.equal(names.get(push.right.id), push.right.username);
+  assert.ok(![push.left.id, push.right.id].includes(me.id), 'never yourself');
+  assert.equal(nameOf.get(push.left.id), push.left.username);
+  assert.equal(nameOf.get(push.right.id), push.right.username);
   assert.equal(push.duelId, planned.id);
-  assert.equal(h.pushesTo(token('b')).length, 0, 'ярослава has one friend: no pair to choose from');
+  assert.equal(h.lastPushTo(token('b')).type, 'duel', 'everyone gets one, friends or not');
 
   let duel = (await today(me)).body.duel;
   assert.deepEqual(duel, { id: planned.id, date: '2026-10-14', left: push.left, right: push.right, choice: null });
@@ -758,41 +757,52 @@ test('«Кто лучше?»: once a day at a random moment, pick one of two fri
   assert.equal(duel.choice, 'left');
   assert.equal((await choose(me, duel.id, 'right')).body.error, 'Выбор уже сделан');
 
+  // Others pick too; their picks count for the whole company.
+  const yaraDuel = (await today(yara)).body.duel;
+  const yaraPick = yaraDuel.left.id === favourite.id ? 'left' : yaraDuel.right.id === favourite.id ? 'right' : 'left';
+  await choose(yara, yaraDuel.id, yaraPick);
+  const yaraChose = yaraPick === 'left' ? yaraDuel.left : yaraDuel.right;
+
   // Once a day only.
   await h.app.runDue();
   h.clock.now = at(14, 20);
   await h.app.runDue();
   assert.equal(h.pushesTo(token('a')).filter((p) => p.type === 'duel').length, 1);
 
-  // Thursday: the same pair comes up (fixed randomness), the same friend wins again.
+  // Thursday: before 11:00 the window is 11:00–21:00; the same pair comes up (fixed randomness).
   h.clock.now = at(15, 9);
   await h.app.runDue();
-  assert.equal(h.app.store.duelFor(me.id, '2026-10-15').sendAt, at(15, 16), 'before 11:00 the window is 11:00–21:00');
+  assert.equal(h.app.store.duelFor(me.id, '2026-10-15').sendAt, at(15, 16));
   h.clock.now = at(15, 16);
   await h.app.runDue();
   duel = (await today(me)).body.duel;
   await choose(me, duel.id, duel.left.id === favourite.id ? 'left' : 'right');
 
-  // Friday: two friends removed before the moment, so no pair is left and nothing is sent.
-  h.clock.now = at(16, 12);
-  await h.app.runDue();
-  await api('DELETE', `/api/friends/${ezh.id}`, { auth: me.token });
-  await api('DELETE', `/api/friends/${dobr.id}`, { auth: me.token });
-  h.clock.now = at(16, 17);
-  const before = h.pushesTo(token('a')).length;
-  await h.app.runDue();
-  assert.equal(h.pushesTo(token('a')).length, before);
-  assert.deepEqual((await today(me)).body, { duel: null });
-  await h.befriend(me, ezh);
-  await h.befriend(me, dobr);
+  // The favourite is the same for everyone, even without friends; nothing about the others.
+  const picksFor = (id) => 2 * (id === favourite.id) + (yaraChose.id === id ? 1 : 0);
+  const expected = [...nameOf.keys()].map((id) => [id, picksFor(id)]).sort((a, b) => b[1] - a[1])[0];
+  for (const who of [me, dobr]) {
+    const live = (await api('GET', '/api/week/current', { auth: who.token })).body;
+    assert.deepEqual(live.favoriteFriend, { userId: expected[0], name: nameOf.get(expected[0]), value: expected[1] });
+    assert.ok(!JSON.stringify(live).includes('picks'));
+  }
 
-  // The week's results name the favourite, with nothing about the others.
-  const live = (await api('GET', '/api/week/current', { auth: me.token })).body;
-  assert.deepEqual(live.favoriteFriend, { userId: favourite.id, name: favourite.username, value: 2 });
-  assert.ok(!JSON.stringify(live).includes('picks'));
-
+  // Sunday 21:00: the weekly push names the favourite.
+  await h.befriend(me, yara); // a snapshot needs a photo in the circle; everyone has one
   h.clock.now = Date.UTC(2026, 9, 18, 18, 0, 30);
   await h.app.runDue();
   const weekly = h.pushesTo(token('a')).find((p) => p.type === 'weekly');
-  assert.ok(weekly.aps.alert.body.includes(`Самый любимый друг — ${favourite.username}`));
+  assert.ok(weekly.aps.alert.body.includes(`Самый любимый друг — ${nameOf.get(expected[0])}`));
+});
+
+test('«Кто лучше?» needs two other people', async (t) => {
+  const h = await harness(t);
+  const me = await h.signUp('me-pass', 'барсук', { device: token('a') });
+  await h.signUp('yara-pass', 'ярослава');
+  h.clock.now = Date.UTC(2026, 9, 14, 9);
+  await h.app.runDue();
+  h.clock.now = Date.UTC(2026, 9, 14, 18);
+  await h.app.runDue();
+  assert.equal(h.app.store.duelFor(me.id, '2026-10-14'), undefined);
+  assert.deepEqual((await h.api('GET', '/api/duels/today', { auth: me.token })).body, { duel: null });
 });
