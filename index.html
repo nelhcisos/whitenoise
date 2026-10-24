@@ -265,17 +265,283 @@
   .vn-text { margin: 0; font-size: 17px; line-height: 1.4; font-weight: 600; color: var(--vn-ink); }
   .vn-box.narration .vn-text { color: #e8edf5; font-style: italic; }
   .pixel { image-rendering: pixelated; }
-  .master-stage .m-sprite { height: 62%; left: 50%; transform: translateX(-50%); bottom: 30%; filter: drop-shadow(0 0 8px rgba(255, 190, 90, .6)); }
-  .master-stage.asking .m-sprite { height: 30%; bottom: auto; top: 2%; }
-  .master-stage.asking .m-chapter { display: none; }
-  .m-chapter {
-    position: absolute; top: 3%; left: 4%; right: 4%; margin: 0; padding: 8px 12px;
-    background: rgba(16, 20, 30, .85); color: var(--gold); border-radius: 10px;
-    font: 800 14px "Nunito", system-ui, sans-serif; text-align: center;
+  /* ---------- The master's temple (s12) ---------- */
+  .master-stage {
+    --vn-teal: #d9772a; --vn-teal-dark: #a8541a;
+    aspect-ratio: auto; width: min(100%, 480px);
+    height: calc(100vh - 24px); height: calc(100dvh - 24px); min-height: 500px; max-height: 940px;
+    background: #1d1420;
   }
-  .master-stage .vn-choices { bottom: auto; top: 33%; max-height: 38%; overflow-y: auto; }
-  .master-stage .vn-choices button { font-size: 14px; padding: 9px 12px; }
-  .master-stage.asking .vn-box { min-height: 0; }
+  .master-stage .vn-bg { image-rendering: pixelated; object-position: center bottom; transition: filter 1.2s; }
+  .master-stage.dusk .vn-bg { filter: sepia(.35) hue-rotate(-18deg) saturate(1.4) brightness(.62); }
+  .m-col {
+    position: absolute; inset: 0; z-index: 2; box-sizing: border-box;
+    display: flex; flex-direction: column; gap: 8px; padding: 10px 3.5% 12px;
+  }
+  .m-top {
+    flex: none; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 10px;
+    padding: 6px 10px 8px; border-radius: 10px; background: rgba(20, 12, 24, .82);
+  }
+  .m-x {
+    width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; cursor: pointer;
+    background: rgba(255, 255, 255, .14); color: #fff; font: 800 15px "Nunito", system-ui, sans-serif;
+  }
+  .m-x:hover, .m-x:focus-visible { background: rgba(255, 255, 255, .28); outline: none; }
+  .m-chapter { margin: 0; color: var(--gold); font: 800 14px/1.25 "Nunito", system-ui, sans-serif; text-align: left; }
+  .m-prog { grid-column: 1 / -1; height: 6px; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, .15); }
+  .m-prog span { display: block; width: 0; height: 100%; background: linear-gradient(90deg, #ffb870, #ffe27a); transition: width .35s; }
+  .m-prog.review span { background: linear-gradient(90deg, #ff7b7b, #ffb870); }
+  .m-board {
+    flex: none; align-self: center; display: block; width: auto; height: auto;
+    max-width: calc(100% - 12px); max-height: 42%;
+    border: 6px solid #7a4a2a; border-radius: 6px; background: #21402f;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .45);
+  }
+  .m-fig { position: relative; flex: 1 1 0; min-height: 0; }
+  .m-walker {
+    position: absolute; bottom: 0; left: 50%; height: 100%; max-height: 360px; aspect-ratio: 2 / 3;
+    transform: translateX(-50%); transition: left .5s;
+  }
+  .m-sprite {
+    width: 100%; height: 100%; image-rendering: pixelated;
+    background: no-repeat center bottom / 100% 100%;
+    filter: drop-shadow(0 0 8px rgba(255, 190, 90, .55));
+    animation: m-bob 2.4s steps(2) infinite;
+  }
+  @keyframes m-bob { 50% { transform: translateY(-1.5%); } }
+  .master-stage.pacing .m-walker { animation: m-pace 9s linear infinite; transition: none; }
+  .master-stage.pacing .m-sprite {
+    background-image: url("assets/master/master_walk.png") !important; background-size: 200% 100%;
+    animation: m-walk .56s steps(1) infinite;
+  }
+  @keyframes m-walk { 0% { background-position: 0 0; } 50% { background-position: 100% 0; } }
+  @keyframes m-pace {
+    0% { left: 50%; transform: translateX(-50%); }
+    22% { left: 70%; transform: translateX(-50%); }
+    23% { left: 70%; transform: translateX(-50%) scaleX(-1); }
+    72% { left: 30%; transform: translateX(-50%) scaleX(-1); }
+    73% { left: 30%; transform: translateX(-50%); }
+    100% { left: 50%; transform: translateX(-50%); }
+  }
+  .master-stage.guesting.guest-right .m-walker { left: 30%; }
+  .master-stage.guesting.guest-left .m-walker { left: 70%; }
+  .m-guest {
+    position: absolute; bottom: 0; height: 84%; max-height: 330px; aspect-ratio: 2 / 3;
+    background: no-repeat center bottom / contain; image-rendering: pixelated;
+    filter: drop-shadow(0 0 6px rgba(120, 190, 255, .5));
+  }
+  .m-guest.small { height: 44%; aspect-ratio: 1; }
+  .m-guest.from-right { right: 5%; animation: m-in-r .55s ease-out; }
+  .m-guest.from-left { left: 5%; animation: m-in-l .55s ease-out; }
+  .m-guest.from-right.leaving { animation: m-out-r .5s ease-in forwards; }
+  .m-guest.from-left.leaving { animation: m-out-l .5s ease-in forwards; }
+  @keyframes m-in-r { from { transform: translateX(140%); } }
+  @keyframes m-in-l { from { transform: translateX(-140%); } }
+  @keyframes m-out-r { to { transform: translateX(160%); opacity: 0; } }
+  @keyframes m-out-l { to { transform: translateX(-160%); opacity: 0; } }
+  .master-stage.has-board.asking .m-fig, .master-stage.paneled .m-fig { display: none; }
+  .master-stage.menu .m-fig { flex: 0 0 24%; }
+  .master-stage .m-box { position: relative; left: auto; right: auto; bottom: auto; flex: none; min-height: 0; padding: 20px 16px 14px; }
+  .master-stage .m-box .vn-text { font-size: 16px; line-height: 1.38; }
+  .master-stage .m-box.guest { --vn-teal: #3a8fd6; }
+  .m-ghost { color: transparent; }
+  .m-more { position: absolute; right: 12px; bottom: 5px; color: var(--vn-teal); font-size: 12px; animation: m-more 1s steps(2) infinite; }
+  @keyframes m-more { 50% { opacity: .2; } }
+  .m-panel {
+    flex: 1 1 0; min-height: 0; overflow-y: auto; box-sizing: border-box; padding: 12px;
+    border-radius: 12px; background: rgba(250, 243, 224, .97); color: #2a1c10;
+    font-family: "Nunito", system-ui, sans-serif; text-align: left; box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+  }
+  .m-h { margin: 2px 0 10px; color: #7a2e10; font: 800 18px/1.25 "Nunito", system-ui, sans-serif; text-align: center; }
+  .m-item {
+    display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; box-sizing: border-box; width: 100%; margin: 0 0 8px;
+    padding: 9px 12px; border: 2px solid #c9a46a; border-radius: 10px; cursor: pointer; text-align: left;
+    background: linear-gradient(#fff8e6, #f3e2bd); color: #2a1c10; font: 800 15px/1.25 "Nunito", system-ui, sans-serif;
+  }
+  .m-item small { grid-column: 1; color: #7a5a3a; font-weight: 600; font-size: 12.5px; }
+  .m-item .m-stars { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .m-item:hover, .m-item:focus-visible { border-color: #e07a1f; outline: none; }
+  .m-item.next { border-color: #e07a1f; box-shadow: 0 0 0 3px rgba(224, 122, 31, .25); }
+  .m-item.exam, .m-item.main { background: linear-gradient(#ffe9b3, #f7c76a); }
+  .m-item.cert { background: linear-gradient(#ffe0e0, #f6b9b9); }
+  .m-item.leave, .m-item.small { background: #efe5d2; }
+  .m-item.small { padding: 6px 12px; font-size: 13px; }
+  .m-stars { white-space: nowrap; font-size: 17px; letter-spacing: 1px; }
+  .m-stars i { font-style: normal; color: #d9a400; }
+  .m-stars i.off { color: #cdbb98; }
+  .m-stars.big { display: block; margin: 4px 0 6px; font-size: 40px; text-align: center; }
+  .m-stars.big i.on { display: inline-block; animation: m-pop .5s ease-out backwards; }
+  .m-stars.big i:nth-child(2) { animation-delay: .25s; }
+  .m-stars.big i:nth-child(3) { animation-delay: .5s; }
+  @keyframes m-pop { from { transform: scale(0) rotate(-40deg); } 70% { transform: scale(1.3); } }
+  .m-score { margin: 0 0 12px; font-weight: 800; text-align: center; }
+  .m-choices { flex: none; max-height: 50%; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; }
+  .m-choices button.m-opt, .m-choices .m-row {
+    box-sizing: border-box; width: 100%; padding: 9px 13px; border: 2px solid rgba(255, 255, 255, .6); border-radius: 12px;
+    text-align: left; color: #fff; background: linear-gradient(#e0892b, #b8601a);
+    font: 700 15px/1.25 "Nunito", system-ui, sans-serif; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); cursor: pointer;
+  }
+  .m-choices button.m-opt:hover:not(:disabled), .m-choices button.m-opt:focus-visible { border-color: #fff; outline: none; }
+  .m-choices button:disabled { cursor: default; }
+  .m-choices.tf { flex-direction: row; }
+  .m-choices.tf button.m-opt { text-align: center; font-size: 17px; }
+  .m-choices button.sel { background: linear-gradient(#7a5af0, #4b2fc0); }
+  .m-choices button.linked { background: linear-gradient(#5b8ad6, #3a5ea8); }
+  .m-choices .ok, .m-choices button.ok { background: linear-gradient(#3ddc84, #1f9e5a); }
+  .m-choices .bad, .m-choices button.bad { background: linear-gradient(#ff6b6b, #b81c1c); }
+  .m-choices button.gone { display: none; }
+  .m-choices .m-row { cursor: default; font-size: 14px; }
+  .m-choices .num {
+    display: inline-block; min-width: 1.3em; margin-right: 7px; padding: 0 4px; border-radius: 6px;
+    background: rgba(255, 255, 255, .28); text-align: center;
+  }
+  .m-choices .tag { float: right; margin-left: 8px; font-weight: 800; opacity: .9; }
+  .m-match { display: grid; grid-template-columns: 1fr 1.25fr; gap: 6px; }
+  .m-match button.m-opt { padding: 7px 9px; font-size: 13.5px; }
+  .m-match button.m-l { background: linear-gradient(#6b5bd6, #4636a8); }
+  .m-match button.m-l.sel { background: linear-gradient(#ffb84d, #e07a1f); }
+  .m-mini {
+    align-self: flex-end; padding: 5px 12px; border: 2px solid rgba(255, 255, 255, .55); border-radius: 10px; cursor: pointer;
+    color: #fff; background: rgba(30, 20, 30, .7); font: 800 13px "Nunito", system-ui, sans-serif;
+  }
+  .m-mini.go { align-self: stretch; padding: 9px; font-size: 15px; background: linear-gradient(#3ddc84, #1f9e5a); }
+  .m-card {
+    position: absolute; left: 8%; right: 8%; top: 34%; z-index: 4; pointer-events: none;
+    padding: 18px 14px; border-radius: 14px; text-align: center; color: #3a1c08;
+    background: linear-gradient(#fff3d6, #f1d39a); border: 3px solid #b8601a; box-shadow: 0 8px 30px rgba(0, 0, 0, .55);
+    font-family: "Nunito", system-ui, sans-serif;
+  }
+  .m-card small { display: block; color: #a8541a; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
+  .m-card b { display: block; margin: 6px 0 4px; font-size: 22px; line-height: 1.2; }
+  .m-card span { font-weight: 700; font-size: 13px; color: #7a5a3a; }
+  .m-card.go { animation: m-card 1.9s ease-in-out forwards; }
+  @keyframes m-card { 0% { opacity: 0; transform: scaleY(.1); } 15% { opacity: 1; transform: scaleY(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
+  .m-spark {
+    position: absolute; left: 50%; top: 0; z-index: 3; pointer-events: none; color: #ffe27a; font-size: 16px; font-style: normal;
+    text-shadow: 0 0 6px #fff3a0; animation: m-spark .9s ease-out forwards;
+  }
+  @keyframes m-spark {
+    from { transform: translate(-50%, -50%) scale(.4); opacity: 1; }
+    to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1); opacity: 0; }
+  }
+  .master-stage.shake { animation: m-shake .12s linear 9; }
+  @keyframes m-shake { 25% { transform: translate(-3px, 1px); } 50% { transform: translate(2px, -2px); } 75% { transform: translate(3px, 2px); } }
+  /* falling petals and the ambient layer behind the lesson */
+  .m-petals, .m-fx { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+  .m-petals i, .fx-petal {
+    position: absolute; top: -12px; width: 8px; height: 6px; border-radius: 60% 0; background: #ffb7c9; opacity: .85;
+  }
+  .m-petals i { animation: m-fall 11s linear infinite; }
+  .m-petals i:nth-child(1) { left: 6%; animation-delay: -2s; }
+  .m-petals i:nth-child(2) { left: 22%; animation-duration: 13s; animation-delay: -7s; }
+  .m-petals i:nth-child(3) { left: 38%; animation-duration: 10s; animation-delay: -4s; }
+  .m-petals i:nth-child(4) { left: 54%; animation-duration: 14s; animation-delay: -10s; }
+  .m-petals i:nth-child(5) { left: 68%; animation-duration: 12s; animation-delay: -1s; }
+  .m-petals i:nth-child(6) { left: 80%; animation-duration: 9s; animation-delay: -6s; }
+  .m-petals i:nth-child(7) { left: 90%; animation-duration: 15s; animation-delay: -12s; }
+  .m-petals i:nth-child(8) { left: 46%; animation-duration: 16s; animation-delay: -3s; }
+  @keyframes m-fall {
+    0% { transform: translate(0, 0) rotate(0); }
+    50% { transform: translate(34px, 52vh) rotate(200deg); }
+    100% { transform: translate(-12px, 104vh) rotate(400deg); }
+  }
+  .fx { position: absolute; }
+  .fx svg { display: block; width: 100%; height: auto; }
+  .fx-butterfly { left: -40px; width: 34px; animation: fx-fly 8.5s linear forwards; }
+  .fx-butterfly.rtl { left: auto; right: -40px; animation-name: fx-fly-back; }
+  .fx-butterfly svg { animation: fx-bob 1.1s ease-in-out infinite alternate; }
+  .fx-butterfly .w { transform-box: view-box; transform-origin: 4.5px 3px; animation: fx-flap .2s steps(2) infinite; }
+  @keyframes fx-fly { to { transform: translateX(580px); } }
+  @keyframes fx-fly-back { to { transform: translateX(-580px); } }
+  @keyframes fx-bob { from { transform: translateY(-16px); } to { transform: translateY(16px); } }
+  @keyframes fx-flap { 50% { transform: scaleX(.25); } }
+  .fx-bird { left: -30px; width: 22px; animation: fx-fly 7s linear forwards; }
+  .fx-bird svg { animation: fx-flap2 .34s steps(2) infinite; }
+  @keyframes fx-flap2 { 50% { transform: scaleY(-.6); } }
+  .fx-cloud { left: -140px; top: 5%; width: 130px; opacity: .85; animation: fx-drift 15s linear forwards; }
+  @keyframes fx-drift { to { transform: translateX(760px); } }
+  .fx-sun {
+    left: 62%; top: 22%; width: 420px; height: 420px; margin: -210px 0 0 -210px; border-radius: 50%;
+    background: repeating-conic-gradient(rgba(255, 236, 160, .38) 0 7deg, transparent 7deg 21deg);
+    -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%); mask: radial-gradient(circle, #000 18%, transparent 68%);
+    animation: fx-rays 9s linear forwards;
+  }
+  @keyframes fx-rays {
+    0% { opacity: 0; transform: rotate(0) scale(.8); } 20%, 80% { opacity: 1; }
+    100% { opacity: 0; transform: rotate(45deg) scale(1.05); }
+  }
+  .fx-petal { animation: fx-gust 3.4s ease-in forwards; }
+  @keyframes fx-gust { to { transform: translate(var(--dx), var(--dy)) rotate(560deg); opacity: 0; } }
+  .fx-firefly {
+    width: 5px; height: 5px; border-radius: 50%; background: #fff3a0; box-shadow: 0 0 8px 3px rgba(255, 240, 120, .8);
+    animation: fx-glow 4.8s ease-in-out forwards;
+  }
+  @keyframes fx-glow { 0% { opacity: 0; } 30%, 70% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), -90px); } }
+  .fx-star {
+    left: 78%; top: 7%; width: 70px; height: 3px; border-radius: 2px;
+    background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0)); transform-origin: 0 50%;
+    animation: fx-shoot 1.5s ease-in forwards;
+  }
+  @keyframes fx-shoot {
+    from { transform: rotate(-28deg) translateX(0); opacity: 0; } 15% { opacity: 1; }
+    to { transform: rotate(-28deg) translateX(-300px); opacity: 0; }
+  }
+  /* commercial break */
+  .m-ad {
+    position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 24px 22px; box-sizing: border-box; text-align: center; color: #0f2a4a;
+    background: linear-gradient(#7fd3ff, #e8f7ff 60%, #fff4c9); font-family: "Nunito", system-ui, sans-serif;
+  }
+  .m-ad-tag {
+    position: absolute; top: 12px; left: 12px; padding: 3px 8px; border-radius: 6px;
+    background: #ffe23a; color: #000; font: 800 11px "Nunito", system-ui, sans-serif; letter-spacing: .1em;
+  }
+  .m-ad-plane { width: 46%; max-width: 200px; animation: m-plane 2.6s ease-in-out infinite alternate; }
+  .m-ad-plane svg { width: 100%; height: auto; display: block; }
+  @keyframes m-plane { from { transform: translate(-14px, 6px) rotate(-4deg); } to { transform: translate(14px, -8px) rotate(3deg); } }
+  .m-ad-h { margin: 0; font-size: 28px; font-weight: 800; line-height: 1.15; color: #e0234e; text-shadow: 2px 2px 0 #fff; }
+  .m-ad-p { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.35; }
+  .m-ad-fine { margin: 0; font-size: 11.5px; font-weight: 600; color: #46607a; }
+  .m-ad-skip {
+    position: absolute; right: 12px; bottom: 12px; padding: 8px 12px; border: 0; border-radius: 8px; cursor: pointer;
+    background: rgba(0, 0, 0, .72); color: #fff; font: 800 13px "Nunito", system-ui, sans-serif;
+  }
+  .m-ad-skip:disabled { cursor: default; opacity: .75; }
+  /* glossary and the certificate */
+  .m-search {
+    box-sizing: border-box; width: 100%; margin: 0 0 10px; padding: 8px 10px; border: 2px solid #c9a46a; border-radius: 8px;
+    background: #fffaf0; color: #2a1c10; font: 600 15px "Nunito", system-ui, sans-serif;
+  }
+  .m-dl { margin: 0 0 10px; }
+  .m-dl dt { margin-top: 9px; color: #7a2e10; font-weight: 800; }
+  .m-dl dd { margin: 2px 0 0; font-size: 14px; line-height: 1.4; }
+  .m-cert { text-align: center; padding: 6px 4px; border: 3px double #b8601a; border-radius: 10px; background: #fff8e8; }
+  .m-cert p { margin: 6px 0; line-height: 1.4; }
+  .m-cert-k { color: #a8541a; font-weight: 800; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+  .m-cert-h { margin: 2px 0 0; font-size: 26px; color: #7a2e10; }
+  .m-cert-s { margin-top: 0 !important; color: #7a5a3a; font-style: italic; }
+  .m-cert-name {
+    box-sizing: border-box; width: 86%; margin: 4px 0; padding: 6px; border: 0; border-bottom: 2px dashed #b8601a;
+    background: transparent; color: #2a1c10; text-align: center; font: 800 20px "Nunito", system-ui, sans-serif;
+  }
+  .m-cert-name:focus { outline: none; border-bottom-style: solid; }
+  .m-cert-date { color: #7a5a3a; font-weight: 700; }
+  .m-seal {
+    display: inline-grid; place-items: center; width: 74px; height: 74px; margin: 6px 0; border: 3px solid #c0262c; border-radius: 50%;
+    color: #c0262c; font-weight: 800; font-size: 13px; letter-spacing: .08em; transform: rotate(-12deg);
+    box-shadow: inset 0 0 0 4px #fff8e8, inset 0 0 0 6px #c0262c;
+  }
+  .m-cert-fn { font-size: 11.5px; color: #7a5a3a; }
+  .m-btns { display: flex; flex-direction: column; }
+  @media (max-width: 380px) {
+    .master-stage .m-box .vn-text { font-size: 15px; }
+    .m-choices button.m-opt { font-size: 14px; padding: 8px 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .m-sprite, .m-petals i, .m-more, .m-card.go, .m-ad-plane { animation: none; }
+    .master-stage.pacing .m-walker { animation: none; }
+  }
+  /* ---------- end of the master's temple ---------- */
   .vn-choices button.ok { background: linear-gradient(#3ddc84, #1f9e5a); }
   .vn-choices button.bad { background: linear-gradient(#ff5b5b, #b81c1c); }
   .vn-choices {
@@ -467,13 +733,36 @@
 
 <section class="screen novel" id="s12" hidden>
   <div class="vn-stage master-stage" id="mStage">
-    <img class="vn-bg pixel" id="mBg" src="assets/master/temple.png" alt="">
-    <p class="m-chapter" id="mChapter" hidden></p>
-    <img class="vn-sprite pixel m-sprite" id="mSprite" src="assets/master/master_calm.png" alt="Мастер">
-    <div class="vn-choices" id="mChoices" hidden></div>
-    <div class="vn-box" id="mBox" role="button" tabindex="0" aria-label="Дальше">
-      <span class="vn-name" id="mName">Мастер</span>
-      <p class="vn-text" id="mText"></p>
+    <img class="vn-bg pixel" src="assets/master/temple.png" alt="">
+    <div class="m-petals" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="m-fx" id="mFx" aria-hidden="true"></div>
+    <div class="m-col">
+      <div class="m-top" id="mTop" hidden>
+        <button class="m-x" id="mExit" type="button" aria-label="К свиткам">✕</button>
+        <p class="m-chapter" id="mChapter"></p>
+        <div class="m-prog" id="mProg"><span id="mProgFill"></span></div>
+      </div>
+      <canvas class="m-board" id="mBoard" width="640" height="400" hidden aria-label="Доска мастера"></canvas>
+      <div class="m-fig" id="mFig">
+        <div class="m-walker" id="mWalker"><div class="m-sprite" id="mSprite" role="img" aria-label="Мастер"></div></div>
+        <div class="m-guest" id="mGuest" hidden></div>
+      </div>
+      <div class="m-panel" id="mPanel" hidden></div>
+      <div class="vn-box m-box" id="mBox" role="button" tabindex="0" aria-label="Дальше">
+        <span class="vn-name" id="mName">Мастер</span>
+        <p class="vn-text" id="mText" aria-live="polite"></p>
+        <span class="m-more" id="mMore" aria-hidden="true" hidden>▼</span>
+      </div>
+      <div class="m-choices" id="mChoices" hidden></div>
+    </div>
+    <div class="m-card" id="mCard" hidden></div>
+    <div class="m-ad" id="mAd" hidden>
+      <span class="m-ad-tag">РЕКЛАМА</span>
+      <div class="m-ad-plane" aria-hidden="true"><svg viewBox="0 0 32 14" shape-rendering="crispEdges"><path fill="#fff" d="M2 6h22v1h3v1h2v2h-2v1h-3v1H8v-1H5v-1H3V9H2z"/><path fill="#e0234e" d="M4 9h22v1H4zM10 2h4v4h-2V4h-2zM11 11h4v3h-4z"/><path fill="#3a9adf" d="M24 7h2v1h1v1h-3zM8 7h2v1H8zM12 7h2v1h-2zM16 7h2v1h-2zM20 7h2v1h-2z"/><path fill="#0f2a4a" d="M1 6h1v4H1zM2 5h22v1H2zM2 11h25v1H2zM27 8h1v2h1v1h-2z"/></svg></div>
+      <p class="m-ad-h" id="mAdH"></p>
+      <p class="m-ad-p" id="mAdP"></p>
+      <p class="m-ad-fine" id="mAdFine"></p>
+      <button class="m-ad-skip" id="mAdSkip" type="button" disabled>Пропустить через 5</button>
     </div>
   </div>
 </section>
@@ -1636,140 +1925,1714 @@
     setTimeout(() => ac.close().catch(() => {}), 500);
   }
 
-  // ---------- The master: four lessons on occlusion and jaw movement ----------
-  // Based on a textbook on occlusion and mandibular movement (history of research,
-  // mandibular position, factors of malocclusion and the TMJ), retold in plain Russian.
-  // Each question: the first option is the correct one (they are shuffled on screen).
-  const MASTER = [
-    { say: "Ученик. Брекеты ты подавать научился. Но ортодонт без понимания окклюзии — как монах без медитации.", mood: "calm" },
-    { say: "Пройди со мной четыре главы. Я расскажу, ты ответишь. Ошибёшься — объясню ещё раз. Не страшно.", mood: "happy" },
-
-    { chapter: "Глава 1. Как всё начиналось: артикуляторы и оси" },
-    { say: "Стоматология — особая медицина: в её основе окклюзия и движения челюсти. История современной стоматологии — это история их изучения. Ей около двухсот лет." },
-    { say: "В 1805 году Gariot описал, как сделать гипсовый артикулятор. Потом были артикуляторы Cameron и Evens (1840), Bonwill (1858). Так оформились понятия положения бугоркового контакта, рабочей и нерабочей стороны." },
-    { say: "Артикулятор Бонвилла построен на треугольнике Бонвилла, расстояние между мыщелками — 4 дюйма. Он первым воспроизвёл движение мыщелков и ставил во главу гармонию движения челюсти и окклюзии." },
-    { say: "Luce (1889) первым измерил движения челюсти у живого человека и увидел: при открывании рта центр вращения постоянно смещается. Campion (1901) лицевой дугой измерил суставные пути: они у каждого свои и разные слева и справа." },
-    { say: "Gysi в 1901 году создал устройство для записи готической дуги и сагиттального наклона суставного пути, а в 1910 — для бокового. Bennett (1908) показал: открывание и боковые движения — не простое вращение, мыщелок рабочей стороны смещается в сторону движения. Это движение Беннетта." },
-    { say: "Осевая теория Гизи (1910–1928) легла в основу ортопедии: движения челюсти — это вращения вокруг разных осей. Центр вращения находят геометрически и воспроизводят на артикуляторе. Смещение Гизи принял за ноль — только вращение. Готической дугой он назвал след резцовой точки при боковых движениях." },
-    { q: "Кто первым измерил движения челюсти у живого человека и увидел, что центр вращения при открывании всё время меняется?",
-      options: ["Luce (1889)", "Bonwill (1858)", "McCollum (1921)", "Farrar (1978)"], explain: "Luce в 1889 году. До него о движениях челюсти судили по артикуляторам." },
-    { q: "Что показал Bennett (1908)?",
-      options: ["Мыщелок рабочей стороны смещается в сторону движения", "Расстояние между мыщелками всегда 4 дюйма", "Самое заднее положение челюсти — самое правильное", "Челюсть при открывании вращается вокруг одной неподвижной точки"], explain: "Это и есть движение Беннетта: движение челюсти — не простое вращение." },
-    { q: "На каком допущении стоит осевая теория Гизи?",
-      options: ["Движение челюсти — чистое вращение, смещение принято за ноль", "Движение — только смещение, без вращения", "Челюсть вообще не вращается", "Ось вращения и положение челюсти — одно и то же"], explain: "Гизи свёл всё к вращению вокруг осей и находил их центр геометрически." },
-    { q: "Какое межмыщелковое расстояние заложено в артикуляторе Бонвилла?",
-      options: ["4 дюйма", "2 дюйма", "6 дюймов", "10 сантиметров"], explain: "4 дюйма — по треугольнику Бонвилла." },
-
-    { chapter: "Глава 2. Гнатология: взлёт и падение" },
-    { say: "Гизи думал, что челюсть движется по кругу. Но движение Беннетта намекало: всё сложнее. В 1921 году McCollum доказал существование терминальной шарнирной оси — у измерений появилась чёткая точка отсчёта." },
-    { say: "В 1926 году McCollum со Stallard и Stuart основал Калифорнийское гнатологическое общество. В 1929 — гнатограф, предшественник пантографа; в 1934 — гнатоскоп. Пантограф записывает движение челюсти в трёх измерениях шестью пластинами и штифтами, а запись переносят на полностью регулируемый артикулятор." },
-    { say: "Сначала целью считали сбалансированную окклюзию. Но большинство таких работ провалилось. Stallard посмотрел на здоровые зубы: при эксцентрических движениях передние зубы ведут, а жевательные размыкаются. В положении бугоркового контакта у передних зубов зазор около 25 мкм, а вертикальную нагрузку несут жевательные." },
-    { say: "Передние защищают жевательные, жевательные — передние. Это взаимозащищённая окклюзия; позже Stallard назвал её органической. В 1949 году Thomas предложил моделирование «бугор — ямка»: зуб к зубу, каждый функциональный бугор касается ямки антагониста в трёх точках." },
-    { say: "Гнатологию критиковали: сложно, дорого, не для всех. Guichet упростил артикуляторы. А в 1970–80-х Lundeen и Gibbs с системой-репликатором показали: функциональные движения сложные. Путь туда и обратно не совпадает, плюс движение Беннетта. Ни один артикулятор такого не повторит." },
-    { say: "Тогда же William Farrar (1978, 1979) описал внутренние нарушения ВНЧС. Старая гнатология держалась за центральное соотношение и про патологию сустава не думала — и система рухнула. Выстояла Австрия: аксиограф (упрощённый пантограф), полурегулируемый артикулятор и внимание к патологии сустава." },
-    { q: "Что доказал McCollum в 1921 году?",
-      options: ["Существование терминальной шарнирной оси", "Существование движения Беннетта", "Внутренние нарушения ВНЧС", "Треугольник Бонвилла"], explain: "С терминальной шарнирной оси у измерений появилась точка отсчёта." },
-    { q: "Что увидел Stallard у людей со здоровыми зубами?",
-      options: ["При эксцентрических движениях передние зубы ведут, а жевательные размыкаются", "При любом движении все зубы касаются одновременно", "Вертикальную нагрузку несут передние зубы", "Жевательные зубы не касаются никогда"], explain: "Отсюда взаимозащищённая, а потом органическая окклюзия." },
-    { q: "Почему классическая гнатология с пантографом и полностью регулируемым артикулятором ушла в прошлое?",
-      options: ["Движения оказались слишком сложными для артикулятора, а Farrar описал внутренние нарушения ВНЧС", "Пантографы стали слишком дешёвыми", "Гизи доказал, что шарнирной оси нет", "Гипс запретили"], explain: "Lundeen и Gibbs плюс Farrar — две причины смены парадигмы в 1980-х." },
-    { q: "Где гнатологию сохранили и переосмыслили, сделав упор на патологии сустава?",
-      options: ["В Австрии", "В США", "В Японии", "В Швейцарии"], explain: "Австрийская гнатология: аксиограф и полурегулируемый артикулятор." },
-
-    { chapter: "Глава 3. Положение нижней челюсти" },
-    { say: "У растущего человека нижняя челюсть подстраивается под растущую высоту прикуса: поворачивается вперёд, а мыщелок вторично растёт. Это нормальный рост." },
-    { say: "Положение бугоркового контакта (ICP) обычно на 1–2 мм впереди референтного положения (RP). А при дисфункции ВНЧС челюсть чаще всего смещена назад, и перед лечением прикуса её положение исправляют — обычно вперёд." },
-    { say: "Физиологическое положение челюсти никогда не бывает задним и это не одна строгая точка. Это область впереди, к которой организм может приспособиться без усилия. Нашли положение — дайте стабильную опору (центрические стопы) и правильное направляющее скольжение. А где восстанавливают функцию — сначала провизорные конструкции и наблюдение за адаптацией." },
-    { say: "Шарнирная ось и положение челюсти — разные вещи. Ось — это ось вращения, к положению она отношения не имеет. Положение — где находится челюсть относительно черепа. Путаница пошла от идеи, что самое заднее положение физиологично и там челюсть вращается как петля. Определения центрального соотношения с тех пор пересмотрели, но заблуждение живучее." },
-    { say: "В клинике шарнирная ось нужна только для записи движения мыщелка: чтобы убрать вращение и записать скольжение по функциональному суставному бугорку. Анатомический бугорок круче, чем реальный путь мыщелка. Если угол суставного пути 60° и больше (в среднем 45–50°), сначала подозревай смещение мыщелка." },
-    { say: "У пациентов со сложными проблемами центральное соотношение напрямую не записать. Регистрацию прикуса всегда делают в референтном положении (RP): оно не нагружает сустав и воспроизводимо. Кондилограф (Cadiax) и цефалограмма показывают: RP физиологично (PRP) — окончательное лечение. Нефизиологично (DRP) — находим лечебное положение ThP и начинаем с начальной терапии. Сплинт, провизорные конструкции — всё в ThP." },
-    { q: "Где обычно находится положение бугоркового контакта (ICP) относительно референтного положения (RP)?",
-      options: ["На 1–2 мм впереди", "На 1–2 мм позади", "Точно совпадает", "На 5 мм ниже"], explain: "ICP обычно на 1–2 мм кпереди от RP." },
-    { q: "Что верно про физиологическое положение нижней челюсти?",
-      options: ["Это область впереди, к которой организм может приспособиться", "Это самое заднее положение челюсти", "Это одна строго определённая точка", "Оно совпадает с шарнирной осью"], explain: "Не назад и не точка, а область, где организм справится без напряжения." },
-    { q: "Зачем в клинике нужна шарнирная ось?",
-      options: ["Чтобы записать движение мыщелка без компонента вращения", "Чтобы определить положение челюсти", "Чтобы напрямую записать центральное соотношение", "Чтобы измерить оверджет"], explain: "Ось — только для записи скольжения мыщелка. Положение челюсти — другое понятие." },
-    { q: "У пациента угол суставного пути 65°. О чём подумать в первую очередь?",
-      options: ["О смещении мыщелка", "Это норма, всё хорошо", "О кариесе", "О слишком плоском бугорке"], explain: "60° и больше — повод подозревать смещение мыщелка (в среднем 45–50°)." },
-    { q: "Кондилограф показал: RP нефизиологично (DRP). Что дальше?",
-      options: ["Определить лечебное положение ThP и начать с начальной терапии", "Сразу окончательное протезирование в RP", "Записать прикус в самом заднем положении", "Ничего не делать"], explain: "DRP → ThP → начальная терапия. PRP → сразу окончательное лечение." },
-
-    { chapter: "Глава 4. Что такое неправильный прикус и при чём тут сустав" },
-    { say: "После Farrar сорок лет спорили: связаны окклюзия и ВНЧС или нет. Для клиники этот спор бессмысленный: даже если связь не доказана, это не значит, что можно давать любую окклюзию и не думать о суставе. Окклюзию и функцию челюсти нужно гармонизировать." },
-    { say: "В статьях (например, Pullinger) факторами называют: открытый прикус, перекрёстный прикус в боковых отделах, скольжение RCP–ICP, его асимметрию, овербайт, оверджет, смещение средней линии, отсутствие жевательных зубов, соотношение первых моляров. Но ни один не учитывает физиологическое положение челюсти." },
-    { say: "Прикус неправильный только тогда, когда он нарушает функцию зубочелюстной системы. Нет вреда функции — это не нарушение, и лечить не нужно." },
-    { say: "Основа — органическая окклюзия, взаимная защита: при сильном усилии передние зубы и клыки защищают жевательные от боковых сил, а жевательные защищают передние и ВНЧС от сильного давления." },
-    { say: "Во время жевания зубы касаются друг друга всего около 15 минут в сутки (McHorris). Самое сильное усилие — ночной бруксизм. Стираемость, абфракции, разрушение пародонта, внутренние нарушения ВНЧС, напряжение мышц почти не объяснить без него. Поэтому теорию окклюзии строят на ночном бруксизме." },
-    { say: "Окклюзионная интерференция — бугорковый контакт, мешающий боковому скольжению. Днём челюсть его обходит, а во сне на зуб давит боковая сила (подвижность), мыщелок вытягивается, мышцы перенапрягаются. Потеря окклюзионной опоры: при сжатии и скрежетании мыщелок сдавливается — деформация, резорбция, перфорация диска." },
-    { say: "Интерференция передних зубов: слишком крутое ведение резцов и клыков мешает плавному скрежетанию и провоцирует сильное сжатие. Челюсть уходит назад, сустав сдавлен, жевательные мышцы перенапряжены. И главное: при контакте первых и вторых моляров активность мышц при бруксизме резко растёт (Tamaki, 2001). Поэтому разобщение жевательных зубов обязательно." },
-    { q: "Когда неправильный прикус действительно требует лечения?",
-      options: ["Когда он нарушает функцию зубочелюстной системы", "Всегда, если есть оверджет", "Всегда при смещении средней линии", "Когда пациенту не нравится цвет зубов"], explain: "Нет вреда функции — нет нарушения и нет показаний к лечению." },
-    { q: "Что такое органическая (взаимозащищённая) окклюзия?",
-      options: ["Передние и клыки защищают жевательные от боковых сил, жевательные — передние и ВНЧС от сильного давления", "Все зубы нагружены одинаково", "Боковые движения ведут жевательные зубы", "Всю вертикальную нагрузку несут передние зубы"], explain: "Это общий принцип почти всех теорий окклюзии." },
-    { q: "На чём, по этой книге, нужно строить теорию окклюзии?",
-      options: ["На ночном бруксизме", "На жевании", "На глотании", "На речи"], explain: "Жевание — около 15 минут контактов в сутки, а самые сильные нагрузки дают при бруксизме." },
-    { q: "Чем грозит потеря окклюзионной опоры?",
-      options: ["Сдавлением мыщелка: деформация, резорбция, перфорация диска", "Только эстетическим дефектом", "Вытягиванием мыщелка вперёд", "Ничем"], explain: "При сжатии и скрежетании без опоры мыщелок сдавливается." },
-    { q: "Почему разобщение жевательных зубов при бруксизме обязательно?",
-      options: ["При контакте первых и вторых моляров активность мышц резко растёт", "Чтобы зубы не темнели", "Потому что клыки слабые", "Чтобы контакт моляров стал сильнее"], explain: "Tamaki (2001): с подключением моляров активность мышц при скрежетании подскакивает." },
-
-    { say: "", final: true },
+  // ---------- The master's scrolls: lesson content ----------
+  // Retold in plain Russian from a textbook on occlusion and mandibular movement:
+  // history of research (pp. 12–18), mandibular position (pp. 31–35),
+  // factors of malocclusion and the TMJ (pp. 36–40).
+  // Step kinds: s = the master says; q = multiple choice (the first option is the correct one,
+  // options are shuffled on screen); tf = "true or myth" (t = the answer); ord = put in order
+  // (items are listed in the right order); mt = match pairs. b = chalkboard id, m = mood, e = explanation.
+  const MASTER_INTRO = [
+    { s: "Ты выходишь во внутренний двор храма. Посреди двора почему-то стоит стоматологическое кресло. Рядом — старик в оранжевых одеждах.", narr: true },
+    { s: "Ученик. Брекеты ты подавать научился. Но ортодонт без понимания окклюзии — как монах без медитации.", m: "calm" },
+    { s: "У меня четыре свитка. Проходи их по порядку. Где ошибёшься — повторим в конце свитка.", m: "calm" },
+    { s: "Пройдёшь все — сдашь экзамен и получишь свиток ученика.", m: "happy" },
   ];
-  ["calm", "happy", "stern"].forEach(m => { const i = new Image(); i.src = `assets/master/master_${m}.png`; });
-  let mst = null; // { i, right, total, answered }
-  function setMood(mood) { $("mSprite").src = `assets/master/master_${mood || "calm"}.png`; }
-  function startMaster() {
-    mst = { i: -1, right: 0, total: 0, answered: false };
-    $("mChapter").hidden = true;
-    nextMaster();
-  }
-  function nextMaster() {
-    if (!$("mChoices").hidden && !mst.answered) return;   // answer first
-    mst.i++;
-    const st = MASTER[mst.i];
-    const box = $("mBox"), ch = $("mChoices"), stage = $("mStage");
-    ch.hidden = true; stage.classList.remove("asking"); mst.answered = false;
-    if (!st) return show(2);
-    if (st.chapter) {
-      $("mChapter").hidden = false; $("mChapter").textContent = st.chapter;
-      setMood("calm");
-      $("mText").textContent = st.chapter + ". Слушай внимательно.";
-      return;
-    }
-    if (st.final) {
-      $("mChapter").hidden = true;
-      const good = mst.right >= Math.ceil(mst.total * 0.75);
-      setMood(good ? "happy" : "stern");
-      $("mText").textContent = `Четыре главы позади. Верных ответов: ${mst.right} из ${mst.total}. ` +
-        (good ? "Ты понял больше, чем многие врачи. Иди, тебя ждут пациенты." : "Путь длинный. Перечитай главы — и возвращайся. А пока — к пациентам.");
-      return;
-    }
-    if (st.say) { setMood(st.mood); $("mText").textContent = st.say; return; }
-    // a question
-    mst.total++;
-    setMood("calm");
-    stage.classList.add("asking");
-    $("mText").textContent = st.q;
-    const opts = st.options.map((text, k) => ({ text, ok: k === 0 })).sort(() => Math.random() - 0.5);
-    ch.hidden = false;
-    ch.replaceChildren(...opts.map(o => {
-      const b = document.createElement("button");
-      b.type = "button"; b.textContent = o.text;
-      b.addEventListener("click", e => {
-        e.stopPropagation();
-        if (mst.answered) return;
-        mst.answered = true;
-        if (o.ok) mst.right++;
-        b.classList.add(o.ok ? "ok" : "bad");
-        [...ch.children].forEach((x, k) => { if (opts[k].ok) x.classList.add("ok"); });
-        setMood(o.ok ? "happy" : "stern");
-        $("mText").textContent = (o.ok ? "Верно. " : `Нет. Правильно: ${st.options[0]}. `) + st.explain + " (нажми, чтобы продолжить)";
+
+  const MASTER_CHAPTERS = [
+    {
+      title: "Как всё начиналось",
+      sub: "артикуляторы, лицевая дуга, оси",
+      pages: "по страницам 12–14",
+      steps: [
+        { s: "Свиток первый. Слушай внимательно: история — это фундамент.", m: "calm" },
+        { s: "Стоматология — особая медицина: в её основе окклюзия и движения нижней челюсти. История современной стоматологии — это история их изучения, около двухсот лет." },
+        { s: "1805 год: Gariot описывает, как изготовить гипсовый артикулятор. Потом появляются артикуляторы Cameron и Evens (оба — 1840) и Bonwill (1858).", b: "articulators" },
+        { s: "Так чётко определили понятия движений челюсти: положение смыкания, рабочая и нерабочая сторона.", b: "workside" },
+        { s: "Артикулятор Бонвилла построен на треугольнике Бонвилла: два мыщелка и резцовая точка. Расстояние между мыщелками — 4 дюйма, около 10 см.", b: "bonwill" },
+        { s: "Это первый артикулятор, воспроизводивший движение мыщелков. Бонвилл считал главным гармонию движений челюсти и окклюзии.", b: "bonwill", m: "happy" },
+        { s: "Luce (1889) первым измерил движения челюсти у живого человека. При открывании рта центр вращения всё время смещается. Челюсть — не дверь на одной петле.", b: "luce" },
+        { s: "Campion (1901) с помощью лицевой дуги измерил суставной путь — путь, по которому движется мыщелок. Он у каждого свой и даже слева и справа разный.", b: "paths" },
+        { s: "Gysi в 1901 году создал устройства для записи готической дуги и сагиттального наклона суставного пути. В 1910-м — прибор для бокового наклона, и измерил его у множества людей.", b: "gothic" },
+        { s: "Bennett (1908) записал движения мыщелков сбоку и спереди. Открывание и боковые движения — не простое вращение: мыщелок рабочей стороны смещается в сторону движения.", b: "bennett" },
+        { s: "Это и есть движение Беннетта. А угол, который при этом образуется, называют углом Беннетта.", b: "bennett", m: "happy" },
+        { s: "Теперь осевая теория Гизи. Он изучал движения челюсти с 1910 по 1928 год, теорию опубликовал в 1923-м. Она стала основой современной ортопедической стоматологии.", b: "gysi_axis" },
+        { s: "Суть: движения челюсти — это вращения вокруг разных осей. Центр вращения находят геометрическим построением и повторяют движение на артикуляторе.", b: "gysi_axis" },
+        { s: "Любое движение тела раскладывается на смещение и вращение. Гизи принял смещение за ноль и считал движение челюсти чистым вращением.", b: "gysi_axis", m: "think" },
+        { s: "Если знать, куда движутся две точки вращающегося тела, найдётся ось вращения. А зная ось — направление движения любой его точки.", b: "gysi_axis" },
+        { s: "Поэтому достаточно записать, как движутся мыщелок балансирующей стороны и резцовая точка, — и движения обоих мыщелков и окклюзионной поверхности строятся геометрически.", b: "gysi_axis" },
+        { s: "Пример. При боковом движении второй нижний моляр вращается вокруг истинного центра PRV Mol.II. В проекции на окклюзионную плоскость получается эллипс.", b: "gysi_pro" },
+        { s: "Гизи заменил эллипс кругом вокруг точки PRO — там, где боковая окклюзионная ось SAL пересекает окклюзионную плоскость. На малых расстояниях круг и эллипс почти совпадают.", b: "gysi_pro" },
+        { s: "Для записи движений Гизи разработал лицевую дугу. А след штифта у резцов при боковых движениях назвал готической дугой и находил по нему центр вращения.", b: "gothic" },
+        { s: "Теперь проверим, что ты запомнил.", m: "think" },
+        { q: "Кто в 1805 году описал изготовление гипсового артикулятора?", o: ["Gariot", "Bonwill", "Gysi", "Bennett"], e: "Gariot, 1805 год — с него начинается история артикуляторов.", b: "articulators" },
+        { q: "Какое расстояние между мыщелками заложено в артикуляторе Бонвилла?", o: ["4 дюйма (около 10 см)", "2 дюйма", "6 дюймов", "1 дюйм"], e: "4 дюйма — по треугольнику Бонвилла.", b: "bonwill" },
+        { q: "Чем важен артикулятор Бонвилла (1858)?", o: ["Первым воспроизвёл движение мыщелков", "Первым записал готическую дугу", "Доказал существование шарнирной оси", "Был полностью регулируемым"], e: "Бонвилл первым воспроизвёл движение мыщелков и ставил во главу гармонию движений челюсти и окклюзии." },
+        { q: "Кто первым измерил движения челюсти у живого человека и увидел, что центр вращения при открывании всё время смещается?", o: ["Luce (1889)", "Bonwill (1858)", "McCollum (1921)", "Farrar (1978)"], e: "Luce, 1889 год.", b: "luce" },
+        { tf: "Campion выяснил, что суставной путь у всех людей одинаковый.", t: false, e: "Наоборот: суставной путь у каждого свой, и слева и справа он разный.", b: "paths" },
+        { q: "Что показал Bennett (1908)?", o: ["Мыщелок рабочей стороны смещается в сторону движения", "Расстояние между мыщелками всегда 4 дюйма", "Самое заднее положение челюсти — самое правильное", "Челюсть вращается вокруг одной неподвижной точки"], e: "Это движение Беннетта: движения челюсти — не простое вращение.", b: "bennett" },
+        { q: "На каком допущении стоит осевая теория Гизи?", o: ["Движение — чистое вращение, смещение принято за ноль", "Движение — только смещение, без вращения", "Челюсть вообще не вращается", "Ось вращения и положение челюсти — одно и то же"], e: "Гизи свёл всё к вращению вокруг осей и находил их центр геометрически.", b: "gysi_axis" },
+        { q: "Что Гизи назвал готической дугой?", o: ["След штифта у резцов при боковых движениях", "Форму зубного ряда у взрослых", "Путь мыщелка при открывании рта", "Изгиб ортодонтической дуги"], e: "По этому следу он находил центр вращения при боковых движениях.", b: "gothic" },
+        { q: "Что нужно записать, чтобы по Гизи построить движения обоих мыщелков и окклюзионной поверхности?", o: ["Движение мыщелка балансирующей стороны и резцовой точки", "Только положение бугоркового контакта", "Активность жевательных мышц", "Высоту прикуса"], e: "Две точки задают ось, а ось — движение любой точки тела.", b: "gysi_axis" },
+        { tf: "Гизи заменял эллипс кругом вокруг точки PRO, потому что на малых расстояниях они почти совпадают.", t: true, e: "Да. PRO — точка, где боковая окклюзионная ось SAL пересекает окклюзионную плоскость.", b: "gysi_pro" },
+        { ord: "Расставь события по времени — от ранних к поздним.", items: [["Gariot: гипсовый артикулятор", "1805"], ["Bonwill: артикулятор на треугольнике", "1858"], ["Luce: движения у живого человека", "1889"], ["Campion: суставной путь лицевой дугой", "1901"], ["Bennett: смещение рабочего мыщелка", "1908"], ["Gysi: прибор для бокового наклона", "1910"]], e: "От гипсового артикулятора до осевой теории — чуть больше ста лет." },
+      ],
+    },
+    {
+      title: "Гнатология: взлёт и падение",
+      sub: "McCollum, органическая окклюзия, Farrar",
+      pages: "по страницам 15–18",
+      steps: [
+        { s: "Свиток второй — про гнатологию. Великая школа, великая мечта и её крах.", m: "calm" },
+        { s: "Гизи считал движение челюсти круговым, и это дало исследователям много идей. Но движение Беннетта подсказывало: всё сложнее простого круга.", b: "bennett" },
+        { s: "1921 год: McCollum доказал существование терминальной шарнирной оси. У измерения движений челюсти появилась чёткая точка отсчёта.", b: "taxis" },
+        { s: "1926 год: McCollum вместе со Stallard и Stuart основал Калифорнийское гнатологическое общество." },
+        { s: "1929 год: гнатограф — внеротовой прибор с центральной опорой, записывающий движения челюсти в трёх измерениях. Предшественник пантографа.", b: "pantograph" },
+        { s: "1934 год: гнатоскоп. Он точно воспроизводил записи гнатографа и стал прообразом гнатологических инструментов." },
+        { s: "Пантограф записывает движения челюсти в 3D шестью пластинами со штифтами. У пантографа Stuart пластины для мыщелков стояли на неподвижной верхней части, а передние — на подвижной нижней.", b: "pantograph" },
+        { s: "Записи пантографа переносили на полностью регулируемый артикулятор и строили всё более точную окклюзию." },
+        { s: "Сначала целью лечения McCollum и коллеги считали сбалансированную окклюзию. Но большинство таких работ закончилось неудачей, и в ней усомнились.", b: "balanced", m: "stern" },
+        { s: "Тогда Stallard изучил людей со здоровыми зубами. При эксцентрических движениях передние зубы ведут челюсть, а жевательные размыкаются.", b: "organic" },
+        { s: "В положении бугоркового контакта между передними зубами остаётся зазор около 25 мкм, а вертикальную нагрузку несут только жевательные.", b: "organic" },
+        { s: "Значит, в идеальной окклюзии передние защищают жевательные, а жевательные — передние. Это взаимозащищённая окклюзия. Позже Stallard назвал её органической.", m: "happy" },
+        { s: "1949 год: Thomas предложил моделирование «бугор — ямка». Жевательные смыкаются зуб к зубу, и каждый функциональный бугор касается ямки антагониста в трёх точках.", b: "cuspfossa" },
+        { s: "Гнатология строго выполняла эти условия, но её критиковали: сложно, не для всех, дорого. Guichet и другие упростили артикуляторы, и методы стали ближе к клинике." },
+        { s: "1970–1980-е. Lundeen и Gibbs с помощью системы-репликатора разобрали функциональные движения челюсти.", b: "chew" },
+        { s: "Путь туда и путь обратно не совпадают. Возвращаясь, челюсть может сначала зайти назад и лишь потом прийти в конечную точку. Плюс движение Беннетта — сложная трёхмерная картина.", b: "chew" },
+        { s: "Такое на артикуляторе не повторить. Так закончилась полувековая мечта: записать движения пантографом, воспроизвести их для каждого пациента и построить идеальную окклюзию.", m: "stern" },
+        { s: "Тогда же William Farrar (1978, 1979) описал внутренние нарушения ВНЧС: норма, ранний, средний и поздний щелчок при открывании, полный передний вывих диска.", b: "farrar" },
+        { s: "Старая гнатология вращалась вокруг центрального соотношения и почти не думала о патологии внутри сустава. Когда эту патологию увидели, система рухнула.", b: "farrar" },
+        { s: "1980-е стали переломными: окклюзию начали пересматривать заново, а связка «пантограф + полностью регулируемый артикулятор» быстро ушла в прошлое." },
+        { s: "Сохранила и переосмыслила гнатологию только Австрия. Аксиограф — упрощённый пантограф — записывает движения мыщелков, а по ним судят о патологии сустава.", b: "axiograph" },
+        { s: "Аксиограф вместе с полурегулируемым артикулятором дал более функциональную систему диагностики окклюзии.", b: "axiograph", m: "happy" },
+        { s: "Проверим.", m: "think" },
+        { q: "Что доказал McCollum в 1921 году?", o: ["Существование терминальной шарнирной оси", "Существование движения Беннетта", "Внутренние нарушения ВНЧС", "Треугольник Бонвилла"], e: "У измерений появилась точка отсчёта.", b: "taxis" },
+        { ord: "Расставь вехи гнатологии по времени.", items: [["McCollum: терминальная шарнирная ось", "1921"], ["Калифорнийское гнатологическое общество", "1926"], ["Гнатограф", "1929"], ["Гнатоскоп", "1934"], ["Thomas: моделирование «бугор — ямка»", "1949"], ["Farrar: внутренние нарушения ВНЧС", "1978"]], e: "Полвека от шарнирной оси до краха старой гнатологии." },
+        { q: "Сколько записывающих пластин у пантографа?", o: ["6", "2", "4", "12"], e: "Шесть пластин со штифтами — запись в трёх измерениях.", b: "pantograph" },
+        { q: "Какую окклюзию гнатологи сначала считали целью лечения?", o: ["Сбалансированную", "Органическую", "Взаимозащищённую", "Любую, лишь бы удобно"], e: "Сбалансированную — и большинство таких работ провалилось.", b: "balanced" },
+        { q: "Что увидел Stallard у людей со здоровыми зубами?", o: ["При эксцентрических движениях передние ведут, жевательные размыкаются", "При любом движении все зубы касаются одновременно", "Вертикальную нагрузку несут передние зубы", "Жевательные зубы не касаются никогда"], e: "Отсюда взаимозащищённая, а потом органическая окклюзия.", b: "organic" },
+        { q: "Какой зазор между передними зубами в положении бугоркового контакта описал Stallard?", o: ["Около 25 мкм", "Около 2 мм", "Около 250 мкм", "Зазора нет"], e: "Около 25 микрометров — вертикальную нагрузку несут жевательные.", b: "organic" },
+        { tf: "Органическая окклюзия — это та же взаимозащищённая окклюзия, просто Stallard её переименовал.", t: true, e: "Да: mutually protected occlusion позже стала organic occlusion." },
+        { q: "Сколькими точками каждый функциональный бугор касается ямки антагониста по Thomas?", o: ["Тремя", "Одной", "Двумя", "Пятью"], e: "Три точки — и зуб к зубу.", b: "cuspfossa" },
+        { tf: "Lundeen и Gibbs показали, что путь челюсти туда и обратно всегда совпадает.", t: false, e: "Не совпадает: на обратном пути челюсть может зайти назад, плюс движение Беннетта.", b: "chew" },
+        { q: "Почему классическая гнатология с пантографом и полностью регулируемым артикулятором ушла в прошлое?", o: ["Движения оказались слишком сложными для артикулятора, а Farrar описал внутренние нарушения ВНЧС", "Пантографы стали слишком дешёвыми", "Гизи доказал, что шарнирной оси нет", "Гипс запретили"], e: "Две причины смены парадигмы в 1980-х." },
+        { q: "Какая стадия последняя в схеме Farrar?", o: ["Полный передний вывих диска", "Ранний щелчок при открывании", "Поздний щелчок при открывании", "Норма"], e: "Норма → ранний → средний → поздний щелчок → полный передний вывих диска.", b: "farrar" },
+        { q: "Где гнатологию сохранили и переосмыслили, сделав упор на патологии сустава?", o: ["В Австрии", "В США", "В Японии", "В Швейцарии"], e: "Австрийская гнатология: аксиограф и полурегулируемый артикулятор.", b: "axiograph" },
+        { mt: "Соедини имя и вклад.", pairs: [["McCollum", "терминальная шарнирная ось"], ["Stallard", "органическая окклюзия"], ["Thomas", "«бугор — ямка»"], ["Guichet", "упрощённые артикуляторы"], ["Lundeen и Gibbs", "система-репликатор"], ["Farrar", "внутренние нарушения ВНЧС"]], e: "Шесть имён — вся история гнатологии." },
+      ],
+    },
+    {
+      title: "Положение нижней челюсти",
+      sub: "RP, ICP, ThP, шарнирная ось",
+      pages: "по страницам 31–35",
+      steps: [
+        { s: "Свиток третий — самый важный для практики. Где должна стоять нижняя челюсть?", m: "calm" },
+        { s: "Начнём с роста. У растущего человека высота прикуса всё время увеличивается. Нижняя челюсть подстраивается: поворачивается вперёд, а мыщелок вторично растёт. Это норма.", b: "growth" },
+        { s: "Положение бугоркового контакта (ICP) обычно на 1–2 мм впереди референтного положения нижней челюсти (RP).", b: "icprp" },
+        { s: "А при дисфункции ВНЧС нижняя челюсть в подавляющем большинстве случаев смещена назад. Тогда до лечения прикуса её положение обязательно исправляют — чаще всего вперёд.", b: "icprp" },
+        { s: "Вывод: физиологическое положение челюсти никогда не заднее и не одна строгая точка. Это область впереди, к которой организм может приспособиться.", b: "zone", m: "happy" },
+        { s: "Если челюсть смещена, не целься в точку. Поставь её в область, где организм адаптируется без напряжения — на схеме где-то между a и c.", b: "zone" },
+        { s: "А окончательно решает то, каким методом и какое направляющее скольжение мы дадим.", b: "zone" },
+        { s: "Выбрали положение — дайте в нём стабильную опору (центрические стопы) и правильные направляющие пути для движений. Только тогда организм привыкнет к новому положению." },
+        { s: "Если цель — восстановить функцию, сначала ставят провизорные конструкции, наблюдают адаптацию и только потом делают окончательное протезирование." },
+        { s: "Как найти физиологическое положение? Нужно точно перенести положение челюсти пациента (RP) на артикулятор и определить физиологическое положение.", m: "think" },
+        { s: "Для этого нужны объективные данные: кондилограф и цефалограмма, а при необходимости — рентген, МРТ, КТ." },
+        { s: "Отправная точка — референтное положение RP. Оно не должно нагружать сустав и должно быть воспроизводимым.", b: "icprp" },
+        { s: "От RP измеряют, насколько далеко физиологическое положение, и точно переносят это на артикулятор. Поэтому при таком подходе прикус всегда регистрируют в RP." },
+        { s: "Не путай две процедуры: определение шарнирной оси и получение референтного положения.", b: "hinge", m: "stern" },
+        { s: "С тех пор как McCollum (1921) предложил терминальное шарнирное положение, многие врачи путают шарнирную ось и положение нижней челюсти.", b: "hinge" },
+        { s: "А это разные понятия. Ось вращения — ось, вокруг которой тело вращается, к положению она отношения не имеет. Положение — где челюсть находится относительно черепа.", b: "hinge" },
+        { s: "Путаница пошла от идеи, что самое заднее положение физиологично и в нём челюсть вращается как на петле." },
+        { s: "Позже многие определения центрального соотношения это исправили: самое заднее положение не обязательно правильное. Но заблуждение до сих пор живуче.", m: "stern" },
+        { s: "Зачем тогда шарнирная ось? Единственная причина в клинике — запись движения мыщелка.", b: "condylar" },
+        { s: "Чтобы согласовать сагиттальный наклон суставного пути (SCI) с окклюзионным ведением, нужно знать форму суставного бугорка и угол суставного пути.", b: "condylar" },
+        { s: "Записывать нужно скольжение, без вращения. Записывая движение шарнирной оси, мы убираем вращение и видим скольжение по функциональному бугорку.", b: "condylar" },
+        { s: "Если ось и записывающий штифт не совпадают, запись разойдётся с анатомией бугорка." },
+        { s: "Суставной путь и анатомическая форма бугорка совпадают не всегда. Поэтому определить суставной путь по КТ нельзя.", b: "condylar" },
+        { s: "Westesson изучал движение мыщелка на свежих препаратах: анатомический бугорок очень крутой, а реальный функциональный путь мыщелка заметно положе.", b: "condylar" },
+        { s: "А если мыщелок смещён назад, а диск — вперёд, движение стартует глубоко на склоне бугорка, и угол суставного пути становится крутым.", b: "steep" },
+        { s: "Правило: угол суставного пути 60° и больше (в среднем 45–50°) — в первую очередь подозревай смещение мыщелка.", b: "steep", m: "stern" },
+        { s: "Теперь центральное соотношение (CR). Это физиологически нормальное трёхмерное соотношение черепа и нижней челюсти. В нём участвуют связки и мышцы системы «череп — нижняя челюсть — подъязычная кость — ключица»." },
+        { s: "Через положение мыщелка CR определяют как нормальное соотношение мыщелка, суставного диска и суставного бугорка." },
+        { s: "Можно ли записать CR прямо у пациента? У здорового — возможно. У пациентов со сложными функциональными проблемами — почти никогда. Понятие есть, а на практике толку мало.", m: "think" },
+        { s: "Цель — окклюзия в физиологическом положении. Значит, надо понять, физиологично ли положение, в котором мы регистрируем прикус. Здесь помогает кондилограф (Cadiax).", b: "rpflow" },
+        { s: "RP физиологично (PRP) — окончательное лечение. RP нарушено (DRP) — диагностически определяют физиологическое положение, лечебное положение ThP, и начинают с начальной терапии.", b: "rpflow" },
+        { s: "Смещение челюсти зависит от положения мыщелка в ямке, его отношения к диску и баланса мышц — и меняет картину движений. Поэтому ThP рассчитывают по пути мыщелка из кондилографа, в трёх измерениях." },
+        { s: "Диагностика, план лечения, сплинт, провизорные конструкции — всё в ThP. Записать ThP прямо во рту невозможно: его переносят на артикулятор." },
+        { s: "Высоту прикуса тоже рассчитывают по кондилографу и цефалометрическому анализу и переносят на артикулятор. А сам прикус регистрируют всегда в RP.", m: "happy" },
+        { s: "Проверим.", m: "think" },
+        { q: "Что делает нижняя челюсть растущего человека, подстраиваясь под увеличение высоты прикуса?", o: ["Поворачивается вперёд, а мыщелок вторично растёт", "Поворачивается назад", "Перестаёт расти", "Смещается вбок"], e: "Это нормальный ход роста.", b: "growth" },
+        { q: "Где обычно находится положение бугоркового контакта (ICP) относительно референтного положения (RP)?", o: ["На 1–2 мм впереди", "На 1–2 мм позади", "Точно совпадает", "На 5 мм ниже"], e: "ICP обычно на 1–2 мм кпереди от RP.", b: "icprp" },
+        { q: "Куда чаще всего смещена нижняя челюсть при дисфункции ВНЧС?", o: ["Назад", "Вперёд", "Вбок", "Вниз"], e: "В подавляющем большинстве случаев назад — поэтому её обычно выводят вперёд.", b: "icprp" },
+        { q: "Что верно про физиологическое положение нижней челюсти?", o: ["Это область впереди, к которой организм может приспособиться", "Это самое заднее положение", "Это одна строго определённая точка", "Оно совпадает с шарнирной осью"], e: "Не назад и не точка, а область.", b: "zone" },
+        { tf: "Шарнирная ось и положение нижней челюсти — одно и то же.", t: false, e: "Ось — это ось вращения. Положение — где челюсть относительно черепа. Совсем разные понятия.", b: "hinge" },
+        { q: "Зачем в клинике нужна шарнирная ось?", o: ["Чтобы записать движение мыщелка без вращения", "Чтобы определить положение челюсти", "Чтобы напрямую записать центральное соотношение", "Чтобы измерить оверджет"], e: "Единственная причина — запись скольжения мыщелка.", b: "condylar" },
+        { q: "Можно ли определить суставной путь по КТ?", o: ["Нет: путь мыщелка и анатомия бугорка не всегда совпадают", "Да, по форме бугорка", "Да, если снимок свежий", "Только по фотографии лица"], e: "Анатомический бугорок круче реального функционального пути.", b: "condylar" },
+        { q: "Какой угол суставного пути в среднем?", o: ["45–50°", "20–25°", "60–70°", "90°"], e: "В среднем 45–50°.", b: "condylar" },
+        { q: "У пациента угол суставного пути 65°. О чём подумать в первую очередь?", o: ["О смещении мыщелка", "Это норма", "О кариесе", "О слишком плоском бугорке"], e: "60° и больше — подозревай смещение мыщелка.", b: "steep" },
+        { q: "Каким должно быть референтное положение (RP)?", o: ["Не нагружать сустав и быть воспроизводимым", "Самым задним", "Самым передним", "Совпадать с ICP"], e: "Отправная точка должна быть безопасной и повторяемой." },
+        { tf: "У пациентов со сложными функциональными проблемами центральное соотношение легко записать прямо во рту.", t: false, e: "Почти невозможно. Понятие определить можно, а на практике оно мало помогает." },
+        { q: "Кондилограф показал: RP нарушено (DRP). Что дальше?", o: ["Определить лечебное положение ThP и начать с начальной терапии", "Сразу окончательное протезирование в RP", "Записать прикус в самом заднем положении", "Ничего не делать"], e: "DRP → ThP → начальная терапия. PRP → окончательное лечение.", b: "rpflow" },
+        { q: "В каком положении делают сплинт и провизорные конструкции?", o: ["В лечебном положении ThP", "В самом заднем положении", "В ICP", "Где удобно пациенту"], e: "Диагностика, план, сплинт, провизорные — всё в ThP." },
+        { q: "Где регистрируют прикус при этом подходе?", o: ["Всегда в референтном положении RP", "В ThP прямо во рту", "В центральном соотношении", "В ICP"], e: "ThP во рту не записать: его рассчитывают и переносят на артикулятор." },
+        { mt: "Соедини сокращение и смысл.", pairs: [["RP", "референтное положение"], ["ICP", "положение бугоркового контакта"], ["ThP", "лечебное положение"], ["PRP", "физиологичное RP"], ["DRP", "нарушенное RP"], ["CR", "центральное соотношение"]], e: "Эти шесть букв — язык диагностики положения челюсти." },
+      ],
+    },
+    {
+      title: "Неправильный прикус и сустав",
+      sub: "Pullinger, бруксизм, интерференции",
+      pages: "по страницам 36–40",
+      steps: [
+        { s: "Свиток четвёртый. Что такое неправильный прикус — и при чём тут сустав.", m: "calm" },
+        { s: "Когда Farrar (1978, 1979) предложил понятие внутренних нарушений ВНЧС, наука об окклюзии вошла в переломный период.", b: "farrar" },
+        { s: "Сорок лет спорили. Одни: научно доказанной связи окклюзии и заболеваний ВНЧС нет. Другие: окклюзия и функция сустава неразделимы." },
+        { s: "Для клиники этот спор мало что значит. Даже если связь не доказана, это не разрешает давать любую окклюзию и не думать о суставе.", m: "stern" },
+        { s: "Окклюзия точно влияет на движения челюсти. Значит, окклюзию и функцию челюсти нужно гармонизировать." },
+        { s: "Что называют факторами неправильного прикуса? В статьях (Pullinger и др.) их одиннадцать.", b: "pullinger" },
+        { s: "Странно, но ни одна из этих работ не учитывает физиологическое положение челюсти.", b: "pullinger", m: "think" },
+        { s: "Например, скольжение RCP–ICP. Если RCP физиологично, отклонение от него — фактор нарушения. Если RCP само нефизиологично — не обязательно." },
+        { s: "Оверджет, овербайт, смещение средней линии, положение моляров сами по себе трудно назвать факторами нарушения." },
+        { s: "А при открытом прикусе спереди и перекрёстном прикусе в боковых отделах челюсть часто не смещена, и многие люди физиологически адаптированы." },
+        { s: "Главное: неправильный прикус неправилен потому, что нарушает функцию зубочелюстной системы. Нет такого влияния — нет нарушения и не нужно лечение.", m: "happy" },
+        { s: "Основа — органическая окклюзия, взаимная защита. При сильном усилии передние зубы и клыки защищают жевательные от чрезмерных боковых сил…", b: "mutual" },
+        { s: "…а жевательные защищают передние зубы и ВНЧС от сильного жевательного давления. С этим согласны почти все теории окклюзии.", b: "mutual" },
+        { s: "Но когда работает эта защита — единого мнения нет. Сильное усилие — это жевание или парафункция? Большинство исследований изучали жевание.", m: "think" },
+        { s: "А по McHorris, при жевании зубы касаются друг друга всего около 15 минут в сутки. Самое сильное усилие развивается при ночном бруксизме.", b: "clock" },
+        { s: "Стираемость, абфракции, разрушение пародонта, внутренние нарушения ВНЧС, напряжение мышц — почти ничего из этого не объяснить без ночного бруксизма.", b: "clock" },
+        { s: "Поэтому теорию окклюзии и неправильного прикуса нужно строить на основе ночного бруксизма.", m: "stern" },
+        { s: "С этой точки зрения выделяют пять факторов неправильного прикуса — по тому, как они вредят движению мыщелка и суставу. Разберём три." },
+        { s: "Окклюзионная интерференция — контакт бугров, который мешает скользящему движению челюсти, например на пути бокового движения.", b: "interference" },
+        { s: "В сознании челюсть его обходит. А во сне, при бруксизме, на зуб давит боковая сила — он расшатывается, мыщелок вытягивается, мышцы перенапрягаются.", b: "interference" },
+        { s: "Потеря окклюзионной опоры: при сильном сжатии или скрежетании мыщелок сдавливается. Итог — деформация и резорбция мыщелка, перфорация суставного диска.", b: "support" },
+        { s: "Интерференция передних зубов: слишком крутое ведение верхних резцов и клыков мешает плавному скрежетанию и провоцирует сильное сжатие.", b: "anterior" },
+        { s: "Челюсть уходит назад, сустав сдавливается, жевательные мышцы перенапрягаются — и появляются жалобы по всему телу.", b: "anterior" },
+        { s: "Бруксизм — это работа жевательных мышц: сильное сжатие и скользящие движения челюсти. Проблема — в аномальных контактах зубов во время этих движений." },
+        { s: "Tamaki и соавт. (2001): при скрежетании активность мышц резко растёт, когда в контакте первые и вторые моляры. Это путь к нефизиологичному бруксизму.", b: "tamaki" },
+        { s: "Поэтому разобщение жевательных зубов обязательно.", b: "tamaki", m: "stern" },
+        { s: "Итог: неправильный прикус — это контакты бугров или потеря опоры, которые при бруксизме ещё сильнее повышают активность мышц. Цель окклюзионного лечения — убрать эти факторы.", m: "happy" },
+        { s: "Проверим.", m: "think" },
+        { q: "Кто предложил понятие внутренних нарушений ВНЧС?", o: ["Farrar", "Stallard", "Gysi", "Bonwill"], e: "William Farrar, 1978–1979.", b: "farrar" },
+        { tf: "Раз научная связь окклюзии и заболеваний ВНЧС не доказана, можно давать любую окклюзию.", t: false, e: "Нет. Окклюзия влияет на движения челюсти, их нужно гармонизировать." },
+        { q: "Когда неправильный прикус действительно требует лечения?", o: ["Когда он нарушает функцию зубочелюстной системы", "Всегда, если есть оверджет", "Всегда при смещении средней линии", "Когда пациенту не нравится цвет зубов"], e: "Нет вреда функции — нет нарушения." },
+        { q: "Чего не учитывает ни одна работа о факторах неправильного прикуса (Pullinger и др.)?", o: ["Физиологического положения челюсти", "Овербайта", "Оверджета", "Отсутствия жевательных зубов"], e: "Без положения челюсти список факторов теряет смысл.", b: "pullinger" },
+        { q: "Скольжение RCP–ICP — когда это фактор нарушения?", o: ["Когда RCP физиологично: тогда отклонение от него — проблема", "Всегда", "Никогда", "Только у детей"], e: "Если RCP само нефизиологично, скольжение не обязательно проблема." },
+        { q: "Что такое органическая (взаимозащищённая) окклюзия?", o: ["Передние и клыки берегут жевательные от боковых сил, жевательные — передние и ВНЧС от давления", "Все зубы нагружены одинаково", "Боковые движения ведут жевательные зубы", "Всю нагрузку несут передние зубы"], e: "Общий принцип почти всех теорий окклюзии.", b: "mutual" },
+        { q: "Сколько времени в сутки зубы касаются друг друга при жевании (McHorris)?", o: ["Около 15 минут", "Около 4 часов", "Около 1 минуты", "Около 8 часов"], e: "Всего около 15 минут.", b: "clock" },
+        { q: "На чём, по этой книге, нужно строить теорию окклюзии?", o: ["На ночном бруксизме", "На жевании", "На глотании", "На речи"], e: "Самые сильные нагрузки — при ночном бруксизме." },
+        { q: "Что происходит при окклюзионной интерференции во время ночного бруксизма?", o: ["Боковая сила на зуб, его расшатывание, вытягивание мыщелка, перенапряжение мышц", "Ничего", "Только стирается эмаль", "Челюсть уходит вперёд"], e: "В сознании челюсть обходит контакт, а во сне — нет.", b: "interference" },
+        { q: "Чем грозит потеря окклюзионной опоры?", o: ["Сдавлением мыщелка: деформация, резорбция, перфорация диска", "Только эстетическим дефектом", "Вытягиванием мыщелка вперёд", "Ничем"], e: "При сжатии и скрежетании без опоры мыщелок сдавливается.", b: "support" },
+        { q: "К чему приводит слишком крутое ведение передних зубов?", o: ["К сильному сжатию: челюсть уходит назад, сустав сдавлен, мышцы перенапряжены", "К открытому прикусу", "К удлинению зубов", "Ни к чему"], e: "И к жалобам по всему телу.", b: "anterior" },
+        { q: "При контакте каких зубов активность мышц при скрежетании резко растёт (Tamaki, 2001)?", o: ["Первых и вторых моляров", "Клыков", "Премоляров", "Резцов"], e: "Поэтому разобщение жевательных зубов обязательно.", b: "tamaki" },
+        { q: "Какова цель окклюзионного лечения по этой главе?", o: ["Убрать контакты и потерю опоры, повышающие активность мышц при бруксизме", "Сделать все зубы одной длины", "Убрать любой овербайт", "Добиться сбалансированной окклюзии"], e: "Вот и вся суть: убрать факторы нарушения." },
+        { mt: "Соедини фактор и последствие.", pairs: [["Окклюзионная интерференция", "расшатывание зуба, вытягивание мыщелка"], ["Потеря окклюзионной опоры", "сдавление мыщелка, перфорация диска"], ["Крутое переднее ведение", "сжатие, челюсть уходит назад"], ["Контакт моляров при скрежетании", "резкий рост активности мышц"]], e: "Три фактора и один эксперимент." },
+      ],
+    },
+  ];
+
+  const MASTER_GLOSSARY = [
+    ["Артикулятор", "Прибор, который воспроизводит положения и движения нижней челюсти с моделями зубов."],
+    ["Полностью регулируемый артикулятор", "Артикулятор, в котором настраивают индивидуальные движения челюсти по записи пантографа."],
+    ["Полурегулируемый артикулятор", "Упрощённый артикулятор с частичной настройкой; в австрийской школе работает вместе с аксиографом."],
+    ["Лицевая дуга", "Устройство для записи и переноса положения челюстей относительно суставов. Campion применил её для измерения суставного пути (1901)."],
+    ["Суставной путь", "Путь, по которому движется мыщелок нижней челюсти. Индивидуален и разный слева и справа."],
+    ["SCI", "Сагиттальный наклон суставного пути (sagittal condylar inclination)."],
+    ["Готическая дуга", "По Гизи — след штифта у резцов при боковых движениях челюсти; по нему находят центр вращения."],
+    ["Движение Беннетта", "Смещение мыщелка рабочей стороны в сторону движения при боковом движении челюсти (Bennett, 1908)."],
+    ["Осевая теория Гизи", "Движения челюсти — вращения вокруг разных осей; центры вращения находят геометрически (1923)."],
+    ["PRV Mol.II · PRO · SAL", "У Гизи: истинный центр вращения второго моляра · точка вращения на окклюзионной плоскости · боковая окклюзионная ось."],
+    ["Терминальная шарнирная ось", "Ось вращения нижней челюсти, существование которой доказал McCollum (1921)."],
+    ["Гнатология", "Школа, изучающая движения челюсти и строящая окклюзию по их записи. Калифорнийское гнатологическое общество — 1926."],
+    ["Гнатограф · гнатоскоп", "Прибор McCollum для 3D-записи движений челюсти (1929) и прибор для их воспроизведения (1934)."],
+    ["Пантограф", "Прибор с шестью записывающими пластинами для трёхмерной записи движений челюсти."],
+    ["Аксиограф", "Упрощённый пантограф австрийской школы для записи движений мыщелков."],
+    ["Кондилограф (Cadiax)", "Прибор для записи путей мыщелков: показывает, физиологично ли положение челюсти, помогает рассчитать ThP."],
+    ["Сбалансированная окклюзия", "Ранняя цель гнатологии; большинство работ с ней оказались неудачными."],
+    ["Органическая окклюзия", "Она же взаимозащищённая: передние зубы и клыки защищают жевательные от боковых сил, жевательные — передние и ВНЧС от сильного давления (Stallard)."],
+    ["«Бугор — ямка»", "Моделирование по Thomas (1949): зуб к зубу, каждый функциональный бугор касается ямки антагониста в трёх точках."],
+    ["Внутренние нарушения ВНЧС", "Патология внутри сустава, прежде всего смещение суставного диска (Farrar, 1978–1979)."],
+    ["ICP", "Положение бугоркового контакта (intercuspal position); обычно на 1–2 мм кпереди от RP."],
+    ["RP", "Референтное положение нижней челюсти: не нагружает сустав и воспроизводимо; в нём регистрируют прикус."],
+    ["RCP", "Заднее контактное положение (retruded contact position)."],
+    ["CR", "Центральное соотношение: физиологически нормальное трёхмерное соотношение черепа и нижней челюсти."],
+    ["PRP · DRP", "Физиологичное · нарушенное референтное положение."],
+    ["ThP", "Лечебное положение нижней челюсти. Рассчитывается по кондилографу; в нём делают сплинт и провизорные конструкции."],
+    ["AOP", "Ось-орбитальная плоскость — от неё на схемах отсчитывают угол суставного пути."],
+    ["Центрические стопы", "Стабильные опорные контакты зубов в выбранном положении челюсти."],
+    ["Окклюзионная интерференция", "Контакт бугров, мешающий скользящему движению челюсти."],
+    ["Потеря окклюзионной опоры", "Отсутствие опоры на жевательных зубах; при сжатии и скрежетании ведёт к сдавлению мыщелка."],
+    ["Разобщение жевательных зубов", "Размыкание жевательных зубов при движениях челюсти за счёт ведения передними зубами."],
+    ["Ночной бруксизм", "Непроизвольное сжатие и скрежетание зубами во сне — самая сильная нагрузка на зубочелюстную систему."],
+  ];
+
+  // ---------- BOARDS-START: the master's chalkboard ----------
+  // Chalk diagrams for the master's lessons, drawn on a 640x400 canvas. Each board is a
+  // function (c, t) where t is seconds since the board appeared, so some of them animate.
+  const CHALK = {
+    white: "rgba(244, 244, 232, 0.95)", dim: "rgba(244, 244, 232, 0.4)", yellow: "#ffe27a",
+    pink: "#ff9db0", blue: "#9fd8ff", green: "#9be7a0", red: "#ff7b7b", orange: "#ffb870",
+    board: "#21402f", boardDark: "#1a3426",
+  };
+  const bd = {
+    clear(c) {
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.fillStyle = CHALK.board; c.fillRect(0, 0, 640, 400);
+      // faint chalk dust so it reads as a board, not a flat fill
+      c.fillStyle = "rgba(255, 255, 255, 0.025)";
+      for (let i = 0; i < 90; i++) c.fillRect((i * 97) % 640, (i * 53) % 400, 40 + (i % 5) * 9, 2);
+    },
+    line(c, x1, y1, x2, y2, col = CHALK.white, w = 3, dash) {
+      c.save(); c.strokeStyle = col; c.lineWidth = w; c.lineCap = "round";
+      if (dash) c.setLineDash(dash);
+      c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); c.restore();
+    },
+    path(c, pts, col = CHALK.white, w = 3, opts = {}) {
+      c.save(); c.strokeStyle = col; c.lineWidth = w; c.lineCap = "round"; c.lineJoin = "round";
+      if (opts.dash) c.setLineDash(opts.dash);
+      c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+      if (opts.close) c.closePath();
+      if (opts.fill) { c.fillStyle = opts.fill; c.fill(); }
+      c.stroke(); c.restore();
+    },
+    curve(c, pts, col = CHALK.white, w = 3, opts = {}) {
+      // smooth curve through points (quadratic midpoints)
+      c.save(); c.strokeStyle = col; c.lineWidth = w; c.lineCap = "round"; c.lineJoin = "round";
+      if (opts.dash) c.setLineDash(opts.dash);
+      c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+        c.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+      }
+      const l = pts[pts.length - 1]; c.lineTo(l[0], l[1]);
+      if (opts.fill) { c.fillStyle = opts.fill; c.fill(); }
+      c.stroke(); c.restore();
+    },
+    arrow(c, x1, y1, x2, y2, col = CHALK.white, w = 3, head = 12) {
+      bd.line(c, x1, y1, x2, y2, col, w);
+      const a = Math.atan2(y2 - y1, x2 - x1);
+      bd.path(c, [[x2 - head * Math.cos(a - 0.45), y2 - head * Math.sin(a - 0.45)], [x2, y2],
+        [x2 - head * Math.cos(a + 0.45), y2 - head * Math.sin(a + 0.45)]], col, w);
+    },
+    circle(c, x, y, r, col = CHALK.white, w = 3, fill, dash) {
+      c.save(); c.strokeStyle = col; c.lineWidth = w; if (dash) c.setLineDash(dash);
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
+      if (fill) { c.fillStyle = fill; c.fill(); }
+      if (w) c.stroke(); c.restore();
+    },
+    ellipse(c, x, y, rx, ry, rot, col = CHALK.white, w = 3, fill, dash) {
+      c.save(); c.strokeStyle = col; c.lineWidth = w; if (dash) c.setLineDash(dash);
+      c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
+      if (fill) { c.fillStyle = fill; c.fill(); }
+      if (w) c.stroke(); c.restore();
+    },
+    arc(c, x, y, r, a0, a1, col = CHALK.white, w = 3, ccw = false) {
+      c.save(); c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.arc(x, y, r, a0, a1, ccw); c.stroke(); c.restore();
+    },
+    text(c, s, x, y, col = CHALK.white, size = 22, align = "center", weight = 700) {
+      c.save(); c.fillStyle = col; c.font = `${weight} ${size}px "Nunito", "Segoe UI", system-ui, sans-serif`;
+      c.textAlign = align; c.textBaseline = "middle"; c.fillText(s, x, y); c.restore();
+    },
+    title(c, s) { bd.text(c, s, 320, 28, CHALK.yellow, 24, "center", 800); },
+    dot(c, x, y, r = 6, col = CHALK.red) { bd.circle(c, x, y, r, col, 0, col); },
+    // top view of a lower jaw (horseshoe): condyles at the top, incisors at the bottom
+    mandibleTop(c, cx, cy, s = 1, col = CHALK.white, rot = 0, dx = 0, sy = 1) {
+      const pts = [[-120, -150], [-112, -60], [-95, 20], [-60, 80], [0, 102], [60, 80], [95, 20], [112, -60], [120, -150]];
+      const out = pts.map(([x, y0]) => {
+        const y = y0 * sy;
+        const xr = x * Math.cos(rot) - y * Math.sin(rot), yr = x * Math.sin(rot) + y * Math.cos(rot);
+        return [cx + dx + xr * s, cy + yr * s];
       });
-      return b;
-    }));
+      bd.curve(c, out, col, 4);
+      return { left: out[0], right: out[out.length - 1], incisal: out[4] };
+    },
+    // side view of a lower jaw rotating around (ax, ay); face looks to the right
+    mandibleSide(c, ax, ay, ang, col = CHALK.white) {
+      const pts = [[0, 0], [8, 40], [14, 120], [30, 150], [120, 160], [230, 158], [282, 140], [290, 110], [284, 92]];
+      const out = pts.map(([x, y]) => [ax + x * Math.cos(ang) - y * Math.sin(ang), ay + x * Math.sin(ang) + y * Math.cos(ang)]);
+      bd.curve(c, out, col, 4);
+      return out;
+    },
+    tooth(c, x, y, w, h, up, col = CHALK.white, fill = "rgba(244,244,232,0.12)") {
+      // a simple crown: up=true hangs from the top (upper tooth), else stands (lower tooth)
+      const r = Math.min(8, w / 3);
+      c.save(); c.strokeStyle = col; c.lineWidth = 3; c.fillStyle = fill; c.beginPath();
+      if (up) { c.moveTo(x, y); c.lineTo(x, y + h - r); c.quadraticCurveTo(x, y + h, x + r, y + h); c.lineTo(x + w - r, y + h); c.quadraticCurveTo(x + w, y + h, x + w, y + h - r); c.lineTo(x + w, y); }
+      else { c.moveTo(x, y + h); c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r); c.lineTo(x + w, y + h); }
+      c.fill(); c.stroke(); c.restore();
+    },
+    wave(t, period = 3) { return (Math.sin(t * Math.PI * 2 / period - Math.PI / 2) + 1) / 2; },  // 0..1..0
+  };
+
+  const BOARDS = {
+    articulators(c, t) {
+      bd.title(c, "Первые артикуляторы");
+      bd.line(c, 50, 240, 590, 240, CHALK.white, 4);
+      const ev = [[120, "1805", "Gariot", "гипсовый артикулятор"], [300, "1840", "Cameron", "и Evens"], [470, "1858", "Bonwill", "треугольник, 4 дюйма"]];
+      for (const [x, y, a, b] of ev) {
+        bd.line(c, x, 228, x, 252, CHALK.yellow, 4);
+        bd.text(c, y, x, 275, CHALK.yellow, 24, "center", 800);
+        bd.text(c, a, x, 170, CHALK.white, 24);
+        bd.text(c, b, x, 200, CHALK.dim, 18);
+      }
+      bd.text(c, "→ рабочая и нерабочая сторона, положение смыкания", 320, 330, CHALK.green, 19, "center");
+      const x = 50 + ((t * 120) % 540);
+      bd.dot(c, x, 240, 7, CHALK.pink);
+    },
+    workside(c, t) {
+      bd.title(c, "Боковое движение вправо (вид сверху)");
+      const dx = 26 * bd.wave(t, 3);
+      const m = bd.mandibleTop(c, 320, 220, 1, CHALK.white, -0.08 * bd.wave(t, 3), dx);
+      bd.circle(c, m.left[0], m.left[1], 14, CHALK.white, 3);
+      bd.circle(c, m.right[0], m.right[1], 14, CHALK.white, 3);
+      bd.arrow(c, 270, 360, 400, 360, CHALK.yellow, 4);
+      bd.text(c, "движение", 335, 385, CHALK.yellow, 18);
+      bd.text(c, "рабочая", 520, 160, CHALK.green, 22); bd.text(c, "сторона", 520, 186, CHALK.green, 22);
+      bd.text(c, "нерабочая", 115, 160, CHALK.pink, 22); bd.text(c, "(балансирующая)", 115, 186, CHALK.pink, 18);
+    },
+    bonwill(c, t) {
+      bd.title(c, "Треугольник Бонвилла");
+      bd.mandibleTop(c, 320, 214, 1, CHALK.dim, 0, 0, 208 / 252);
+      const A = [200, 90], B = [440, 90], C = [320, 298];
+      const k = Math.min(1, t / 1.5);
+      bd.path(c, [A, B, C], CHALK.yellow, 4, { close: true, fill: `rgba(255,226,122,${0.08 * k})` });
+      for (const p of [A, B]) bd.circle(c, p[0], p[1], 14, CHALK.white, 3, "rgba(244,244,232,0.15)");
+      bd.dot(c, C[0], C[1], 7, CHALK.red);
+      bd.text(c, "4 дюйма ≈ 10 см", 320, 70, CHALK.yellow, 22, "center", 800);
+      bd.text(c, "мыщелок", 150, 120, CHALK.white, 18);
+      bd.text(c, "мыщелок", 490, 120, CHALK.white, 18);
+      bd.text(c, "резцовая точка", 320, 360, CHALK.white, 18);
+      bd.text(c, "≈ 4″", 236, 200, CHALK.dim, 18); bd.text(c, "≈ 4″", 404, 200, CHALK.dim, 18);
+    },
+    luce(c, t) {
+      bd.title(c, "Luce: центр вращения смещается");
+      // articular fossa and eminence
+      bd.curve(c, [[110, 110], [170, 70], [230, 80], [290, 130], [360, 150], [420, 140]], CHALK.dim, 4);
+      const p = bd.wave(t, 4);
+      // condyle slides forward-down along the eminence while the jaw rotates open
+      const cx = 175 + 150 * p, cy = 102 + 42 * p;
+      const ang = 0.15 + 0.55 * p;
+      bd.circle(c, cx, cy, 18, CHALK.white, 3, "rgba(244,244,232,0.12)");
+      bd.line(c, cx, cy + 18, cx + 300 * Math.cos(ang), cy + 18 + 300 * Math.sin(ang), CHALK.white, 5);
+      bd.text(c, "нижняя челюсть", 520, 120, CHALK.dim, 16);
+      // trail of instantaneous centres of rotation (they do not stay in one place)
+      for (let i = 0; i <= 10; i++) {
+        const q = i / 10, x = 230 + 60 * q, y = 260 - 70 * q + 25 * Math.sin(q * 3);
+        bd.dot(c, x, y, q <= p ? 6 : 3, q <= p ? CHALK.red : CHALK.dim);
+      }
+      bd.text(c, "центр вращения", 130, 250, CHALK.red, 20);
+      bd.text(c, "всё время смещается", 130, 276, CHALK.red, 20);
+      bd.text(c, "челюсть — не дверь на одной петле", 320, 375, CHALK.yellow, 20);
+    },
+    paths(c, t) {
+      bd.title(c, "Campion: у каждого свой суставной путь");
+      const k = Math.min(1, t / 2);
+      for (const [x0, steep, col, label] of [[120, 1.25, CHALK.pink, "слева"], [370, 0.8, CHALK.blue, "справа"]]) {
+        bd.curve(c, [[x0, 120], [x0 + 40, 100], [x0 + 80, 120]], CHALK.dim, 3);
+        const pts = [];
+        for (let i = 0; i <= 20 * k; i++) { const q = i / 20; pts.push([x0 + 40 + 150 * q, 140 + 140 * steep * q * q * 0.9 + 60 * q]); }
+        if (pts.length > 1) bd.curve(c, pts, col, 4);
+        bd.circle(c, x0 + 40, 140, 16, CHALK.white, 3);
+        bd.text(c, label, x0 + 110, 360, col, 24, "center", 800);
+      }
+      bd.text(c, "лицевая дуга, 1901", 320, 70, CHALK.dim, 18);
+    },
+    gothic(c, t) {
+      bd.title(c, "Готическая дуга (след штифта у резцов)");
+      const A = [320, 300], L = [190, 110], R = [450, 110], F = [320, 100];
+      bd.path(c, [L, A, R], CHALK.white, 4);
+      bd.line(c, A[0], A[1], F[0], F[1], CHALK.dim, 3, [8, 8]);
+      // the stylus traces left, back, right, back, forward
+      const seq = [L, A, R, A, F, A];
+      const ph = (t * 0.6) % seq.length, i = Math.floor(ph), f = ph - i;
+      const from = i === 0 ? A : seq[i - 1], to = seq[i];
+      bd.dot(c, from[0] + (to[0] - from[0]) * f, from[1] + (to[1] - from[1]) * f, 8, CHALK.pink);
+      bd.dot(c, A[0], A[1], 7, CHALK.yellow);
+      bd.text(c, "вершина", 320, 330, CHALK.yellow, 20);
+      bd.text(c, "боковое", 150, 150, CHALK.white, 18); bd.text(c, "движение", 150, 172, CHALK.white, 18);
+      bd.text(c, "боковое", 490, 150, CHALK.white, 18); bd.text(c, "движение", 490, 172, CHALK.white, 18);
+      bd.text(c, "вперёд", 320, 80, CHALK.dim, 18);
+      bd.text(c, "по ней Гизи находил центр вращения", 320, 372, CHALK.green, 19);
+    },
+    bennett(c, t) {
+      bd.title(c, "Движение Беннетта (вид сверху)");
+      const p = bd.wave(t, 3.2);
+      const rot = -0.12 * p;
+      // ghost of the starting position
+      bd.mandibleTop(c, 260, 240, 0.85, CHALK.dim);
+      const m = bd.mandibleTop(c, 260, 240, 0.85, CHALK.white, rot, 12 * p);
+      bd.circle(c, m.left[0], m.left[1], 13, CHALK.pink, 3);
+      bd.circle(c, m.right[0], m.right[1], 13, CHALK.green, 3);
+      // working condyle shifts sideways in the direction of movement
+      bd.arrow(c, 380, 76, 430, 76, CHALK.green, 4);
+      bd.text(c, "рабочий мыщелок", 520, 110, CHALK.green, 18); bd.text(c, "смещается в сторону", 520, 134, CHALK.green, 18); bd.text(c, "движения", 520, 158, CHALK.green, 18);
+      // balancing condyle travels forward and inward: its path makes the Bennett angle
+      const L = [158, 112];
+      bd.line(c, L[0], L[1], L[0], L[1] + 130, CHALK.dim, 2, [6, 6]);
+      bd.line(c, L[0], L[1], L[0] + 28, L[1] + 120, CHALK.pink, 3);
+      bd.arc(c, L[0], L[1], 70, Math.PI / 2 - 0.23, Math.PI / 2, CHALK.yellow, 3);
+      bd.text(c, "угол Беннетта", 520, 230, CHALK.yellow, 18);
+      bd.line(c, 440, 230, L[0] + 20, L[1] + 72, "rgba(255,226,122,0.4)", 2, [4, 6]);
+      bd.text(c, "балансирующий мыщелок", 520, 290, CHALK.pink, 18);
+      bd.text(c, "идёт вперёд и внутрь", 520, 314, CHALK.pink, 16);
+      bd.arrow(c, 210, 380, 310, 380, CHALK.yellow, 3);
+    },
+    gysi_axis(c, t) {
+      bd.title(c, "Осевая теория: две точки → ось");
+      const O = [170, 200], ang = 0.16 * Math.sin(t * 1.4);
+      const rot = (x, y) => [O[0] + (x - O[0]) * Math.cos(ang) - (y - O[1]) * Math.sin(ang), O[1] + (x - O[0]) * Math.sin(ang) + (y - O[1]) * Math.cos(ang)];
+      // a rigid body (jaw-like shape) turning around the axis O
+      const body = [[300, 90], [470, 130], [520, 220], [470, 310], [300, 330], [360, 210]].map(([x, y]) => rot(x, y));
+      bd.path(c, body, CHALK.white, 4, { close: true, fill: "rgba(244,244,232,0.06)" });
+      const A = rot(500, 215), B = rot(330, 110);
+      for (const P of [A, B]) {
+        const vx = -(P[1] - O[1]), vy = P[0] - O[0], n = Math.hypot(vx, vy);
+        bd.arrow(c, P[0], P[1], P[0] + vx / n * 60, P[1] + vy / n * 60, CHALK.pink, 4);
+        bd.line(c, P[0], P[1], O[0], O[1], CHALK.yellow, 2, [8, 8]);
+        bd.dot(c, P[0], P[1], 7, CHALK.pink);
+      }
+      bd.dot(c, O[0], O[1], 9, CHALK.red);
+      bd.text(c, "ось", O[0] - 40, O[1], CHALK.red, 22, "center", 800);
+      bd.text(c, "резцовая точка", A[0] + 20, A[1] + 40, CHALK.pink, 16);
+      bd.text(c, "мыщелок балансирующей стороны", B[0] + 40, B[1] - 34, CHALK.pink, 16);
+      bd.text(c, "смещение = 0, только вращение", 320, 372, CHALK.green, 20);
+    },
+    gysi_pro(c, t) {
+      bd.title(c, "Гизи: эллипс заменён кругом вокруг PRO");
+      const OP = 250, PRO = [470, OP], PRV = [415, 155], M = [300, OP], r = 170;
+      bd.line(c, 60, OP, 600, OP, CHALK.white, 3);
+      bd.text(c, "OP", 590, OP - 18, CHALK.white, 18, "center", 800);
+      bd.line(c, PRO[0], PRO[1], 362, 63, CHALK.white, 3);
+      bd.text(c, "SAL", 350, 52, CHALK.white, 20, "center", 800);
+      bd.dot(c, PRV[0], PRV[1], 8, CHALK.red); bd.text(c, "PRV Mol.II", PRV[0] + 76, PRV[1], CHALK.red, 18);
+      bd.dot(c, PRO[0], PRO[1], 8, CHALK.yellow); bd.text(c, "PRO", PRO[0] + 28, PRO[1] + 24, CHALK.yellow, 20, "center", 800);
+      bd.arc(c, PRO[0], PRO[1], 46, Math.PI + Math.PI / 3 * 0, Math.PI + Math.PI / 3, CHALK.yellow, 2);
+      bd.text(c, "60°", PRO[0] - 66, PRO[1] - 26, CHALK.yellow, 16);
+      const k = Math.min(1, t / 2);
+      c.save(); c.strokeStyle = CHALK.blue; c.lineWidth = 3; c.setLineDash([6, 8]);
+      c.beginPath(); c.ellipse(PRO[0], OP, r, 95, 0, Math.PI - 0.9 * k, Math.PI + 0.9 * k); c.stroke(); c.restore();
+      bd.arc(c, PRO[0], OP, r, Math.PI - 0.7 * k, Math.PI + 0.7 * k, CHALK.yellow, 4);
+      bd.dot(c, M[0], M[1], 7, CHALK.pink); bd.text(c, "моляр", M[0] - 52, M[1] + 22, CHALK.pink, 16);
+      bd.text(c, "эллипс — истинная проекция", 170, 96, CHALK.blue, 16);
+      bd.text(c, "круг вокруг PRO — у Гизи", 170, 122, CHALK.yellow, 16);
+      bd.text(c, "рядом с моляром они почти совпадают", 320, 372, CHALK.green, 18);
+    },
+    taxis(c, t) {
+      bd.title(c, "Терминальная шарнирная ось (McCollum, 1921)");
+      bd.curve(c, [[90, 120], [140, 80], [190, 90], [240, 130]], CHALK.dim, 4);
+      const ang = 0.25 * bd.wave(t, 3);
+      bd.mandibleSide(c, 160, 115, 0, "rgba(244,244,232,0.25)");
+      bd.mandibleSide(c, 160, 115, ang, CHALK.white);
+      bd.circle(c, 160, 115, 22, CHALK.white, 3);
+      bd.dot(c, 160, 115, 8, CHALK.red);
+      bd.arc(c, 160, 115, 60, 0.3, 0.3 + ang + 0.01, CHALK.yellow, 3);
+      bd.text(c, "ось", 120, 165, CHALK.red, 20, "center", 800);
+      bd.text(c, "чистое вращение вокруг оси", 430, 70, CHALK.yellow, 20);
+      bd.text(c, "точка отсчёта для записи движений", 400, 372, CHALK.green, 19);
+    },
+    pantograph(c, t) {
+      bd.title(c, "Пантограф: 6 записывающих пластин (вид сверху)");
+      bd.curve(c, [[150, 100], [140, 210], [220, 310], [320, 332], [420, 310], [500, 210], [490, 100]], CHALK.blue, 5);
+      bd.curve(c, [[190, 130], [185, 220], [245, 285], [320, 300], [395, 285], [455, 220], [450, 130]], CHALK.yellow, 5);
+      const glow = 0.5 + 0.5 * Math.sin(t * 3);
+      const plate = (x, y, w, h, n, col) => {
+        c.save(); c.fillStyle = `rgba(244,244,232,${0.12 + 0.12 * glow})`; c.strokeStyle = col; c.lineWidth = 3;
+        c.fillRect(x, y, w, h); c.strokeRect(x, y, w, h); c.restore();
+        bd.text(c, String(n), x + w / 2, y + h / 2, col, 18, "center", 800);
+      };
+      // condylar plates on the fixed upper bow (blue): horizontal + vertical on each side
+      plate(100, 66, 70, 34, 1, CHALK.blue); plate(178, 56, 18, 60, 2, CHALK.blue);
+      plate(470, 66, 70, 34, 3, CHALK.blue); plate(444, 56, 18, 60, 4, CHALK.blue);
+      // anterior horizontal plates on the movable lower bow (yellow)
+      plate(238, 316, 60, 30, 5, CHALK.yellow); plate(342, 316, 60, 30, 6, CHALK.yellow);
+      bd.text(c, "верх — неподвижный", 130, 380, CHALK.blue, 18);
+      bd.text(c, "низ — подвижный", 510, 380, CHALK.yellow, 18);
+      bd.text(c, "1–4: мыщелки", 320, 160, CHALK.white, 18);
+      bd.text(c, "5–6: передние", 320, 186, CHALK.white, 18);
+    },
+    balanced(c, t) {
+      bd.title(c, "Сбалансированная окклюзия");
+      for (let i = 0; i < 6; i++) {
+        bd.tooth(c, 90 + i * 76, 110, 60, 80, true);
+        bd.tooth(c, 96 + i * 76, 196, 60, 80, false);
+        const on = (Math.floor(t * 2) + i) % 2 === 0;
+        bd.text(c, "✱", 126 + i * 76, 194, on ? CHALK.red : CHALK.pink, 24, "center", 800);
+      }
+      bd.text(c, "контакты везде — и на рабочей, и на нерабочей стороне", 320, 318, CHALK.white, 18);
+      bd.text(c, "большинство таких работ — неудача", 320, 358, CHALK.red, 22, "center", 800);
+    },
+    organic(c, t) {
+      bd.title(c, "Передние ведут — жевательные размыкаются");
+      const p = bd.wave(t, 3.2);
+      // upper teeth: fixed
+      for (let i = 0; i < 3; i++) bd.tooth(c, 100 + i * 80, 100, 66, 80, true);
+      bd.path(c, [[430, 96], [440, 196], [472, 214], [470, 96]], CHALK.white, 3, { fill: "rgba(244,244,232,0.12)" });
+      // lower teeth move forward and down, guided by the upper incisor
+      const dx = 30 * p, dy = 26 * p;
+      c.save(); c.translate(dx, dy);
+      for (let i = 0; i < 3; i++) bd.tooth(c, 100 + i * 80, 184, 66, 80, false);
+      bd.path(c, [[406, 262], [418, 196], [436, 186], [440, 262]], CHALK.white, 3, { fill: "rgba(244,244,232,0.12)" });
+      c.restore();
+      bd.arrow(c, 450, 300, 450 + 50, 300 + 40, CHALK.yellow, 3);
+      bd.text(c, "передние ведут", 520, 280, CHALK.yellow, 18);
+      if (p > 0.3) bd.text(c, "зазор!", 230, 182 + dy / 2, CHALK.green, 20, "center", 800);
+      bd.text(c, "в ICP у передних зазор ≈ 25 мкм,", 320, 340, CHALK.white, 18);
+      bd.text(c, "вертикальную нагрузку несут жевательные", 320, 366, CHALK.white, 18);
+    },
+    cuspfossa(c, t) {
+      bd.title(c, "«Бугор — ямка» (Thomas, 1949)");
+      // section: upper tooth with a fossa, lower cusp sitting in it
+      bd.path(c, [[80, 80], [80, 180], [130, 200], [175, 160], [220, 200], [270, 180], [270, 80]], CHALK.white, 3, { fill: "rgba(244,244,232,0.1)" });
+      bd.path(c, [[90, 320], [90, 230], [140, 215], [175, 172], [210, 215], [260, 230], [260, 320]], CHALK.white, 3, { fill: "rgba(244,244,232,0.1)" });
+      bd.dot(c, 156, 184, 7, CHALK.red); bd.dot(c, 195, 184, 7, CHALK.red);
+      bd.text(c, "в разрезе", 175, 350, CHALK.dim, 18);
+      // top view: three contact points around the cusp tip
+      bd.circle(c, 460, 210, 90, CHALK.white, 3, "rgba(244,244,232,0.06)");
+      bd.circle(c, 460, 210, 34, CHALK.dim, 2, null, [6, 6]);
+      const pulse = 7 + 2 * Math.sin(t * 4);
+      for (let i = 0; i < 3; i++) {
+        const a = -Math.PI / 2 + i * Math.PI * 2 / 3;
+        bd.dot(c, 460 + 34 * Math.cos(a), 210 + 34 * Math.sin(a), pulse, CHALK.red);
+      }
+      bd.text(c, "ямка сверху: 3 точки контакта", 460, 330, CHALK.yellow, 18);
+      bd.text(c, "зуб к зубу", 460, 360, CHALK.green, 18);
+    },
+    chew(c, t) {
+      bd.title(c, "Lundeen и Gibbs: туда ≠ обратно");
+      // incisal point chewing cycle, frontal view: opening path and a different closing path
+      const open = [[320, 90], [300, 140], [270, 210], [255, 280], [265, 320]];
+      const close = [[265, 320], [330, 300], [380, 240], [370, 160], [345, 110], [320, 90]];
+      bd.curve(c, open, CHALK.blue, 4);
+      bd.curve(c, close, CHALK.pink, 4);
+      bd.text(c, "открывание", 190, 200, CHALK.blue, 20);
+      bd.text(c, "закрывание", 470, 220, CHALK.pink, 20);
+      const all = open.concat(close.slice(1)), q = (t * 0.35) % 1, k = q * (all.length - 1), i = Math.floor(k), f = k - i;
+      const a = all[i], b = all[Math.min(i + 1, all.length - 1)];
+      bd.dot(c, a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, 9, CHALK.yellow);
+      bd.text(c, "+ движение Беннетта = сложная 3D-картина", 320, 360, CHALK.green, 19);
+    },
+    farrar(c, t) {
+      const stages = [
+        ["1. Норма", null], ["2. Ранний щелчок", 0.2], ["3. Средний щелчок", 0.5],
+        ["4. Поздний щелчок", 0.8], ["5. Полный передний вывих диска", -1],
+      ];
+      const dur = 3.6, si = Math.floor(t / dur) % stages.length, lt = (t % dur) / dur;
+      const [name, click] = stages[si];
+      bd.title(c, "Farrar: " + name);
+      // fossa and eminence
+      bd.curve(c, [[100, 150], [170, 90], [250, 90], [320, 150], [390, 190], [470, 190], [540, 170]], CHALK.white, 4);
+      const limit = click === -1 ? 0.55 : 1;
+      const p = Math.min(1, lt / 0.7) * limit;
+      const cx = 210 + 230 * p, cy = 158 + 70 * Math.sin(Math.min(1, p) * Math.PI / 2) * 0.9;
+      bd.ellipse(c, cx, cy + 34, 34, 40, 0, CHALK.white, 3, "rgba(244,244,232,0.12)");
+      const reduced = click === null || (click >= 0 && p >= click);
+      // the disc: on top of the condyle when in place, in front of it when displaced
+      const dxDisc = reduced ? 0 : 58, dyDisc = reduced ? -10 : 2;
+      bd.ellipse(c, cx + dxDisc, cy + dyDisc - 8, 38, 11, 0.12, CHALK.pink, 3, "rgba(255,157,176,0.35)");
+      if (click !== null && click >= 0 && Math.abs(p - click) < 0.06) bd.text(c, "щёлк!", cx + 10, cy - 60, CHALK.yellow, 28, "center", 800);
+      bd.text(c, click === -1 ? "диск не встаёт на место, открывание ограничено" :
+        click === null ? "диск всё время лежит на мыщелке" : "диск встаёт на место со щелчком", 320, 330, CHALK.green, 19);
+      bd.text(c, "диск", 560, 120, CHALK.pink, 18); bd.text(c, "мыщелок", 560, 300, CHALK.white, 18);
+      for (let i = 0; i < stages.length; i++) bd.circle(c, 260 + i * 30, 370, 7, CHALK.white, 2, i === si ? CHALK.yellow : null);
+    },
+    axiograph(c, t) {
+      bd.title(c, "Аксиограф: запись пути мыщелка");
+      // head profile
+      bd.curve(c, [[200, 330], [170, 260], [160, 180], [190, 100], [270, 60], [360, 70], [420, 120], [440, 170], [470, 200], [450, 215], [455, 250], [430, 270], [440, 300], [410, 330]], CHALK.dim, 4);
+      // recording flag near the joint
+      c.save(); c.strokeStyle = CHALK.blue; c.lineWidth = 3; c.strokeRect(220, 140, 110, 90); c.restore();
+      for (let i = 1; i < 4; i++) { bd.line(c, 220 + i * 27, 140, 220 + i * 27, 230, "rgba(159,216,255,0.35)", 1); bd.line(c, 220, 140 + i * 22, 330, 140 + i * 22, "rgba(159,216,255,0.35)", 1); }
+      const k = (t * 0.4) % 1, pts = [];
+      for (let i = 0; i <= 30 * k; i++) { const q = i / 30; pts.push([235 + 80 * q, 160 + 50 * q * q + 10 * q]); }
+      if (pts.length > 1) bd.curve(c, pts, CHALK.pink, 4);
+      bd.line(c, 330, 185, 470, 210, CHALK.yellow, 4);
+      bd.text(c, "дуга", 500, 228, CHALK.yellow, 18);
+      bd.text(c, "+ полурегулируемый артикулятор", 320, 368, CHALK.green, 19);
+    },
+    growth(c, t) {
+      bd.title(c, "Рост: челюсть поворачивается вперёд");
+      const p = bd.wave(t, 3.6);
+      // the upper teeth move up as the vertical dimension grows
+      const up = 30 * p;
+      bd.line(c, 200, 230 - up, 470, 230 - up, CHALK.blue, 4);
+      bd.text(c, "верхние зубы", 335, 212 - up, CHALK.blue, 16);
+      bd.arrow(c, 560, 240, 560, 200 - up, CHALK.yellow, 3, 9);
+      bd.text(c, "высота", 560, 262, CHALK.yellow, 16); bd.text(c, "прикуса растёт", 560, 282, CHALK.yellow, 16);
+      // the mandible turns forward (chin up and forward) around the condyle
+      const ang = 0.08 - 0.16 * p;
+      bd.mandibleSide(c, 150, 120, 0.08, "rgba(244,244,232,0.22)");
+      bd.mandibleSide(c, 150, 120, ang, CHALK.white);
+      bd.circle(c, 150, 120, 20, CHALK.white, 3);
+      bd.arrow(c, 150, 100, 132, 62 - 14 * p, CHALK.green, 4);
+      bd.text(c, "мыщелок растёт", 250, 72, CHALK.green, 17);
+      bd.arrow(c, 410, 330, 455, 300, CHALK.pink, 4);
+      bd.text(c, "подбородок — вперёд", 400, 360, CHALK.pink, 17);
+    },
+    icprp(c, t) {
+      bd.title(c, "ICP и RP (вперёд → вправо)");
+      bd.line(c, 60, 210, 600, 210, CHALK.white, 3);
+      for (let mm = -4; mm <= 6; mm++) bd.line(c, 300 + mm * 40, 202, 300 + mm * 40, 218, CHALK.dim, 2);
+      bd.text(c, "1 мм", 320, 240, CHALK.dim, 15);
+      bd.dot(c, 300, 210, 10, CHALK.red); bd.text(c, "RP", 300, 178, CHALK.red, 24, "center", 800);
+      const x = 340 + 40 * bd.wave(t, 3);
+      bd.dot(c, x, 210, 9, CHALK.blue); bd.text(c, "ICP", x, 178, CHALK.blue, 22, "center", 800);
+      bd.text(c, "обычно 1–2 мм впереди RP", 420, 120, CHALK.blue, 19);
+      bd.arrow(c, 280, 290, 150, 290, CHALK.pink, 4);
+      bd.text(c, "при дисфункции ВНЧС", 190, 322, CHALK.pink, 18); bd.text(c, "челюсть чаще смещена назад", 190, 346, CHALK.pink, 18);
+      bd.text(c, "RP: без нагрузки на сустав", 470, 300, CHALK.yellow, 18); bd.text(c, "и воспроизводимо", 470, 324, CHALK.yellow, 18);
+    },
+    zone(c, t) {
+      bd.title(c, "Не точка, а область");
+      bd.line(c, 60, 110, 590, 110, CHALK.blue, 4);
+      bd.dot(c, 200, 110, 12, CHALK.red);
+      const pts = []; for (let i = 0; i <= 30; i++) { const q = i / 30; pts.push([200 + 360 * q, 110 + 230 * (1 - Math.exp(-4 * q)) * (0.6 + 0.4 * q)]); }
+      bd.curve(c, pts, CHALK.green, 5);
+      const glow = 0.25 + 0.2 * Math.sin(t * 2.5);
+      c.save(); c.fillStyle = `rgba(255,226,122,${glow})`; c.beginPath(); c.ellipse(232, 150, 36, 46, -0.9, 0, Math.PI * 2); c.fill(); c.restore();
+      for (const [x, y, l] of [[214, 128, "a"], [230, 148, "b"], [246, 170, "c"]]) { bd.circle(c, x, y, 9, CHALK.white, 2); bd.text(c, l, x + 22, y - 6, CHALK.white, 18); }
+      bd.text(c, "физиологическое положение —", 440, 66, CHALK.yellow, 19);
+      bd.text(c, "где-то в области a–c", 440, 90, CHALK.yellow, 19);
+      bd.text(c, "решает метод и направляющее скольжение", 320, 370, CHALK.green, 18);
+    },
+    hinge(c, t) {
+      bd.title(c, "Шарнирная ось ≠ положение челюсти");
+      // left: the axis through both condyles, the jaw turns around it
+      bd.circle(c, 90, 150, 18, CHALK.white, 3); bd.circle(c, 250, 150, 18, CHALK.white, 3);
+      bd.line(c, 50, 150, 290, 150, CHALK.red, 3, [10, 8]);
+      const a = t * 2.2;
+      bd.arc(c, 170, 150, 40, a, a + 4.2, CHALK.yellow, 3);
+      bd.text(c, "ось вращения", 170, 210, CHALK.red, 20, "center", 800);
+      bd.text(c, "вокруг чего крутится", 170, 236, CHALK.dim, 16);
+      bd.text(c, "≠", 330, 170, CHALK.yellow, 60, "center", 800);
+      // right: where the jaw is relative to the skull
+      c.save(); c.strokeStyle = CHALK.dim; c.lineWidth = 3; c.strokeRect(400, 80, 190, 80); c.restore();
+      bd.text(c, "череп", 495, 120, CHALK.dim, 18);
+      const dx = 18 * Math.sin(t * 1.5);
+      c.save(); c.strokeStyle = CHALK.white; c.lineWidth = 3; c.strokeRect(420 + dx, 180, 150, 40); c.restore();
+      bd.text(c, "нижняя челюсть", 495 + dx, 200, CHALK.white, 16);
+      bd.text(c, "положение", 495, 260, CHALK.blue, 20, "center", 800);
+      bd.text(c, "где она относительно черепа", 495, 286, CHALK.dim, 16);
+      bd.text(c, "ось нужна только для записи движения мыщелка", 320, 360, CHALK.green, 18);
+    },
+    condylar(c, t) {
+      bd.title(c, "Угол суставного пути");
+      bd.line(c, 60, 140, 600, 140, CHALK.yellow, 3);
+      bd.text(c, "AOP", 580, 122, CHALK.yellow, 18, "center", 800);
+      // anatomical eminence (steep) and the functional path (gentler)
+      bd.curve(c, [[90, 90], [150, 60], [210, 70], [260, 130], [320, 230], [380, 290], [450, 300]], CHALK.dim, 4);
+      bd.text(c, "анатомический бугорок — круче", 470, 330, CHALK.dim, 17);
+      const S = [190, 140], ang = 47 * Math.PI / 180;
+      const E = [S[0] + 260 * Math.cos(ang), S[1] + 260 * Math.sin(ang)];
+      bd.line(c, S[0], S[1], E[0], E[1], CHALK.green, 5);
+      bd.arc(c, S[0], S[1], 70, 0, ang, CHALK.white, 3);
+      bd.text(c, "45–50°", S[0] + 110, S[1] + 40, CHALK.white, 22, "center", 800);
+      const q = bd.wave(t, 3.2);
+      bd.circle(c, S[0] + (E[0] - S[0]) * q, S[1] + (E[1] - S[1]) * q, 16, CHALK.green, 3, "rgba(155,231,160,0.25)");
+      bd.text(c, "функциональный путь", 160, 300, CHALK.green, 17); bd.text(c, "мыщелка", 160, 322, CHALK.green, 17);
+    },
+    steep(c, t) {
+      bd.title(c, "≥ 60° — подозревай смещение мыщелка");
+      bd.line(c, 60, 140, 600, 140, CHALK.yellow, 3);
+      bd.text(c, "AOP", 580, 122, CHALK.yellow, 18, "center", 800);
+      bd.curve(c, [[90, 90], [150, 60], [210, 70], [260, 130], [320, 230], [380, 290], [450, 300]], CHALK.dim, 4);
+      const S = [150, 140];
+      const n = 47 * Math.PI / 180, s = 64 * Math.PI / 180;
+      bd.line(c, S[0], S[1], S[0] + 240 * Math.cos(n), S[1] + 240 * Math.sin(n), "rgba(155,231,160,0.4)", 4, [8, 8]);
+      bd.text(c, "норма 45–50°", S[0] + 250 * Math.cos(n) + 60, S[1] + 250 * Math.sin(n), CHALK.green, 16);
+      // displaced condyle: starts deep, path is steep
+      const D = [205, 150];
+      const E = [D[0] + 230 * Math.cos(s), D[1] + 230 * Math.sin(s)];
+      bd.line(c, D[0], D[1], E[0], E[1], CHALK.red, 5);
+      bd.arc(c, D[0], D[1], 60, 0, s, CHALK.white, 3);
+      bd.text(c, "65°", D[0] + 70, D[1] + 50, CHALK.red, 24, "center", 800);
+      const q = bd.wave(t, 3);
+      bd.circle(c, D[0] + (E[0] - D[0]) * q, D[1] + (E[1] - D[1]) * q, 16, CHALK.red, 3, "rgba(255,123,123,0.25)");
+      bd.ellipse(c, 300, 205, 30, 9, 0.9, CHALK.pink, 3, "rgba(255,157,176,0.35)");
+      bd.text(c, "диск смещён вперёд", 470, 210, CHALK.pink, 17);
+      bd.text(c, "мыщелок смещён назад", 470, 236, CHALK.red, 17);
+      bd.text(c, "старт глубоко на склоне → путь круче", 320, 372, CHALK.white, 18);
+    },
+    rpflow(c, t) {
+      bd.title(c, "Диагностика положения челюсти");
+      const box = (x, y, w, h, s, col, sub) => {
+        c.save(); c.fillStyle = col; c.globalAlpha = 0.85; c.fillRect(x - w / 2, y - h / 2, w, h); c.restore();
+        bd.text(c, s, x, sub ? y - 10 : y, "#fff", 20, "center", 800);
+        if (sub) bd.text(c, sub, x, y + 13, "#fff", 14, "center", 700);
+      };
+      const pulse = Math.floor(t / 1.6) % 2;
+      box(320, 82, 120, 46, "RP", "#3b7dd8");
+      bd.text(c, "кондилограф, цефалограмма", 320, 125, CHALK.dim, 16);
+      bd.line(c, 320, 105, 320, 145, CHALK.white, 3); bd.line(c, 170, 145, 470, 145, CHALK.white, 3);
+      bd.arrow(c, 170, 145, 170, 180, CHALK.white, 3); bd.arrow(c, 470, 145, 470, 180, CHALK.white, 3);
+      box(170, 210, 230, 54, "PRP", "#7a4fb0", "RP физиологично");
+      box(470, 210, 230, 54, "DRP", "#d0402f", "RP нарушено");
+      bd.arrow(c, 170, 238, 170, 280, pulse ? CHALK.yellow : CHALK.white, 3);
+      bd.arrow(c, 470, 238, 470, 280, pulse ? CHALK.white : CHALK.yellow, 3);
+      bd.text(c, "ThP", 500, 258, CHALK.yellow, 18, "center", 800);
+      box(170, 312, 230, 54, "Окончательное", "#7a4fb0", "лечение");
+      box(470, 312, 230, 54, "Начальная", "#d0402f", "терапия в ThP");
+      bd.text(c, "прикус регистрируют всегда в RP", 320, 378, CHALK.green, 17);
+    },
+    pullinger(c, t) {
+      bd.title(c, "Факторы (Pullinger и др.)");
+      const items = ["Открытый прикус спереди", "Перекрёстный прикус сбоку", "Длина скольжения RCP–ICP", "Асимметрия скольжения", "Односторонний контакт в RCP", "Овербайт",
+        "Оверджет", "Смещение средней линии", "Нет жевательных зубов", "Соотношение 1-х моляров", "Асимметрия 1-х моляров"];
+      const shown = Math.min(items.length, Math.floor(t * 4) + 1);
+      for (let i = 0; i < shown; i++) {
+        const col = i < 6 ? 0 : 1, row = i < 6 ? i : i - 6;
+        bd.text(c, `${i + 1}. ${items[i]}`, col ? 340 : 30, 70 + row * 38, CHALK.white, 17, "left");
+      }
+      if (t > 3) bd.text(c, "а где физиологическое положение челюсти?", 320, 375, CHALK.yellow, 19, "center", 800);
+    },
+    mutual(c, t) {
+      bd.title(c, "Взаимная защита");
+      // condyle on the left, teeth in a row: molars ... incisors (face to the right)
+      bd.curve(c, [[40, 110], [80, 80], [120, 90], [150, 120]], CHALK.dim, 3);
+      bd.circle(c, 90, 125, 20, CHALK.white, 3);
+      bd.text(c, "ВНЧС", 90, 170, CHALK.dim, 16);
+      for (let i = 0; i < 3; i++) { bd.tooth(c, 180 + i * 62, 120, 54, 60, true); bd.tooth(c, 180 + i * 62, 186, 54, 60, false); }
+      bd.path(c, [[400, 116], [408, 196], [432, 206], [432, 116]], CHALK.white, 3, { fill: "rgba(244,244,232,0.12)" });
+      bd.path(c, [[470, 116], [478, 210], [510, 222], [508, 116]], CHALK.white, 3, { fill: "rgba(244,244,232,0.12)" });
+      const p = 0.5 + 0.5 * Math.sin(t * 3);
+      // big vertical force taken by the molars
+      for (let i = 0; i < 3; i++) bd.arrow(c, 207 + i * 62, 300 + 10 * p, 207 + i * 62, 254, CHALK.green, 4);
+      bd.text(c, "жевательные берут давление —", 300, 320, CHALK.green, 17); bd.text(c, "берегут передние и ВНЧС", 300, 342, CHALK.green, 17);
+      // lateral force taken by canines/incisors
+      bd.arrow(c, 600 - 20 * p, 170, 520, 170, CHALK.pink, 4);
+      bd.text(c, "передние и клыки берут боковые силы —", 400, 64, CHALK.pink, 16); bd.text(c, "берегут жевательные", 400, 86, CHALK.pink, 16);
+    },
+    clock(c, t) {
+      bd.title(c, "Сутки: жевание и сон");
+      const C = [220, 215], R = 140;
+      bd.circle(c, C[0], C[1], R, CHALK.white, 3);
+      // night (23:00–07:00) shaded
+      const hourA = h => -Math.PI / 2 + h / 24 * Math.PI * 2;
+      c.save(); c.fillStyle = "rgba(159,216,255,0.3)"; c.beginPath(); c.moveTo(C[0], C[1]); c.arc(C[0], C[1], R, hourA(23), hourA(31)); c.closePath(); c.fill(); c.restore();
+      for (let h = 0; h < 24; h += 3) { const a = hourA(h); bd.line(c, C[0] + (R - 10) * Math.cos(a), C[1] + (R - 10) * Math.sin(a), C[0] + R * Math.cos(a), C[1] + R * Math.sin(a), CHALK.dim, 2); bd.text(c, String(h), C[0] + (R + 20) * Math.cos(a), C[1] + (R + 20) * Math.sin(a), CHALK.dim, 14); }
+      // 15 minutes of chewing contacts in the whole day
+      const a0 = hourA(13);
+      c.save(); c.fillStyle = CHALK.yellow; c.beginPath(); c.moveTo(C[0], C[1]); c.arc(C[0], C[1], R, a0, a0 + 0.25 / 24 * Math.PI * 2); c.closePath(); c.fill(); c.restore();
+      const pulse = 0.6 + 0.4 * Math.sin(t * 4);
+      bd.arrow(c, 470, 240, C[0] + R * Math.cos(a0) + 8, C[1] + R * Math.sin(a0), `rgba(255,226,122,${pulse})`, 3);
+      bd.text(c, "жевание: ≈ 15 мин", 500, 260, CHALK.yellow, 20, "center", 800);
+      bd.text(c, "(McHorris)", 500, 286, CHALK.dim, 16);
+      bd.text(c, "сон — ночной бруксизм:", 490, 120, CHALK.blue, 18); bd.text(c, "самое сильное усилие", 490, 144, CHALK.blue, 18);
+    },
+    interference(c, t) {
+      bd.title(c, "Окклюзионная интерференция");
+      // lateral glide hits a cusp
+      bd.path(c, [[60, 110], [100, 170], [140, 110], [180, 170], [220, 110]], CHALK.white, 3);
+      const p = bd.wave(t, 2.4), x = 70 + 60 * p;
+      bd.path(c, [[x, 230], [x + 30, 175], [x + 60, 230]], CHALK.pink, 4);
+      bd.arrow(c, 70, 260, 170, 260, CHALK.yellow, 3);
+      if (p > 0.85) bd.text(c, "✱", 160, 172, CHALK.red, 34, "center", 800);
+      bd.text(c, "контакт мешает", 140, 296, CHALK.white, 16); bd.text(c, "скольжению", 140, 318, CHALK.white, 16);
+      // the tooth wobbles
+      const wob = 0.06 * Math.sin(t * 9) * p;
+      c.save(); c.translate(320, 250); c.rotate(wob); bd.tooth(c, -25, -70, 50, 70, false); c.restore();
+      bd.text(c, "зуб", 320, 296, CHALK.pink, 16); bd.text(c, "расшатывается", 320, 318, CHALK.pink, 16);
+      // condyle pulled out of the fossa
+      bd.curve(c, [[430, 140], [470, 110], [510, 110], [550, 140]], CHALK.dim, 3);
+      bd.circle(c, 490, 150 + 14 * p, 20, CHALK.white, 3);
+      bd.arrow(c, 490, 180, 490, 225, CHALK.red, 4);
+      bd.text(c, "мыщелок вытягивается", 490, 250, CHALK.red, 16);
+      bd.path(c, [[430, 320], [450, 300], [470, 320], [490, 300], [510, 320], [530, 300], [550, 320]], CHALK.orange, 3);
+      bd.text(c, "мышцы перенапрягаются", 490, 350, CHALK.orange, 16);
+      bd.text(c, "во сне, при бруксизме", 140, 370, CHALK.blue, 17);
+    },
+    support(c, t) {
+      bd.title(c, "Потеря окклюзионной опоры");
+      for (let i = 0; i < 4; i++) {
+        const missing = i < 2;
+        if (missing) { c.save(); c.setLineDash([6, 6]); bd.tooth(c, 50 + i * 64, 140, 52, 60, true, CHALK.dim, "rgba(0,0,0,0)"); bd.tooth(c, 50 + i * 64, 206, 52, 60, false, CHALK.dim, "rgba(0,0,0,0)"); c.restore(); }
+        else { bd.tooth(c, 50 + i * 64, 140, 52, 60, true); bd.tooth(c, 50 + i * 64, 206, 52, 60, false); }
+      }
+      bd.text(c, "нет опоры на жевательных", 150, 300, CHALK.dim, 17);
+      const p = bd.wave(t, 1.6);
+      bd.curve(c, [[400, 120], [440, 80], [490, 80], [530, 120]], CHALK.white, 4);
+      bd.circle(c, 465, 135 - 8 * p, 26, CHALK.white, 3, `rgba(255,123,123,${0.15 + 0.3 * p})`);
+      bd.ellipse(c, 465, 106 - 8 * p, 30, 7, 0, CHALK.pink, 3);
+      for (const dx of [-24, 0, 24]) bd.arrow(c, 465 + dx, 220, 465 + dx, 172 - 6 * p, CHALK.red, 4);
+      bd.text(c, "сжатие → сдавление мыщелка", 470, 250, CHALK.red, 17);
+      bd.text(c, "деформация, резорбция,", 470, 300, CHALK.white, 17);
+      bd.text(c, "перфорация диска", 470, 324, CHALK.white, 17);
+    },
+    anterior(c, t) {
+      bd.title(c, "Интерференция передних зубов");
+      const p = bd.wave(t, 2.6);
+      // joint on the left
+      bd.curve(c, [[60, 110], [100, 80], [140, 80], [180, 110]], CHALK.white, 3);
+      bd.circle(c, 128 - 14 * p, 118 - 4 * p, 18, CHALK.white, 3, `rgba(255,123,123,${0.1 + 0.35 * p})`);
+      bd.text(c, "сустав сдавлен", 120, 160, CHALK.red, 16);
+      // steep upper incisor on the right
+      bd.path(c, [[470, 80], [482, 220], [510, 238], [508, 80]], CHALK.white, 3, { fill: "rgba(244,244,232,0.12)" });
+      bd.line(c, 482, 110, 500, 236, CHALK.red, 4);
+      bd.text(c, "крутое ведение", 556, 64, CHALK.red, 16);
+      // the lower jaw is pushed back
+      c.save(); c.translate(-36 * p, -4 * p);
+      bd.path(c, [[452, 320], [462, 248], [480, 238], [484, 320]], CHALK.white, 3, { fill: "rgba(244,244,232,0.12)" });
+      bd.curve(c, [[128, 140], [140, 220], [170, 290], [300, 312], [440, 312]], CHALK.white, 4);
+      c.restore();
+      bd.arrow(c, 380, 350, 290, 350, CHALK.yellow, 4);
+      bd.text(c, "челюсть уходит назад", 335, 378, CHALK.yellow, 17);
+      bd.text(c, "сильное сжатие, мышцы", 300, 200, CHALK.orange, 16); bd.text(c, "перенапряжены, жалобы", 300, 222, CHALK.orange, 16);
+    },
+    tamaki(c, t) {
+      bd.title(c, "Tamaki и соавт., 2001");
+      const cats = ["3", "34", "345", "3456", "34567"], L = [3.3, 3.4, 3.7, 7.5, 7.6], R = [3.35, 3.5, 3.85, 7.8, 7.7];
+      const X0 = 100, Y0 = 320, H = 30;   // 30 px per unit
+      bd.line(c, X0, Y0, 600, Y0, CHALK.white, 3); bd.line(c, X0, Y0, X0, 60, CHALK.white, 3);
+      for (let v = 0; v <= 8; v += 2) { bd.line(c, X0 - 6, Y0 - v * H, X0, Y0 - v * H, CHALK.dim, 2); bd.text(c, String(v), X0 - 20, Y0 - v * H, CHALK.dim, 14); }
+      const k = Math.min(1, t / 1.8);
+      cats.forEach((cat, i) => {
+        const x = X0 + 30 + i * 96;
+        c.save(); c.fillStyle = "rgba(159,216,255,0.75)"; c.fillRect(x, Y0 - L[i] * H * k, 30, L[i] * H * k);
+        c.fillStyle = "rgba(255,157,176,0.75)"; c.fillRect(x + 32, Y0 - R[i] * H * k, 30, R[i] * H * k); c.restore();
+        bd.text(c, cat, x + 31, Y0 + 20, CHALK.white, 18, "center", 800);
+      });
+      bd.text(c, "активность мышц", 115, 48, CHALK.dim, 15, "left");
+      if (t > 1.8) {
+        bd.arrow(c, 330, 120, 400, 95, CHALK.yellow, 4);
+        bd.text(c, "моляры (6, 7) в контакте —", 230, 120, CHALK.yellow, 17); bd.text(c, "активность ×2", 230, 144, CHALK.yellow, 17);
+      }
+      bd.text(c, "в контакте: 3 — клык, 4–5 — премоляры, 6–7 — моляры", 330, 372, CHALK.green, 15);
+    },
+  };
+  function drawBoardFrame(canvas, id, t) {
+    const c = canvas.getContext("2d");
+    bd.clear(c);
+    const f = BOARDS[id];
+    if (f) f(c, t);
   }
-  $("mBox").addEventListener("click", () => { if ($("mChoices").hidden || mst.answered) nextMaster(); });
-  $("mBox").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if ($("mChoices").hidden || mst.answered) nextMaster(); } });
+  // ---------- BOARDS-END ----------
+
+  // ---------- The master: lesson engine ----------
+  // A menu of scrolls with stars (saved in localStorage), a lesson runner with a typewriter bubble,
+  // four question types, a review round for mistakes, an exam with a certificate and a glossary.
+  // Random interruptions (guests, an ad, a phone call) and small ambient animations keep it light.
+  const M_IMG = "assets/master/";
+  const M_KEY = "ortho-master-v2";
+  const M_EXAM = 12, M_PASS = 10;
+  const mCalm = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const mEl = {};
+  for (const id of ["Stage", "Top", "Chapter", "Exit", "Prog", "ProgFill", "Board", "Fig", "Walker", "Sprite", "Guest",
+    "Panel", "Box", "Name", "Text", "More", "Choices", "Fx", "Ad", "Card"]) mEl[id[0].toLowerCase() + id.slice(1)] = $("m" + id);
+
+  // ----- progress, saved between visits -----
+  function mFresh() {
+    const n = MASTER_CHAPTERS.length;
+    return { stars: Array(n).fill(0), done: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, dayEnd: false, sound: true };
+  }
+  function mLoad() {
+    const d = mFresh();
+    try {
+      const s = JSON.parse(localStorage.getItem(M_KEY) || "null");
+      if (s && typeof s === "object") {
+        for (const k of ["exam", "passed", "name", "date", "met", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
+        for (const k of ["stars", "done"]) if (Array.isArray(s[k])) d[k] = d[k].map((v, i) => (typeof s[k][i] === typeof v ? s[k][i] : v));
+      }
+    } catch (e) { /* no storage: play without saving */ }
+    return d;
+  }
+  const mSave = mLoad();
+  function mStore() { try { localStorage.setItem(M_KEY, JSON.stringify(mSave)); } catch (e) { /* ignore */ } }
+
+  // ----- small helpers -----
+  function mShuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  function mNode(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function mBtn(cls, text, onClick) {
+    const b = mNode("button", cls, text);
+    b.type = "button";
+    b.addEventListener("click", e => { e.stopPropagation(); onClick(e); });
+    return b;
+  }
+  function mStars(n, total = 3) {
+    const s = mNode("span", "m-stars");
+    for (let i = 0; i < total; i++) s.append(mNode("i", i < n ? "on" : "off", "★"));
+    s.setAttribute("aria-label", `звёзд: ${n} из ${total}`);
+    return s;
+  }
+  function mItem(title, sub, right, onClick, cls) {
+    const b = mBtn("m-item" + (cls ? " " + cls : ""), null, onClick);
+    b.append(mNode("span", "m-item-t", title));
+    if (right) b.append(right);
+    if (sub) b.append(mNode("small", null, sub));
+    return b;
+  }
+
+  // ----- sound: short synthesized blips (no files) -----
+  let mAC = null;
+  function mTone(ac, f0, f1, t0, dur, type = "triangle", vol = 0.07) {
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + t0;
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  }
+  const M_SFX = {
+    yes: ac => { mTone(ac, 660, 0, 0, 0.1); mTone(ac, 990, 0, 0.09, 0.18); },
+    no: ac => mTone(ac, 200, 130, 0, 0.28, "square", 0.045),
+    drop: ac => mTone(ac, 900, 110, 0, 0.7, "sine", 0.07),
+    star: ac => [784, 988, 1175, 1568].forEach((f, i) => mTone(ac, f, 0, i * 0.11, 0.22)),
+    meow: ac => { mTone(ac, 520, 900, 0, 0.18, "sawtooth", 0.025); mTone(ac, 900, 430, 0.18, 0.32, "sawtooth", 0.025); },
+    knock: ac => [0, 0.17, 0.34].forEach(t0 => mTone(ac, 150, 60, t0, 0.09, "square", 0.07)),
+    ding: ac => { mTone(ac, 1320, 0, 0, 0.35, "sine", 0.06); mTone(ac, 990, 0, 0.18, 0.45, "sine", 0.05); },
+    ring: ac => { for (let i = 0; i < 8; i++) mTone(ac, i % 2 ? 480 : 440, 0, i * 0.1 + (i > 3 ? 0.4 : 0), 0.09, "square", 0.03); },
+    rumble: ac => { mTone(ac, 60, 38, 0, 1.3, "sawtooth", 0.06); mTone(ac, 45, 30, 0.2, 1.1, "square", 0.03); },
+    jingle: ac => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => mTone(ac, f, 0, i * 0.12, 0.16, "square", 0.035)),
+    click: ac => mTone(ac, 2400, 700, 0, 0.05, "square", 0.06),
+    gong: ac => { mTone(ac, 110, 98, 0, 2.2, "sine", 0.1); mTone(ac, 220, 196, 0, 1.6, "sine", 0.04); },
+  };
+  function mSfx(name) {
+    if (!mSave.sound || !M_SFX[name]) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      mAC = mAC || new AC();
+      if (mAC.state === "suspended") mAC.resume();
+      M_SFX[name](mAC);
+    } catch (e) { /* audio unavailable */ }
+  }
+
+  // ----- the master's sprite: moods and blinking -----
+  ["calm", "happy", "stern", "think", "blink", "shock", "walk"].forEach(m => { new Image().src = `${M_IMG}master_${m}.png`; });
+  ["cat", "patient", "courier"].forEach(g => { new Image().src = `${M_IMG}guest_${g}.png`; });
+  let mMood = "calm";
+  function setMood(m) {
+    mMood = m || "calm";
+    mEl.sprite.style.backgroundImage = `url("${M_IMG}master_${mMood}.png")`;
+  }
+  setInterval(() => {
+    if (current !== 11 || mMood !== "calm" || mCalm) return;
+    mEl.sprite.style.backgroundImage = `url("${M_IMG}master_blink.png")`;
+    setTimeout(() => { if (mMood === "calm") setMood("calm"); }, 150);
+  }, 3700);
+
+  // ----- the chalkboard: redrawn every frame while visible, so boards can animate -----
+  let mBoardId = null, mBoardT0 = 0, mRaf = 0;
+  function setBoard(id) {
+    id = id || null;
+    mEl.board.hidden = !id;
+    mEl.stage.classList.toggle("has-board", !!id);
+    if (id !== mBoardId) { mBoardId = id; mBoardT0 = performance.now(); }
+    if (id && !mRaf) mRaf = requestAnimationFrame(mBoardLoop);
+  }
+  function mBoardLoop(now) {
+    mRaf = 0;
+    if (current !== 11 || !mBoardId) return;
+    drawBoardFrame(mEl.board, mBoardId, mCalm ? 60 : (now - mBoardT0) / 1000);
+    if (!mCalm) mRaf = requestAnimationFrame(mBoardLoop);
+  }
+
+  // ----- the speech bubble: typewriter text; a tap finishes the line, the next tap moves on -----
+  let mTyping = null, mOnNext = null, mBusy = false;
+  function mSay(text, opts = {}) {
+    clearInterval(mTyping && mTyping.timer);
+    mTyping = null;
+    const narr = !!opts.narr;
+    mEl.box.classList.toggle("narration", narr);
+    mEl.box.classList.toggle("guest", !!opts.guest);
+    mEl.name.hidden = narr;
+    mEl.name.textContent = opts.name || "Мастер";
+    mOnNext = opts.next || null;
+    mEl.more.hidden = true;
+    const shown = mNode("span"), ghost = mNode("span", "m-ghost");
+    mEl.text.replaceChildren(shown, ghost);
+    if (mCalm || opts.instant) { shown.textContent = text; mTypeDone(); return; }
+    ghost.textContent = text;   // the not-yet-typed rest keeps the bubble from growing line by line
+    const t = mTyping = { full: text, n: 0, shown, ghost };
+    t.timer = setInterval(() => {
+      t.n = Math.min(t.full.length, t.n + 2);
+      t.shown.textContent = t.full.slice(0, t.n);
+      t.ghost.textContent = t.full.slice(t.n);
+      if (t.n >= t.full.length) mFinishTyping();
+    }, 24);
+  }
+  function mFinishTyping() {
+    const t = mTyping;
+    if (!t) return;
+    clearInterval(t.timer);
+    t.shown.textContent = t.full; t.ghost.textContent = "";
+    mTyping = null;
+    mTypeDone();
+  }
+  function mTypeDone() { mEl.more.hidden = !mOnNext; }
+  function mTap() {
+    if (mTyping) return mFinishTyping();
+    if (mBusy || !mOnNext) return;
+    const f = mOnNext;
+    mOnNext = null; mEl.more.hidden = true;
+    f();
+  }
+  // several lines in a row; each line: text or { text, narr, name, guest, mood, fn }
+  function mLines(lines, done) {
+    const list = lines.filter(Boolean).map(l => (typeof l === "string" ? { text: l } : l));
+    let i = 0;
+    const step = () => {
+      if (i >= list.length) return done();
+      const l = list[i++];
+      if (l.mood) setMood(l.mood);
+      if (l.fn) l.fn();
+      mSay(l.text, Object.assign({}, l, { next: step }));
+    };
+    step();
+  }
+
+  // ----- layout states -----
+  function mClearChoices() {
+    mEl.choices.hidden = true;
+    mEl.choices.className = "m-choices";
+    mEl.choices.replaceChildren();
+  }
+  function mLeaveLesson() {
+    mEl.top.hidden = true;
+    mClearChoices();
+    setBoard(null);
+    mEl.stage.classList.remove("asking", "answered", "pacing", "menu", "paneled");
+    mEl.panel.hidden = true;
+  }
+  function mPanel(nodes, opts = {}) {
+    mEl.panel.replaceChildren(...nodes);
+    mEl.panel.hidden = false;
+    mEl.panel.scrollTop = 0;
+    mEl.stage.classList.toggle("menu", !!opts.fig);
+    mEl.stage.classList.toggle("paneled", !opts.fig);
+  }
+  function mTitleCard(kicker, title, sub) {
+    const c = mEl.card;
+    c.replaceChildren(mNode("small", null, kicker), mNode("b", null, title));
+    if (sub) c.append(mNode("span", null, sub));
+    c.hidden = false;
+    c.classList.remove("go"); void c.offsetWidth; c.classList.add("go");
+    clearTimeout(mTitleCard.t);
+    mTitleCard.t = setTimeout(() => { c.hidden = true; }, mCalm ? 1200 : 1950);
+  }
+
+  // ----- the lesson runner -----
+  let ms = null;   // { mode, k, title, steps, i, right, total, wrong, phase, counting, onDone, sinceGag, gags }
+  function mRun(steps, opts) {
+    ms = Object.assign({ steps, i: -1, right: 0, total: 0, wrong: [], phase: "learn", counting: true, sinceGag: 0, gags: 0 }, opts);
+    mLeaveLesson();
+    mEl.stage.classList.remove("dusk");
+    mEl.top.hidden = false;
+    mEl.chapter.textContent = ms.title;
+    mEl.prog.classList.remove("review");
+    mNext();
+  }
+  function mProgress() {
+    const n = ms.steps.length;
+    mEl.progFill.style.width = `${Math.min(100, Math.round((100 * Math.max(0, ms.i)) / Math.max(1, n)))}%`;
+  }
+  function mNext() {
+    if (!ms) return;
+    ms.i++;
+    mProgress();
+    const st = ms.steps[ms.i];
+    if (!st) return ms.onDone();
+    if (mMaybeGag(st)) return;
+    mRender(st);
+  }
+  function mRender(st) {
+    mClearChoices();
+    mEl.stage.classList.remove("asking", "answered", "pacing");
+    if (st.s !== undefined) {
+      setBoard(st.b);
+      setMood(st.m || "calm");
+      if (st.sfx) mSfx(st.sfx);
+      mSay(st.s, { narr: st.narr, name: st.name, next: mNext });
+      return;
+    }
+    // A question. The board often shows the answer, so it appears only with the explanation.
+    setBoard(null);
+    if (ms.counting) ms.total++;
+    mEl.stage.classList.add("asking");
+    if (!mCalm) mEl.stage.classList.add("pacing");
+    setMood("think");
+    mAmbient();
+    if (st.q) mAskChoice(st);
+    else if (st.tf) mAskTF(st);
+    else if (st.ord) mAskOrder(st);
+    else if (st.mt) mAskMatch(st);
+  }
+  const M_YES = ["Верно!", "Точно.", "Именно так.", "Правильно.", "Да. Хорошо."];
+  const M_NO = ["Нет.", "Мимо.", "Не так.", "Увы, нет."];
+  function mAnswer(st, ok, lines) {
+    mEl.stage.classList.add("answered");
+    mEl.stage.classList.remove("pacing");
+    if (ms.counting) { if (ok) ms.right++; else ms.wrong.push(st); }
+    mSfx(ok ? "yes" : "no");
+    if (ok) { setMood("happy"); mSparkle(); }
+    else if (!mCalm && Math.random() < 0.3) {
+      setMood("shock"); mSfx("drop");
+      setTimeout(() => { if (mMood === "shock") setMood("stern"); }, 1400);
+    } else setMood("stern");
+    setBoard(st.b);
+    mLines(lines, mNext);
+  }
+  function mButtons(labels, onPick) {
+    mEl.choices.hidden = false;
+    let done = false;
+    const btns = labels.map((label, i) => mBtn("m-opt", label, () => {
+      if (done) return;
+      done = true;
+      btns.forEach(x => { x.disabled = true; });
+      mFinishTyping();
+      onPick(i);
+    }));
+    mEl.choices.replaceChildren(...btns);
+    return btns;
+  }
+  function mAskChoice(st) {
+    mSay(st.q);
+    const opts = mShuffle(st.o.map((text, k) => ({ text, k })));
+    const btns = mButtons(opts.map(o => o.text), idx => {
+      const o = opts[idx], ok = o.k === 0;
+      btns.forEach((b, j) => {
+        if (opts[j].k === 0) b.classList.add("ok");
+        else if (j === idx) b.classList.add("bad");
+        else b.classList.add("gone");
+      });
+      const why = !ok && st.why && st.why[o.k];
+      mAnswer(st, ok, ok
+        ? [`${pick(M_YES)} ${st.e}`, st.x]
+        : [`${pick(M_NO)} ${why ? why + " " : ""}Правильный ответ: «${st.o[0]}».`, st.x ? `${st.e} ${st.x}` : st.e]);
+    });
+  }
+  function mAskTF(st) {
+    mSay(st.tf);
+    mEl.choices.classList.add("tf");
+    const btns = mButtons(["Правда", "Миф"], idx => {
+      const ok = (idx === 0) === st.t;
+      btns[idx].classList.add(ok ? "ok" : "bad");
+      if (!ok) btns[1 - idx].classList.add("ok");
+      const verdict = st.t ? "Это правда." : "Это миф.";
+      mAnswer(st, ok, ok
+        ? [`${pick(M_YES)} ${verdict} ${st.e}`, st.x]
+        : [`${pick(M_NO)} ${verdict}`, st.x ? `${st.e} ${st.x}` : st.e]);
+    });
+  }
+  function mAskOrder(st) {
+    mSay(`${st.ord} Нажимай по порядку.`);
+    const n = st.items.length, picked = [];
+    let order;
+    do { order = mShuffle([...Array(n).keys()]); } while (order.every((v, i) => v === i));
+    mEl.choices.hidden = false;
+    mEl.choices.classList.add("ord");
+    const reset = mBtn("m-mini", "↺ Сбросить", () => {
+      if (picked.length === n) return;
+      picked.length = 0;
+      btns.forEach(b => { b.classList.remove("sel"); b.firstChild.textContent = "·"; });
+      reset.hidden = true;
+    });
+    reset.hidden = true;
+    const btns = order.map(k => {
+      const b = mBtn("m-opt", null, () => {
+        if (picked.includes(k) || picked.length === n) return;
+        picked.push(k);
+        b.firstChild.textContent = String(picked.length);
+        b.classList.add("sel");
+        reset.hidden = false;
+        if (picked.length === n) finish();
+      });
+      b.append(mNode("span", "num", "·"), document.createTextNode(st.items[k][0]));
+      return b;
+    });
+    mEl.choices.replaceChildren(...btns, reset);
+    function finish() {
+      mFinishTyping();
+      const placed = picked.filter((k, i) => k === i).length, ok = placed === n;
+      mEl.choices.replaceChildren(...st.items.map(([label, tag], i) => {
+        const r = mNode("div", "m-row " + (picked[i] === i ? "ok" : "bad"));
+        r.append(mNode("span", "num", String(i + 1)), document.createTextNode(label));
+        if (tag) r.append(mNode("span", "tag", tag));
+        return r;
+      }));
+      mAnswer(st, ok, ok
+        ? [`${pick(M_YES)} Порядок точный. ${st.e}`]
+        : [`${pick(M_NO)} На своих местах: ${placed} из ${n}. Вот как правильно — сверху вниз.`, st.e]);
+    }
+  }
+  function mAskMatch(st) {
+    mSay(`${st.mt} Выбери слева, потом справа.`);
+    const n = st.pairs.length, link = Array(n).fill(-1);
+    const right = mShuffle([...Array(n).keys()]);
+    let sel = 0;
+    mEl.choices.hidden = false;
+    mEl.choices.classList.add("mt");
+    const grid = mNode("div", "m-match");
+    const L = st.pairs.map(([l], i) => {
+      const b = mBtn("m-opt m-l", null, () => { sel = i; refresh(); });
+      b.append(mNode("span", "num", String(i + 1)), document.createTextNode(l));
+      return b;
+    });
+    const R = right.map(r => {
+      const b = mBtn("m-opt m-r", null, () => {
+        if (sel < 0) return;
+        link.forEach((v, i) => { if (v === r) link[i] = -1; });
+        link[sel] = r;
+        sel = link.indexOf(-1);
+        refresh();
+      });
+      b.append(mNode("span", "num", "·"), document.createTextNode(st.pairs[r][1]));
+      return b;
+    });
+    L.forEach((b, i) => grid.append(b, R[i]));
+    const check = mBtn("m-mini go", "Проверить", () => finish());
+    check.hidden = true;
+    mEl.choices.replaceChildren(grid, check);
+    function refresh() {
+      L.forEach((b, i) => { b.classList.toggle("sel", i === sel); });
+      R.forEach((b, j) => {
+        const i = link.indexOf(right[j]);
+        b.firstChild.textContent = i >= 0 ? String(i + 1) : "·";
+        b.classList.toggle("linked", i >= 0);
+      });
+      check.hidden = link.includes(-1);
+    }
+    refresh();
+    function finish() {
+      mFinishTyping();
+      const good = link.filter((r, i) => r === i).length, ok = good === n;
+      mEl.choices.replaceChildren(...st.pairs.map(([l, r], i) => {
+        const row = mNode("div", "m-row " + (link[i] === i ? "ok" : "bad"));
+        row.append(mNode("b", null, l), document.createTextNode(` — ${r}`));
+        return row;
+      }));
+      mAnswer(st, ok, ok
+        ? [`${pick(M_YES)} Все пары на месте. ${st.e}`]
+        : [`${pick(M_NO)} Верных пар: ${good} из ${n}. Вот как правильно.`, st.e]);
+    }
+  }
+
+  // ----- chapters, results, the end of the day -----
+  function mStartChapter(k) {
+    const ch = MASTER_CHAPTERS[k];
+    mRun(ch.steps, { mode: "chapter", k, title: `Свиток ${k + 1}. ${ch.title}`, onDone: mChapterDone });
+    mTitleCard(`Свиток ${k + 1}`, ch.title, ch.pages);
+  }
+  function mChapterDone() {
+    if (ms.phase === "learn" && ms.wrong.length) {
+      ms.phase = "review"; ms.counting = false;
+      ms.steps = [{ s: pick(["Повторим то, где ты ошибся.", "Теперь — работа над ошибками.", "Вернёмся к трудным местам."]), m: "stern" }, ...ms.wrong];
+      ms.i = -1;
+      mEl.prog.classList.add("review");
+      mEl.chapter.textContent = `${ms.title} · ошибки`;
+      return mNext();
+    }
+    const k = ms.k, pct = ms.total ? ms.right / ms.total : 1;
+    const stars = pct >= 0.9 ? 3 : pct >= 0.7 ? 2 : pct >= 0.4 ? 1 : 0;
+    mSave.stars[k] = Math.max(mSave.stars[k], stars);
+    mSave.done[k] = true;
+    mStore();
+    const lastDay = mSave.done.every(Boolean) && !mSave.dayEnd;
+    const words = ["Не спеши. Пройди свиток ещё раз.", "Ты ступил на путь. Перечитай свиток.", "Хорошо. Но путь ещё не окончен.", "Безупречно. Ты понял суть."];
+    mResults({
+      title: `Свиток ${k + 1} пройден`, stars, score: `С первого раза: ${ms.right} из ${ms.total}`,
+      line: lastDay ? `${words[stars]} И это был последний свиток дня.` : words[stars],
+      buttons: [
+        ...(k + 1 < MASTER_CHAPTERS.length && !lastDay ? [["Следующий свиток", () => mStartChapter(k + 1), "main"]] : []),
+        ["Пройти ещё раз", () => mStartChapter(k)],
+        ["К свиткам", () => mMenu()],
+      ],
+      after: lastDay ? mDayEnd : null,
+    });
+    if (stars === 3) mSfx("star");
+  }
+  function mResults({ title, stars, score, line, buttons, after }) {
+    ms = null;
+    mLeaveLesson();
+    const box = mNode("div", "m-res");
+    box.append(mNode("h2", "m-h", title));
+    if (stars != null) { const s = mStars(stars); s.classList.add("big"); box.append(s); }
+    if (score) box.append(mNode("p", "m-score", score));
+    const row = mNode("div", "m-btns");
+    buttons.forEach(([label, fn, cls]) => row.append(mItem(label, null, null, fn, cls)));
+    box.append(row);
+    mPanel([box], { fig: true });
+    setMood(stars == null ? "calm" : stars >= 2 ? "happy" : stars === 1 ? "calm" : "stern");
+    mSay(line, { next: after || null });
+  }
+  function mDayEnd() {
+    mSave.dayEnd = true; mStore();
+    mLeaveLesson();
+    mEl.stage.classList.add("dusk");
+    mSfx("gong");
+    mLines([
+      { text: "Солнце садится за крышу храма. Во дворе зажигаются фонари.", narr: true },
+      { text: "Первый день окончен, ученик.", mood: "calm" },
+      { text: "Ты узнал, как люди двести лет искали движения челюсти, почему сустав человека так рискует и как ночной бруксизм ломает то, что мы строим днём.", mood: "think" },
+      { text: "Завтра — новые свитки. А сегодня можешь сдать экзамен. Или просто отдохни.", mood: "happy" },
+    ], () => {
+      mMenu("Свитки первого дня — твои. Экзамен ждёт, когда будешь готов.");
+      mTitleCard("Конец", "Первый день с мастером", "продолжение следует");
+    });
+  }
+
+  // ----- exam, certificate, glossary -----
+  function mStartExam() {
+    const pools = MASTER_CHAPTERS.map(ch => mShuffle(ch.steps.filter(st => st.q || st.tf)));
+    const qs = [];
+    pools.forEach(p => { if (p.length && qs.length < M_EXAM) qs.push(p.shift()); });
+    const rest = mShuffle(pools.filter(p => p.length));
+    while (qs.length < M_EXAM && rest.length) {
+      const p = rest.shift();
+      qs.push(p.shift());
+      if (p.length) rest.push(p);
+    }
+    mShuffle(qs);
+    mRun([{ s: `Экзамен. ${qs.length} вопросов из всех свитков. ${M_PASS} верных — и свиток ученика твой.`, m: "stern" }, ...qs],
+      { mode: "exam", title: "Экзамен первого дня", onDone: mExamDone });
+  }
+  function mConfirmExam() {
+    ms = null;
+    mLeaveLesson();
+    setMood("think");
+    mSay("Ты прошёл не все свитки. Экзамен будет трудным. Всё равно начнём?");
+    mButtons(["Начать экзамен", "Сначала свитки"], i => (i === 0 ? mStartExam() : mMenu("Мудрое решение.")));
+  }
+  function mExamDone() {
+    const right = ms.right, total = ms.total, pass = right >= Math.min(M_PASS, total);
+    mSave.exam = Math.max(mSave.exam, right);
+    if (pass) { mSave.passed = true; mSave.date = new Date().toLocaleDateString("ru-RU"); }
+    mStore();
+    mResults({
+      title: pass ? "Экзамен сдан" : "Экзамен не сдан", stars: null, score: `Верных: ${right} из ${total}`,
+      line: pass ? "Ты достоин свитка ученика. Впиши в него своё имя." : `Нужно ${M_PASS} верных. Перечитай свитки — и возвращайся.`,
+      buttons: [...(pass ? [["Свиток ученика", mCertificate, "main"]] : []), ["Сдать ещё раз", mStartExam], ["К свиткам", () => mMenu()]],
+    });
+    mSfx(pass ? "star" : "no");
+  }
+  function mCertificate() {
+    ms = null;
+    mLeaveLesson();
+    const w = mNode("div", "m-cert");
+    w.append(mNode("p", "m-cert-k", "Храм окклюзии"), mNode("h2", "m-cert-h", "Свиток ученика"), mNode("p", "m-cert-s", "первая ступень"),
+      mNode("p", null, "Сим удостоверяется, что"));
+    const name = mNode("input", "m-cert-name");
+    name.type = "text"; name.maxLength = 40; name.placeholder = "впиши своё имя"; name.value = mSave.name;
+    name.setAttribute("aria-label", "Имя ученика");
+    name.addEventListener("input", () => { mSave.name = name.value.trim(); mStore(); });
+    name.addEventListener("click", e => e.stopPropagation());
+    const stars = mSave.stars.reduce((a, b) => a + b, 0);
+    w.append(name,
+      mNode("p", null, `прошёл(а) первый день у мастера окклюзии и выдержал(а) экзамен: ${mSave.exam} из ${M_EXAM}.`),
+      mNode("p", null, `Звёзд за свитки: ${stars} из ${mSave.stars.length * 3}.`),
+      mNode("p", "m-cert-date", mSave.date || new Date().toLocaleDateString("ru-RU")),
+      mNode("div", "m-seal", "МАСТЕР"),
+      mNode("p", "m-cert-fn", "* Свиток действителен в стенах храма. Смотреть пункт «Специальные условия»."),
+      mItem("К свиткам", null, null, () => mMenu()));
+    mPanel([w]);
+    setMood("happy");
+    mSay("Носи с честью. Но помни: свиток — ещё не диплом.");
+  }
+  function mGlossary() {
+    ms = null;
+    mLeaveLesson();
+    const w = mNode("div", "m-gloss");
+    const q = mNode("input", "m-search");
+    q.type = "search"; q.placeholder = "Найти термин…"; q.setAttribute("aria-label", "Найти термин");
+    q.addEventListener("click", e => e.stopPropagation());
+    const dl = mNode("dl", "m-dl");
+    const rows = MASTER_GLOSSARY.map(([t, d]) => {
+      const dt = mNode("dt", null, t), dd = mNode("dd", null, d);
+      dl.append(dt, dd);
+      return [`${t} ${d}`.toLowerCase(), dt, dd];
+    });
+    q.addEventListener("input", () => {
+      const v = q.value.trim().toLowerCase();
+      rows.forEach(([txt, dt, dd]) => { dt.hidden = dd.hidden = !!v && !txt.includes(v); });
+    });
+    w.append(mNode("h2", "m-h", "Свиток терминов"), q, dl, mItem("К свиткам", null, null, () => mMenu()));
+    mPanel([w]);
+    setMood("calm");
+    mSay("Здесь все понятия свитков. Забыл слово — загляни.");
+  }
+
+  // ----- the menu of scrolls -----
+  function mMenu(greet) {
+    ms = null;
+    mBusy = false;
+    mHideGuest(true);
+    mEl.ad.hidden = true;
+    mLeaveLesson();
+    mEl.stage.classList.toggle("dusk", mSave.dayEnd);
+    const list = [mNode("h2", "m-h", "Свитки мастера · день первый")];
+    const nextK = mSave.done.indexOf(false);
+    MASTER_CHAPTERS.forEach((ch, k) => {
+      list.push(mItem(`${k + 1}. ${ch.title}`, ch.sub, mStars(mSave.stars[k]), () => mStartChapter(k), k === nextK ? "next" : ""));
+    });
+    list.push(mItem("Экзамен первого дня", mSave.exam ? `лучший результат: ${mSave.exam} из ${M_EXAM}` : `${M_EXAM} вопросов из всех свитков, нужно ${M_PASS}`,
+      null, () => (nextK === -1 || mSave.passed ? mStartExam() : mConfirmExam()), "exam"));
+    list.push(mItem("Свиток терминов", `${MASTER_GLOSSARY.length} понятий с объяснениями`, null, mGlossary));
+    if (mSave.passed) list.push(mItem("Свиток ученика", "твой сертификат", null, mCertificate, "cert"));
+    list.push(mItem(`Звук: ${mSave.sound ? "вкл" : "выкл"}`, null, null, () => {
+      mSave.sound = !mSave.sound; mStore(); mMenu(mSave.sound ? "Пусть звенит." : "Тишина — тоже учитель.");
+    }, "small"));
+    list.push(mItem("К пациентам", "вернуться в клинику", null, () => show(2), "leave"));
+    mPanel(list, { fig: true });
+    setMood("calm");
+    mSay(greet || pick(["Какой свиток откроем?", "Выбирай свиток, ученик.", "Знание любит порядок. Но выбор за тобой."]));
+  }
+
+  function startMaster() {
+    clearInterval(mTyping && mTyping.timer);
+    mTyping = null;
+    mBusy = false;
+    mHideGuest(true);
+    mEl.ad.hidden = true;
+    mEl.card.hidden = true;
+    if (mSave.met) return mMenu(pick(["С возвращением, ученик.", "Ты вернулся. Хорошо.", "Свитки ждут."]));
+    mSave.met = true; mStore();
+    ms = null;
+    mLeaveLesson();
+    setMood("calm");
+    mLines(MASTER_INTRO.map(st => ({ text: st.s, narr: st.narr, mood: st.m })), () => mMenu("Выбирай свиток. Лучше начать с первого."));
+  }
+
+  // ----- small animations -----
+  const M_SVG = {
+    butterfly: '<svg viewBox="0 0 9 7" shape-rendering="crispEdges"><g class="w"><rect x="0" y="0" width="3" height="3" fill="#ff8ad8"/><rect x="1" y="3" width="3" height="3" fill="#ffd36e"/><rect x="6" y="0" width="3" height="3" fill="#ff8ad8"/><rect x="5" y="3" width="3" height="3" fill="#ffd36e"/></g><rect x="4" y="1" width="1" height="5" fill="#3a2a2a"/></svg>',
+    bird: '<svg viewBox="0 0 7 3" shape-rendering="crispEdges"><path fill="#2a2030" d="M0 0h1v1h1v1h1v1h1V2h1V1h1V0h1v1H6v1H5v1H2V2H1V1H0z"/></svg>',
+    cloud: '<svg viewBox="0 0 16 6" shape-rendering="crispEdges"><path fill="#fff" d="M3 2h2V1h2V0h4v1h2v1h1v1h2v3H0V4h1V3h2z"/></svg>',
+  };
+  const M_AMBIENT = ["butterfly", "sun", "birds", "gust", "fireflies", "cloud", "star", "butterfly"];
+  let mAmbBag = [];
+  function mAmbient() {
+    if (mCalm) return;
+    if (!mAmbBag.length) mAmbBag = mShuffle([...M_AMBIENT]);
+    mFx(mAmbBag.pop());
+  }
+  function mFx(kind) {
+    const add = (cls, life, html) => {
+      const n = mNode("div", "fx " + cls);
+      if (html) n.innerHTML = html;
+      mEl.fx.append(n);
+      setTimeout(() => n.remove(), life);
+      return n;
+    };
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    if (kind === "butterfly") {
+      const n = add("fx-butterfly", 9000, M_SVG.butterfly);
+      n.style.top = `${rnd(30, 62)}%`;
+      if (Math.random() < 0.5) n.classList.add("rtl");
+    } else if (kind === "birds") {
+      for (let i = 0; i < 3; i++) {
+        const n = add("fx-bird", 8000, M_SVG.bird);
+        n.style.top = `${8 + i * 4 + rnd(0, 3)}%`;
+        n.style.animationDelay = `${i * 0.35}s`;
+      }
+    } else if (kind === "cloud") add("fx-cloud", 16000, M_SVG.cloud);
+    else if (kind === "sun") add("fx-sun", 9500);
+    else if (kind === "star") add("fx-star", 1700);
+    else if (kind === "gust") {
+      for (let i = 0; i < 14; i++) {
+        const n = add("fx-petal", 3600);
+        n.style.left = `${rnd(-5, 40)}%`; n.style.top = `${rnd(10, 70)}%`;
+        n.style.setProperty("--dx", `${rnd(260, 520)}px`); n.style.setProperty("--dy", `${rnd(-60, 120)}px`);
+        n.style.animationDelay = `${rnd(0, 0.8)}s`;
+      }
+    } else if (kind === "fireflies") {
+      for (let i = 0; i < 9; i++) {
+        const n = add("fx-firefly", 5400);
+        n.style.left = `${rnd(5, 92)}%`; n.style.top = `${rnd(45, 85)}%`;
+        n.style.setProperty("--dx", `${rnd(-30, 30)}px`);
+        n.style.animationDelay = `${rnd(0, 0.9)}s`;
+      }
+    }
+  }
+  function mSparkle() {
+    if (mCalm) return;
+    for (let i = 0; i < 10; i++) {
+      const s = mNode("i", "m-spark", "✦"), a = (i / 10) * Math.PI * 2;
+      s.style.setProperty("--dx", `${Math.cos(a) * 80}px`);
+      s.style.setProperty("--dy", `${Math.sin(a) * 50 - 18}px`);
+      s.style.animationDelay = `${(i % 3) * 40}ms`;
+      mEl.box.append(s);
+      setTimeout(() => s.remove(), 1100);
+    }
+  }
+
+  // ----- interruptions: guests, a phone call, an ad -----
+  const M_GUEST = { cat: { img: "guest_cat.png", cls: "small" }, patient: { img: "guest_patient.png" }, courier: { img: "guest_courier.png" }, bot: { cls: "small" } };
+  let mBotUrl = "";
+  function mBotPic() {
+    if (!mBotUrl) {
+      const cv = document.createElement("canvas");
+      cv.width = 30; cv.height = 18;
+      const c = cv.getContext("2d");
+      drawSprite(c, BOT, 0, 1, TOOL_PAL);
+      drawSprite(c, ROSE_ICON, 17, 5, TOOL_PAL);
+      try { mBotUrl = cv.toDataURL(); } catch (e) { mBotUrl = ""; }
+    }
+    return mBotUrl;
+  }
+  function mShowGuest(kind, side) {
+    const g = mEl.guest, info = M_GUEST[kind];
+    g.className = `m-guest from-${side}${info.cls ? " " + info.cls : ""}`;
+    g.style.backgroundImage = `url("${kind === "bot" ? mBotPic() : M_IMG + info.img}")`;
+    g.hidden = false;
+    mEl.stage.classList.add("guesting", `guest-${side}`);
+  }
+  function mHideGuest(now) {
+    const g = mEl.guest;
+    if (g.hidden) return;
+    const done = () => { g.hidden = true; mEl.stage.classList.remove("guesting", "guest-left", "guest-right"); };
+    if (now || mCalm) return done();
+    g.classList.add("leaving");
+    setTimeout(done, 480);
+  }
+  // Lines: [who, text, master's mood, sound] — who: "n" narration, "m" master, "g" the guest.
+  const M_GAGS = {
+    cat: { guest: "cat", side: "right", name: "Котик", sfx: "meow", lines: [
+      ["n", "Во двор, тихо ступая, заходит белый котик с розовым бантиком."],
+      ["g", "Мяу. Мастер, разговор есть. Мой стажёр опять всё перепутал."],
+      ["g", "Просили Де Ла Роса — подал щипцы Кима. А вчера подарил боту розу. С тысячей!"],
+      ["m", "Он учится. Я в молодости путал готическую дугу с аркой собора.", "think"],
+      ["g", "И ещё. У меня трон по ночам скрипит. Это бруксизм?"],
+      ["m", "Это трон. Бруксизм — это когда скрипишь ты.", "stern"],
+      ["g", "…Мяу. Тогда это тоже я. Ладно, учитесь."],
+    ] },
+    patient: { guest: "patient", side: "left", name: "Пациент", sfx: "knock", lines: [
+      ["n", "Дверь приоткрывается. Заглядывает парень с перевязанной щекой."],
+      ["g", "Ой… извините. Я, кажется, не туда зашёл. Тут гигиенист принимает?"],
+      ["m", "Тут храм окклюзии.", "stern"],
+      ["g", "А… окклюзия — это больно?"],
+      ["m", "Окклюзия — это когда всё сходится. Тебе в клинику, второй этаж.", "happy"],
+      ["g", "Спасибо! А можно я тоже послушаю? …Нет? Понял, ухожу."],
+    ] },
+    courier: { guest: "courier", side: "right", name: "Курьер", sfx: "ding", lines: [
+      ["n", "Во двор бодро заходит курьер с огромным жёлтым рюкзаком."],
+      ["g", "Доставка! Заказ на имя «Мастер»: рис, палочки и зубная нить — три упаковки."],
+      ["m", "Я ничего не заказывал.", "stern"],
+      ["g", "Тут написано: «Храм, кресло во дворе, дед в оранжевом». Это же вы?"],
+      ["m", "…Оставь у кресла. Зубная нить — это мудро.", "think"],
+      ["g", "Оцените доставку! Пять звёзд, как за свиток!"],
+    ] },
+    bot: { guest: "bot", side: "left", name: "Бот-ортодонт", lines: [
+      ["n", "Мимо проезжает бот-ортодонт. В манипуляторе — та самая роза с тысячей."],
+      ["g", "Мастер, это вам! В знак уважения к окклюзии!"],
+      ["m", "Это щипцы Де Ла Роса?", "think"],
+      ["g", "Нет. Это Де Ла Роза. Щипцы — Де Ла Роса. Я уже выучил."],
+      ["m", "Мудро. Поставь у кресла. Тысячу оставь себе.", "happy"],
+    ] },
+    phone: { sfx: "ring", lines: [
+      ["n", "В рукаве у мастера звонит телефон."],
+      ["m", "Да. Нет. Я на уроке.", "stern"],
+      ["m", "Нет, мама, я не забыл. Рис куплю.", "think"],
+      ["m", "…И зубную нить. Да. Всё, пока.", "calm"],
+      ["m", "Продолжим. Ты ничего не слышал.", "stern"],
+    ] },
+    quake: { sfx: "rumble", shake: true, lines: [
+      ["n", "Храм мелко трясётся. С крыши сыплется пыль."],
+      ["m", "Спокойно. Это не землетрясение.", "stern"],
+      ["m", "Это монах этажом выше. Ночной бруксизм. Днём досыпает.", "think"],
+      ["m", "Чувствуешь, какая сила? Вот об этом и свитки.", "happy"],
+    ] },
+    yawn: { lines: [
+      ["n", "Мастер широко зевает. Раздаётся громкий щелчок."],
+      ["m", "Ой.", "shock", "click"],
+      ["m", "Щелчок при открывании рта. Farrar бы оценил.", "stern"],
+      ["m", "Шучу. Сустав в порядке. Наверное.", "happy"],
+    ] },
+    ad: { ad: true },
+  };
+  const M_ADS = [
+    { h: "Летим в Вену!", p: "Родина аксиографа и австрийской гнатологии. Билеты дешевле, чем полурегулируемый артикулятор*",
+      fine: "* Мыщелок в багаж не сдаётся. Ручная кладь — не больше 4 дюймов между мыщелками." },
+    { h: "Горящий тур в Калифорнию!", p: "По следам гнатологического общества 1926 года. Пантограф в подарок*",
+      fine: "* Шесть записывающих пластин в стоимость не входят." },
+  ];
+  let mGagBag = [];
+  function mMaybeGag(st) {
+    if (!ms || ms.mode !== "chapter" || ms.phase !== "learn") return false;
+    ms.sinceGag++;
+    if (ms.gags >= 2 || ms.sinceGag < 7 || ms.i < 3 || ms.i > ms.steps.length - 3) return false;
+    const forced = !ms.gags && ms.i >= Math.floor(ms.steps.length * 0.55);
+    if (!forced && Math.random() > 0.15) return false;
+    if (!mGagBag.length) mGagBag = mShuffle(Object.keys(M_GAGS));
+    ms.gags++; ms.sinceGag = 0;
+    mGag(mGagBag.pop(), () => mRender(st));
+    return true;
+  }
+  function mGag(id, done) {
+    const g = M_GAGS[id];
+    setBoard(null);
+    mClearChoices();
+    mEl.stage.classList.remove("asking", "answered", "pacing");
+    if (g.ad) return mAdBreak(done);
+    setMood("calm");
+    if (g.guest) mShowGuest(g.guest, g.side);
+    if (g.sfx) mSfx(g.sfx);
+    if (g.shake && !mCalm) {
+      mEl.stage.classList.remove("shake"); void mEl.stage.offsetWidth; mEl.stage.classList.add("shake");
+      setTimeout(() => mEl.stage.classList.remove("shake"), 1300);
+    }
+    mLines(g.lines.map(([who, text, mood, sfx]) => ({
+      text, narr: who === "n", guest: who === "g", name: who === "g" ? g.name : "Мастер",
+      mood: who === "m" ? mood || "calm" : undefined, fn: sfx ? () => mSfx(sfx) : null,
+    })), () => { mHideGuest(); setTimeout(done, mCalm ? 0 : 420); });
+  }
+  function mAdBreak(done) {
+    const ad = M_ADS[Math.floor(Math.random() * M_ADS.length)], skip = $("mAdSkip");
+    $("mAdH").textContent = ad.h; $("mAdP").textContent = ad.p; $("mAdFine").textContent = ad.fine;
+    mBusy = true;
+    mEl.ad.hidden = false;
+    mSfx("jingle");
+    let left = 5;
+    skip.disabled = true;
+    skip.textContent = `Пропустить через ${left}`;
+    clearInterval(mAdBreak.t);
+    mAdBreak.t = setInterval(() => {
+      left--;
+      if (left > 0) { skip.textContent = `Пропустить через ${left}`; return; }
+      clearInterval(mAdBreak.t);
+      skip.disabled = false;
+      skip.textContent = "Пропустить ▶";
+    }, 1000);
+    skip.onclick = e => {
+      e.stopPropagation();
+      mEl.ad.hidden = true;
+      mBusy = false;
+      mLines([{ text: pick(["Кто включил рекламу посреди урока?..", "Реклама. В храме. Куда катится мир.", "Даже здесь реклама. Хотя Вена и правда красивая."]), mood: "stern" }], done);
+    };
+  }
+
+  // ----- input -----
+  mEl.stage.addEventListener("click", e => {
+    if (e.target.closest("button, input, .m-panel, .m-ad")) return;
+    mTap();
+  });
+  mEl.box.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mTap(); }
+  });
+  mEl.exit.addEventListener("click", e => {
+    e.stopPropagation();
+    clearInterval(mAdBreak.t);
+    mMenu("Свиток подождёт.");
+  });
+  document.addEventListener("keydown", e => {
+    if (current !== 11 || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = e.target;
+    if (t && t.closest && t.closest("input, textarea")) return;
+    if (/^[1-9]$/.test(e.key)) {
+      const b = [...mEl.choices.querySelectorAll("button.m-opt:not(:disabled)")][Number(e.key) - 1];
+      if (b) { e.preventDefault(); b.click(); }
+      return;
+    }
+    if (t && t.closest && t.closest("button, [role=button]")) return;
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowRight") { e.preventDefault(); mTap(); }
+  });
 
   // ---------- Arc: a visual novel in the office ----------
   // Mobile romance-story style: illustrated background, a big character sprite, a speech bubble.
