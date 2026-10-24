@@ -303,15 +303,32 @@
     transform: translateX(-50%); transition: left .5s;
   }
   .m-sprite {
-    width: 100%; height: 100%; image-rendering: pixelated;
-    background: no-repeat center bottom / 100% 100%;
+    width: 100%; height: 100%; perspective: 900px; container-type: size;
     filter: drop-shadow(0 0 8px rgba(255, 190, 90, .55));
     animation: m-bob 2.4s steps(2) infinite;
   }
   @keyframes m-bob { 50% { transform: translateY(-1.5%); } }
+  /* 3D in pixel style: the sprite is stacked in seven layers and turned around */
+  .m-vox { --dz: 0.6cqh; position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transform-origin: 50% 50% calc(var(--dz) * -3); }
+  .m-vox i {
+    position: absolute; inset: 0; image-rendering: pixelated;
+    background: var(--spr) no-repeat center bottom / 100% 100%;
+  }
+  .m-vox i:nth-child(n+2) { display: none; filter: brightness(.5) saturate(.9); }
+  .m-vox.on i:nth-child(n+2) { display: block; }
+  .m-vox i:nth-child(2) { transform: translateZ(calc(var(--dz) * -1)); }
+  .m-vox i:nth-child(3) { transform: translateZ(calc(var(--dz) * -2)); }
+  .m-vox i:nth-child(4) { transform: translateZ(calc(var(--dz) * -3)); }
+  .m-vox i:nth-child(5) { transform: translateZ(calc(var(--dz) * -4)); }
+  .m-vox i:nth-child(6) { transform: translateZ(calc(var(--dz) * -5)); }
+  .m-vox i:nth-child(7) { transform: translateZ(calc(var(--dz) * -6)); filter: brightness(.8); }
+  .m-vox.on { animation: m-spin 1.5s cubic-bezier(.45, .05, .35, 1) both; }
+  .m-vox.loop { animation: m-spin 3.2s linear infinite; }
+  @keyframes m-spin { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
   .master-stage.pacing .m-walker { animation: m-pace 9s linear infinite; transition: none; }
-  .master-stage.pacing .m-sprite {
-    background-image: url("assets/master/master_walk.png") !important; background-size: 200% 100%;
+  .master-stage.pacing .m-sprite { animation: none; }
+  .master-stage.pacing .m-vox i {
+    background-image: url("assets/master/master_walk.png"); background-size: 200% 100%;
     animation: m-walk .56s steps(1) infinite;
   }
   @keyframes m-walk { 0% { background-position: 0 0; } 50% { background-position: 100% 0; } }
@@ -486,6 +503,31 @@
     from { transform: rotate(-28deg) translateX(0); opacity: 0; } 15% { opacity: 1; }
     to { transform: rotate(-28deg) translateX(-300px); opacity: 0; }
   }
+  /* a golden 3D tooth for three stars */
+  .m-trophy { width: 64px; height: 70px; margin: 0 auto 2px; perspective: 500px; filter: drop-shadow(0 0 10px rgba(255, 210, 60, .8)); }
+  .m-trophy .m-vox { --dz: 3px; }
+  .m-trophy .m-vox i { --spr: url("assets/master/gold_tooth.png"); background-position: center; background-size: contain; }
+  /* combo flash */
+  .m-combo {
+    position: absolute; left: 0; right: 0; top: 30%; z-index: 5; pointer-events: none; text-align: center;
+    color: #ffe27a; font: 18px "Press Start 2P", monospace; text-shadow: 3px 3px 0 #b8601a, 0 0 12px rgba(255, 220, 120, .8);
+    animation: m-combo 1.4s ease-out forwards;
+  }
+  @keyframes m-combo { 0% { transform: scale(.3); opacity: 0; } 18% { transform: scale(1.25); opacity: 1; } 30% { transform: scale(1); } 80% { opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
+  /* meme break: a book photo in a demotivator frame */
+  .m-meme {
+    position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 26px 18px 18px; box-sizing: border-box; background: #000; text-align: center;
+  }
+  .m-meme-frame { padding: 4px; border: 2px solid #fff; max-width: 100%; box-sizing: border-box; }
+  .m-meme-frame img { display: block; width: min(340px, 78vw); max-width: 100%; height: auto; max-height: 46vh; object-fit: contain; image-rendering: pixelated; }
+  .m-meme-cap { margin: 4px 0 0; color: #fff; font: 15px/1.6 "Press Start 2P", monospace; text-transform: uppercase; }
+  .m-meme-src { margin: 0; color: #9a9a9a; font: 600 12px "Nunito", system-ui, sans-serif; }
+  .m-meme-ok {
+    margin-top: 6px; padding: 9px 16px; border: 2px solid #fff; border-radius: 0; cursor: pointer;
+    background: #000; color: #fff; font: 12px "Press Start 2P", monospace;
+  }
+  .m-meme-ok:hover, .m-meme-ok:focus-visible { background: #fff; color: #000; outline: none; }
   /* commercial break */
   .m-ad {
     position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -560,7 +602,7 @@
     .m-choices button.m-opt { font-size: 14px; padding: 8px 11px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .m-sprite, .m-petals i, .m-more, .m-card.go, .m-ad-plane { animation: none; }
+    .m-sprite, .m-petals i, .m-more, .m-card.go, .m-ad-plane, .m-vox.on, .m-vox.loop, .m-combo { animation: none; }
     .master-stage.pacing .m-walker { animation: none; }
   }
   /* ---------- end of the master's temple ---------- */
@@ -766,7 +808,7 @@
       </div>
       <canvas class="m-board" id="mBoard" width="640" height="400" hidden aria-label="Доска мастера"></canvas>
       <div class="m-fig" id="mFig">
-        <div class="m-walker" id="mWalker"><div class="m-sprite" id="mSprite" role="img" aria-label="Мастер"></div></div>
+        <div class="m-walker" id="mWalker"><div class="m-sprite" id="mSprite" role="img" aria-label="Мастер"><div class="m-vox" id="mVox"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
         <div class="m-guest" id="mGuest" hidden></div>
       </div>
       <div class="m-panel" id="mPanel" hidden></div>
@@ -783,6 +825,14 @@
       <div class="m-zoom-img" id="mZoomBox"><img id="mZoomImg" alt=""></div>
       <div class="m-zoom-bar"><button class="m-zoom-btn" id="mZoomBig" type="button">Крупнее</button><span>рисунок из книги, перевод подписи — ниже</span></div>
       <p class="m-zoom-cap" id="mZoomCap"></p>
+    </div>
+    <div class="m-combo" id="mCombo" aria-hidden="true" hidden></div>
+    <div class="m-meme" id="mMeme" hidden>
+      <span class="m-ad-tag">МЕМ-ПАУЗА</span>
+      <div class="m-meme-frame"><img id="mMemeImg" alt=""></div>
+      <p class="m-meme-cap" id="mMemeCap"></p>
+      <p class="m-meme-src" id="mMemeSrc"></p>
+      <button class="m-meme-ok" id="mMemeOk" type="button">Ха. Дальше</button>
     </div>
     <div class="m-ad" id="mAd" hidden>
       <span class="m-ad-tag">РЕКЛАМА</span>
@@ -3046,8 +3096,8 @@
   const M_EXAM = 12, M_PASS = 10;
   const mCalm = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const mEl = {};
-  for (const id of ["Stage", "Top", "Chapter", "Exit", "Prog", "ProgFill", "Board", "Fig", "Walker", "Sprite", "Guest",
-    "Panel", "Box", "Name", "Text", "More", "Choices", "Fx", "Ad", "Card"]) mEl[id[0].toLowerCase() + id.slice(1)] = $("m" + id);
+  for (const id of ["Stage", "Top", "Chapter", "Exit", "Prog", "ProgFill", "Board", "Fig", "Walker", "Sprite", "Vox", "Guest",
+    "Panel", "Box", "Name", "Text", "More", "Choices", "Fx", "Ad", "Card", "Meme", "Combo"]) mEl[id[0].toLowerCase() + id.slice(1)] = $("m" + id);
 
   // ----- progress, saved between visits -----
   function mFresh() {
@@ -3143,13 +3193,36 @@
   let mMood = "calm";
   function setMood(m) {
     mMood = m || "calm";
-    mEl.sprite.style.backgroundImage = `url("${M_IMG}master_${mMood}.png")`;
+    mEl.vox.style.setProperty("--spr", `url("${M_IMG}master_${mMood}.png")`);
   }
   setInterval(() => {
     if (current !== 11 || mMood !== "calm" || mCalm) return;
-    mEl.sprite.style.backgroundImage = `url("${M_IMG}master_blink.png")`;
+    mEl.vox.style.setProperty("--spr", `url("${M_IMG}master_blink.png")`);
     setTimeout(() => { if (mMood === "calm") setMood("calm"); }, 150);
   }, 3700);
+  // 3D in pixel style: the master's sprite, stacked in layers, turns around once
+  function mSpin() {
+    if (mCalm) return;
+    const v = mEl.vox;
+    v.classList.remove("on"); void v.offsetWidth; v.classList.add("on");
+    clearTimeout(mSpin.t);
+    mSpin.t = setTimeout(() => v.classList.remove("on"), 1600);
+  }
+  function mVoxNode(cls) {
+    const v = mNode("div", "m-vox " + cls);
+    for (let i = 0; i < 7; i++) v.append(mNode("i"));
+    return v;
+  }
+  function mComboFlash(n) {
+    const c = mEl.combo;
+    c.textContent = `Комбо ×${n}!`;
+    c.hidden = false;
+    c.style.animation = "none"; void c.offsetWidth; c.style.animation = "";
+    clearTimeout(mComboFlash.t);
+    mComboFlash.t = setTimeout(() => { c.hidden = true; }, 1500);
+    mSpin();
+    mSfx("star");
+  }
 
   // ----- the chalkboard: redrawn every frame while visible, so boards can animate -----
   let mBoardId = null, mBoardT0 = 0, mRaf = 0;
@@ -3310,6 +3383,8 @@
     mEl.stage.classList.add("answered");
     mEl.stage.classList.remove("pacing");
     if (ms.counting) { if (ok) ms.right++; else ms.wrong.push(st); }
+    ms.streak = ok ? (ms.streak || 0) + 1 : 0;
+    if (ms.streak >= 3 && ms.streak % 3 === 0) setTimeout(() => mComboFlash(ms ? ms.streak : 3), 250);
     mSfx(ok ? "yes" : "no");
     if (ok) { setMood("happy"); mSparkle(); }
     else if (!mCalm && Math.random() < 0.3) {
@@ -3488,11 +3563,12 @@
     });
     if (stars === 3) mSfx("star");
   }
-  function mResults({ title, stars, score, line, buttons, after }) {
+  function mResults({ title, stars, score, line, buttons, after, trophy }) {
     ms = null;
     mLeaveLesson();
     const box = mNode("div", "m-res");
     box.append(mNode("h2", "m-h", title));
+    if (stars === 3 || trophy) { const t = mNode("div", "m-trophy"); t.append(mVoxNode("on loop")); box.append(t); setTimeout(mSpin, 300); }
     if (stars != null) { const s = mStars(stars); s.classList.add("big"); box.append(s); }
     if (score) box.append(mNode("p", "m-score", score));
     const row = mNode("div", "m-btns");
@@ -3549,6 +3625,7 @@
       title: pass ? "Экзамен сдан" : "Экзамен не сдан", stars: null, score: `Верных: ${right} из ${total}`,
       line: pass ? "Ты достоин свитка ученика. Впиши в него своё имя." : `Нужно ${M_PASS} верных. Перечитай свитки — и возвращайся.`,
       buttons: [...(pass ? [["Свиток ученика", mCertificate, "main"]] : []), ["Сдать ещё раз", mStartExam], ["К свиткам", () => mMenu()]],
+      trophy: pass,
     });
     mSfx(pass ? "star" : "no");
   }
@@ -3605,6 +3682,7 @@
     mZoomClose();
     mHideGuest(true);
     mEl.ad.hidden = true;
+    mEl.meme.hidden = true;
     mLeaveLesson();
     mEl.stage.classList.toggle("dusk", mSave.dayEnd);
     const list = [mNode("h2", "m-h", "Свитки мастера · день первый")];
@@ -3632,13 +3710,15 @@
     mBusy = false;
     mHideGuest(true);
     mEl.ad.hidden = true;
+    mEl.meme.hidden = true;
     mEl.card.hidden = true;
     if (mSave.met) return mMenu(pick(["С возвращением, ученик.", "Ты вернулся. Хорошо.", "Свитки ждут."]));
     mSave.met = true; mStore();
     ms = null;
     mLeaveLesson();
     setMood("calm");
-    mLines(MASTER_INTRO.map(st => ({ text: st.s, narr: st.narr, mood: st.m })), () => mMenu("Выбирай свиток. Лучше начать с первого."));
+    mLines(MASTER_INTRO.map((st, i) => ({ text: st.s, narr: st.narr, mood: st.m, fn: i === 1 ? mSpin : null })),
+      () => mMenu("Выбирай свиток. Лучше начать с первого."));
   }
 
   // ----- small animations -----
@@ -3780,6 +3860,12 @@
       ["m", "Это монах этажом выше. Ночной бруксизм. Днём досыпает.", "think"],
       ["m", "Чувствуешь, какая сила? Вот об этом и свитки.", "happy"],
     ] },
+    spin: { lines: [
+      ["m", "Смотри, ученик. Я освоил 3D.", "happy", null, "spin"],
+      ["m", "Студенты любят 3D. Но окклюзию я люблю больше.", "calm"],
+      ["m", "Ладно, ещё разок.", "happy", null, "spin"],
+    ] },
+    meme: { meme: true },
     yawn: { lines: [
       ["n", "Мастер широко зевает. Раздаётся громкий щелчок."],
       ["m", "Ой.", "shock", "click"],
@@ -3798,10 +3884,10 @@
   function mMaybeGag(st) {
     if (!ms || ms.mode !== "chapter" || ms.phase !== "learn") return false;
     ms.sinceGag++;
-    if (ms.gags >= 2 || ms.sinceGag < 7 || ms.i < 3 || ms.i > ms.steps.length - 3) return false;
+    if (ms.gags >= (ms.steps.length > 40 ? 3 : 2) || ms.sinceGag < 7 || ms.i < 3 || ms.i > ms.steps.length - 3) return false;
     const forced = !ms.gags && ms.i >= Math.floor(ms.steps.length * 0.55);
     if (!forced && Math.random() > 0.15) return false;
-    if (!mGagBag.length) mGagBag = mShuffle(Object.keys(M_GAGS));
+    if (!mGagBag.length) mGagBag = mShuffle([...Object.keys(M_GAGS), "meme"]);   // memes come up twice as often
     ms.gags++; ms.sinceGag = 0;
     mGag(mGagBag.pop(), () => mRender(st));
     return true;
@@ -3812,6 +3898,10 @@
     mClearChoices();
     mEl.stage.classList.remove("asking", "answered", "pacing");
     if (g.ad) return mAdBreak(done);
+    if (g.meme) {
+      setMood("happy");
+      return mLines([{ text: pick(["Пять минут перерыва. Даже мастер иногда листает мемы.", "Перерыв. Смотри, что мне прислали из учебника.", "Отдохни глазами. Мем из той самой книги."]) }], () => mMemeBreak(done));
+    }
     setMood("calm");
     if (g.guest) mShowGuest(g.guest, g.side);
     if (g.sfx) mSfx(g.sfx);
@@ -3819,10 +3909,40 @@
       mEl.stage.classList.remove("shake"); void mEl.stage.offsetWidth; mEl.stage.classList.add("shake");
       setTimeout(() => mEl.stage.classList.remove("shake"), 1300);
     }
-    mLines(g.lines.map(([who, text, mood, sfx]) => ({
+    mLines(g.lines.map(([who, text, mood, sfx, fx]) => ({
       text, narr: who === "n", guest: who === "g", name: who === "g" ? g.name : "Мастер",
-      mood: who === "m" ? mood || "calm" : undefined, fn: sfx ? () => mSfx(sfx) : null,
+      mood: who === "m" ? mood || "calm" : undefined,
+      fn: sfx || fx ? () => { if (sfx) mSfx(sfx); if (fx === "spin") mSpin(); } : null,
     })), () => { mHideGuest(); setTimeout(done, mCalm ? 0 : 420); });
+  }
+  // Meme breaks: photos from the book itself, in a demotivator frame. Captions joke about student life, not about the people.
+  const M_MEMES = [
+    { id: "f15_9", cap: "Понедельник, 8:00. Первая пара — гнатология" },
+    { id: "f15_11", cap: "Когда сказали: «это займёт пять минут»" },
+    { id: "f13_5", cap: "Мы с другом идём сдавать окклюзию" },
+    { id: "f13_4", cap: "Когда ассистент «просто подержит»" },
+    { id: "f16_12", cap: "Артикулятор, который настраивали дольше, чем шла сессия" },
+    { id: "f55_12", cap: "Ты ночью: «я сплю спокойно». Твоя капа утром:" },
+    { id: "f40_7", cap: "Мой уровень стресса: семестр — и неделя перед экзаменом" },
+  ];
+  let mMemeBag = [];
+  function mMemeBreak(done) {
+    if (!mMemeBag.length) mMemeBag = mShuffle([...M_MEMES]);
+    const mm = mMemeBag.pop(), f = BOOK[mm.id], img = $("mMemeImg");
+    img.src = `assets/master/fig/${mm.id}.png`;
+    img.alt = `${f.n}, страница ${f.p}: ${f.t}`;
+    $("mMemeCap").textContent = mm.cap;
+    $("mMemeSrc").textContent = `${f.n}, с. ${f.p} · ${f.t}`;
+    mBusy = true;
+    mEl.meme.hidden = false;
+    mSfx("ding");
+    $("mMemeOk").onclick = e => {
+      e.stopPropagation();
+      mEl.meme.hidden = true;
+      mBusy = false;
+      mLines([{ text: pick(["Смешно. А теперь — к делу.", "Мемы — тоже наука. Но на экзамене их не будет.", "Я этого не видел. Продолжаем.", "Хе-хе. Так, на чём мы остановились?"]), mood: pick(["happy", "stern"]) }], done);
+    };
+    $("mMemeOk").focus();
   }
   function mAdBreak(done) {
     const ad = M_ADS[Math.floor(Math.random() * M_ADS.length)], skip = $("mAdSkip");
@@ -3882,9 +4002,12 @@
     mZoomOpen(mBoardId);
   });
 
+  // dev build only: a hook for automated checks of the interruptions
+  if (SKIP_TO_DIAGNOSTICS) window.__master = { gag: id => { mLeaveLesson(); mGag(id, () => mMenu("Проверка окончена.")); }, spin: () => mSpin() };
+
   // ----- input -----
   mEl.stage.addEventListener("click", e => {
-    if (e.target.closest("button, input, .m-panel, .m-ad")) return;
+    if (e.target.closest("button, input, .m-panel, .m-ad, .m-meme, .m-zoom")) return;
     mTap();
   });
   mEl.box.addEventListener("keydown", e => {
