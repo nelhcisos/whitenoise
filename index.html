@@ -2846,6 +2846,13 @@
     c.restore();
     bd.text(c, s, x, y, col, sz, "center", weight);
   };
+  // a TMJ in side view: fossa and eminence
+  bd.fossa = function (c, x, y, s = 1, col = CHALK.white, post = false) {
+    const P = ([px, py]) => [x + px * s, y + py * s];
+    const pts = [[-90, 30], [-60, -10], [-20, -30], [20, -28], [55, -5], [85, 35], [120, 55], [160, 55]];
+    if (post) pts.unshift([-95, 70], [-100, 40]);
+    bd.curve(c, pts.map(P), col, 4);
+  };
   // a figure from the book on the board: label and page on top, the picture, one line of caption.
   // Flipbook figures show one frame at a time.
   bd.figure = function (c, id, t) {
