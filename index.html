@@ -606,6 +606,55 @@
     .master-stage.pacing .m-walker { animation: none; }
   }
   /* ---------- end of the master's temple ---------- */
+  /* ---------- Days: end of shift and the ride home (s13) ---------- */
+  #s13 { cursor: default; }
+  #dayScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); }
+  .day-recap {
+    width: min(100%, 480px); box-sizing: border-box; padding: 12px 14px; text-align: left;
+    background: #f4efe0; color: #1a1418; box-shadow: 4px 4px 0 var(--line);
+  }
+  .dr-h { margin: 0 0 8px; font-size: 10px; color: #9a0e16; }
+  .dr-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .dr-list li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; font-size: 8px; line-height: 1.7; animation: dr-in .3s steps(3) both; }
+  .dr-tick { color: #1f9e5a; font: 700 12px system-ui, sans-serif; }
+  .dr-sum { margin: 10px 0 0; font-size: 8px; }
+  .dr-stamp {
+    display: inline-block; margin: 10px 0 0; padding: 6px 8px; border: 3px solid currentColor;
+    font-size: 9px; transform: rotate(-4deg); animation: dr-stamp .35s ease-out both;
+  }
+  .dr-stamp.good { color: #1f9e5a; }
+  .dr-stamp.normal { color: #7a5a3a; }
+  .dr-stamp.bad { color: #d0141e; }
+  @keyframes dr-in { from { opacity: 0; transform: translateX(-8px); } }
+  @keyframes dr-stamp { from { opacity: 0; transform: rotate(-4deg) scale(2.2); } }
+  /* sleepiness: eyelids close over the whole screen, the screen sways */
+  .eyelids { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; }
+  .eyelids i { position: absolute; left: -10%; width: 120%; height: 56%; background: #000; }
+  .eyelids i:first-child { top: 0; transform: translateY(-102%); border-radius: 0 0 50% 50% / 0 0 38% 38%; }
+  .eyelids i:last-child { bottom: 0; transform: translateY(102%); border-radius: 50% 50% 0 0 / 38% 38% 0 0; }
+  .eyelids.blink i:first-child { animation: lid-top var(--blink, 1.3s) ease-in-out; }
+  .eyelids.blink i:last-child { animation: lid-bot var(--blink, 1.3s) ease-in-out; }
+  @keyframes lid-top { 0%, 100% { transform: translateY(-102%); } 42%, 62% { transform: translateY(0); } }
+  @keyframes lid-bot { 0%, 100% { transform: translateY(102%); } 42%, 62% { transform: translateY(0); } }
+  body.woozy .screen:not([hidden]) { animation: woozy 3.8s ease-in-out infinite; }
+  body.woozy.hard .screen:not([hidden]) { animation: woozy-hard 2.6s ease-in-out infinite; }
+  @keyframes woozy {
+    0%, 100% { transform: none; }
+    30% { transform: rotate(.45deg) translate(3px, 1px); }
+    70% { transform: rotate(-.45deg) translate(-3px, 1px); }
+  }
+  @keyframes woozy-hard {
+    0%, 100% { transform: none; filter: blur(.5px); }
+    25% { transform: rotate(1.6deg) translate(7px, 3px) scale(1.01); filter: blur(2px) drop-shadow(9px 0 0 rgba(255, 255, 255, .16)); }
+    50% { transform: translate(0, 4px); filter: blur(1px); }
+    75% { transform: rotate(-1.4deg) translate(-7px, 2px) scale(1.01); filter: blur(2.2px) drop-shadow(-9px 0 0 rgba(255, 255, 255, .16)); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body.woozy .screen:not([hidden]), body.woozy.hard .screen:not([hidden]) { animation: none; }
+    body.woozy.hard .screen:not([hidden]) { filter: blur(.6px); }
+    .dr-list li, .dr-stamp { animation: none; }
+  }
+  /* ---------- end of days ---------- */
   .vn-choices button.ok { background: linear-gradient(#3ddc84, #1f9e5a); }
   .vn-choices button.bad { background: linear-gradient(#ff5b5b, #b81c1c); }
   .vn-choices {
@@ -641,6 +690,8 @@
 <body>
 
 <audio id="music" src="music.mp3" loop preload="auto"></audio>
+
+<div class="eyelids" id="eyelids" aria-hidden="true"><i></i><i></i></div>
 
 <button class="dev-latest" id="latestBtn" type="button" hidden>★ НОВОЕ</button>
 
@@ -845,6 +896,16 @@
   </div>
 </section>
 
+<section class="screen" id="s13" hidden>
+  <div class="wrap">
+    <p class="tagline" id="dayTitle"></p>
+    <canvas id="dayScene" width="160" height="120" aria-label=""></canvas>
+    <div class="day-recap" id="dayRecap" hidden></div>
+    <div class="bubble"><span class="speaker" id="dayWho"></span> <span id="dayLine"></span></div>
+    <div class="btn-row" id="dayBtns"></div>
+  </div>
+</section>
+
 <section class="screen" id="s4" hidden>
   <div class="wrap">
     <img id="catImg" class="cat-small" alt="Котик с бантиком на адском троне">
@@ -868,7 +929,7 @@
     "и посмотреть, как они это делают. Только после этого мы сможем допустить тебя " +
     "к игровому процессу. Для начала ты будешь ассистентом.";
 
-  const screens = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "s12"].map(id => document.getElementById(id));
+  const screens = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "s12", "s13"].map(id => document.getElementById(id));
   let current = 0;
 
   // ---------- Tooth logo ----------
@@ -1612,6 +1673,7 @@
 
   // ---------- Who should you thank? ----------
   function startThanks() {
+    dayLog("story", "Кому сказать спасибо");
     $("catImg2").src = THRONE_SRC;
     $("thanksText").textContent = "Слушай. А ты вообще знаешь, кому ты должен быть благодарен больше всего?";
     $("thanksChoices").hidden = false;
@@ -1757,6 +1819,8 @@
   }
   function finishCauses() {
     clearInterval(cz.timer);
+    const groups = cz.c.groups.length;
+    dayLog("quiz", "Причины открытого прикуса", groups, groups + cz.wrong, groups * payPerStep);
     $("causeChoices").replaceChildren();
     $("aaText").textContent = `Все четыре группы причин. ` +
       (cz.wrong ? `Промахов: ${cz.wrong}. ` : "Ни одного промаха. ") +
@@ -1809,6 +1873,7 @@
       aa.answered = false;
       aa.q++;
       if (aa.q < DIAG.length) return showQuestion();
+      dayLog("quiz", "Диагнозы по снимкам", aa.right, DIAG.length, aa.right * payPerStep);
       $("quiz").hidden = true;
       $("aaText").textContent = `Итого ${aa.right} из ${DIAG.length}. ` +
         (aa.right === DIAG.length ? "Чисто. Может, из тебя и выйдет врач." : "Есть над чем поработать. Приходи ещё.");
@@ -1827,8 +1892,8 @@
 
   // ---------- Day 2: the pay "review" and a photo nobody explains ----------
   function nextDay() {
-    day++;
-    if (day === 2) show(9); else show(2);
+    // the end of the day: recap, the cat's pay, the ride home; then day 2 opens with the pay "review"
+    endDay({ onDone: () => { if (day === 2) show(9); else show(2); } });
   }
   const PHONE = [
     "KKKKKKKK", "KGGGGGGK", "KGKKGGGK", "KGKKGGGK", "KGGGGGGK", "KGGGGGGK", "KGGGGGGK",
@@ -1846,11 +1911,12 @@
     }));
   }
   function startPayScene() {
+    dayLog("story", "Пересмотр зарплаты");
     pay = { phase: "talk", t0: 0, phoneY: 130, flash: 0 };
     lesson = null;
     payCanvas.hidden = false; lessonCanvas.hidden = true;
     $("payDay").textContent = `ДЕНЬ ${day}`;
-    const was = game && game.money ? game.money : 5800;
+    const was = DAYS.lastPay || (game && game.money) || 5800;   // what the cat paid for yesterday
     payPerStep = Math.round(BASE_RATE / 10);
     $("payLine").textContent =
       `Новый день! Хорошие новости: ты у нас уже свой. Поэтому ставка теперь не ${BASE_RATE} ₽ за действие, а ${payPerStep}. ` +
@@ -1889,6 +1955,7 @@
   const lessonCanvas = $("lessonCanvas"), lctx = lessonCanvas.getContext("2d");
   let lesson = null; // { i, t0 }
   function startLesson(i) {
+    if (i === 0) dayLog("story", "Урок кота: этапы лечения на брекетах");
     lesson = { i, t0: performance.now() };
     payCanvas.hidden = true; lessonCanvas.hidden = false;
     const st = LESSON[i];
@@ -2002,6 +2069,514 @@
     src.start();
     setTimeout(() => ac.close().catch(() => {}), 500);
   }
+
+  // ---------- Days: the end of a shift, the cat's pay and the ride home ----------
+  // A day ends after two of the master's scrolls, after four scored tasks, or when you ask for
+  // another shift. Then: a quick recap, the cat names the pay, the ride home (how it goes depends on
+  // how well you answered today) and a new day. A bad day leaves you sleepy the next morning.
+  const DAY_KEY = "ortho-days-v1";
+  const DAYS = { day: 1, wallet: 0, lastPay: 0, today: [] };
+  try {
+    const s = JSON.parse(localStorage.getItem(DAY_KEY) || "null");
+    if (s && typeof s === "object") {
+      if (Number.isInteger(s.day) && s.day >= 1 && s.day < 1000) DAYS.day = s.day;
+      if (typeof s.wallet === "number" && s.wallet >= 0) DAYS.wallet = Math.round(s.wallet);
+      if (typeof s.lastPay === "number" && s.lastPay >= 0) DAYS.lastPay = Math.round(s.lastPay);
+      if (Array.isArray(s.today)) DAYS.today = s.today.filter(x => x && typeof x.title === "string").slice(0, 40);
+    }
+  } catch (e) { /* no storage: days start over */ }
+  day = DAYS.day;
+  if (day >= 2) payPerStep = Math.round(BASE_RATE / 10);   // the pay "review" happened on day 2
+  function dayStore() {
+    try { localStorage.setItem(DAY_KEY, JSON.stringify({ day: DAYS.day, wallet: DAYS.wallet, lastPay: DAYS.lastPay, today: DAYS.today })); } catch (e) { /* ignore */ }
+  }
+  // kind: "shift" | "quiz" | "scroll" | "exam" (scored) or "story" (no score, listed once a day)
+  function dayLog(kind, title, right = 0, total = 0, pay = 0) {
+    if (kind === "story" && DAYS.today.some(x => x.title === title)) return;
+    DAYS.today.push({ kind, title, right: Math.max(0, right | 0), total: Math.max(0, total | 0), pay: Math.max(0, Math.round(pay)) });
+    dayStore();
+  }
+  function dayFull() {
+    return DAYS.today.filter(x => x.kind === "scroll").length >= 2 || DAYS.today.filter(x => x.total > 0).length >= 4;
+  }
+  function dayStats(items) {
+    const right = items.reduce((a, x) => a + x.right, 0), total = items.reduce((a, x) => a + x.total, 0);
+    const pay = items.reduce((a, x) => a + x.pay, 0), pct = total ? right / total : null;
+    return { right, total, pay, pct, mood: pct === null ? "normal" : pct >= 0.8 ? "good" : pct < 0.5 ? "bad" : "normal" };
+  }
+
+  // ----- sleepiness: the screen sways and blurs, the eyelids close now and then -----
+  const lids = $("eyelids");
+  const calmMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  let sleepyBlink = 0, sleepyEnd = 0;
+  function blinkOnce(ms = 1300) {
+    if (calmMotion) return;
+    lids.style.setProperty("--blink", `${ms}ms`);
+    lids.classList.remove("blink"); void lids.offsetWidth; lids.classList.add("blink");
+  }
+  function sleepy(level, forMs) {   // 0 — awake, 1 — a bit sleepy, 2 — badly sleep-deprived
+    clearInterval(sleepyBlink); clearTimeout(sleepyEnd);
+    document.body.classList.toggle("woozy", level > 0);
+    document.body.classList.toggle("hard", level === 2);
+    if (!level) return;
+    sleepyBlink = setInterval(() => blinkOnce(level === 2 ? 1600 : 1100), level === 2 ? 3600 : 11000);
+    if (forMs) sleepyEnd = setTimeout(() => sleepy(0), forMs);
+  }
+
+  // ----- pixel scenes for the end of the day (160x120 canvas) -----
+  const dayCtx = $("dayScene").getContext("2d");
+  const R = (c, col, x, y, w, h) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
+  const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  // a strip of things scrolling to the left: draw(x, n) for each item n
+  function strip(x0, w, T, speed, W, draw) {
+    const off = T * speed, first = Math.floor(off / W) - 1;
+    for (let n = first; n * W - off < w + W; n++) draw(Math.round(x0 + n * W - off), n);
+  }
+  function pxText(c, s, x, y, col, size = 6, align = "left") {
+    c.fillStyle = col; c.font = `${size}px "Press Start 2P", monospace`; c.textAlign = align; c.textBaseline = "top";
+    c.fillText(s, x, y); c.textAlign = "left";
+  }
+  // The hero, facing us. o: { pose: "sit" | "stand", eyes: "open" | "half" | "closed" | "wide", mouth: "smile" | "flat" | "o" | "yawn", nod, bags }
+  function drawHero(c, x, y, o = {}) {
+    const SK = "#f0c49a", SKd = "#d9a77a", HR = "#3a2618", TL = "#1fa9b8", TLd = "#127c88", PN = "#2a3550", PNd = "#1d2540", SH = "#151515", K = "#1a1418";
+    const hx = x, hy = y + (o.nod || 0);
+    R(c, HR, hx + 3, hy, 14, 4); R(c, HR, hx + 2, hy + 2, 16, 5); R(c, HR, hx + 5, hy - 1, 3, 1); R(c, HR, hx + 11, hy - 1, 4, 1);
+    R(c, SK, hx + 4, hy + 4, 12, 10); R(c, SKd, hx + 4, hy + 12, 12, 2);
+    R(c, SK, hx + 3, hy + 7, 1, 3); R(c, SK, hx + 16, hy + 7, 1, 3);
+    R(c, HR, hx + 4, hy + 4, 12, 2); R(c, HR, hx + 4, hy + 6, 3, 1); R(c, HR, hx + 13, hy + 6, 3, 1);
+    const e = o.eyes || "open";
+    if (e === "open") { R(c, K, hx + 6, hy + 8, 2, 2); R(c, K, hx + 12, hy + 8, 2, 2); R(c, "#fff", hx + 6, hy + 8, 1, 1); R(c, "#fff", hx + 12, hy + 8, 1, 1); }
+    else if (e === "half") { R(c, SKd, hx + 5, hy + 8, 4, 1); R(c, SKd, hx + 11, hy + 8, 4, 1); R(c, K, hx + 6, hy + 9, 2, 1); R(c, K, hx + 12, hy + 9, 2, 1); }
+    else if (e === "closed") { R(c, K, hx + 5, hy + 9, 3, 1); R(c, K, hx + 12, hy + 9, 3, 1); }
+    else if (e === "wide") { R(c, "#fff", hx + 5, hy + 7, 3, 3); R(c, "#fff", hx + 12, hy + 7, 3, 3); R(c, K, hx + 6, hy + 8, 1, 1); R(c, K, hx + 13, hy + 8, 1, 1); }
+    if (o.bags) { R(c, "#a77a9a", hx + 5, hy + 10, 3, 1); R(c, "#a77a9a", hx + 12, hy + 10, 3, 1); }
+    const m = o.mouth || "flat";
+    if (m === "smile") { R(c, K, hx + 8, hy + 12, 4, 1); R(c, K, hx + 7, hy + 11, 1, 1); R(c, K, hx + 12, hy + 11, 1, 1); }
+    else if (m === "flat") R(c, K, hx + 8, hy + 11, 4, 1);
+    else if (m === "o") { R(c, K, hx + 9, hy + 10, 2, 3); }
+    else if (m === "yawn") { R(c, K, hx + 8, hy + 10, 4, 4); R(c, "#c0505a", hx + 9, hy + 12, 2, 2); }
+    R(c, SKd, x + 8, y + 14, 4, 2);
+    R(c, TL, x + 2, y + 16, 16, 13); R(c, TLd, x + 2, y + 16, 2, 13); R(c, TLd, x + 16, y + 16, 2, 13);
+    R(c, SKd, x + 8, y + 16, 4, 2); R(c, SKd, x + 9, y + 18, 2, 1);
+    R(c, "#e8eef2", x + 13, y + 19, 3, 1);   // a pen in the pocket
+    R(c, TL, x, y + 17, 2, 9); R(c, TL, x + 18, y + 17, 2, 9); R(c, SK, x, y + 26, 2, 2); R(c, SK, x + 18, y + 26, 2, 2);
+    if ((o.pose || "sit") === "sit") {
+      // knees toward us, shins down to the floor, a backpack on the lap
+      R(c, PN, x + 1, y + 29, 8, 6); R(c, PN, x + 11, y + 29, 8, 6);
+      R(c, "#3a4870", x + 2, y + 33, 6, 2); R(c, "#3a4870", x + 12, y + 33, 6, 2);
+      R(c, PNd, x + 3, y + 35, 5, 6); R(c, PNd, x + 12, y + 35, 5, 6);
+      R(c, SH, x + 2, y + 41, 7, 2); R(c, SH, x + 11, y + 41, 7, 2);
+      if (!o.noBag) {
+        R(c, "#8a3a3a", x + 2, y + 24, 16, 9); R(c, "#6a2a2a", x + 2, y + 31, 16, 2);
+        R(c, "#a85050", x + 4, y + 26, 12, 3); R(c, "#d9b23a", x + 9, y + 27, 2, 1);
+        R(c, SK, x + 1, y + 26, 3, 2); R(c, SK, x + 16, y + 26, 3, 2);   // hands on the bag
+      }
+    } else {
+      R(c, PN, x + 3, y + 29, 6, 14); R(c, PN, x + 11, y + 29, 6, 14);
+      R(c, SH, x + 2, y + 43, 7, 2); R(c, SH, x + 11, y + 43, 7, 2);
+    }
+  }
+  function zzz(c, x, y, t, col = "#e8eef7") {
+    for (let i = 0; i < 3; i++) {
+      const p = (t * 0.6 + i / 3) % 1;
+      pxText(c, "z", x + i * 5 + p * 6, y - p * 18, col, 6 + i);
+    }
+  }
+  // what is outside the train window
+  function drawOutside(c, x0, y0, w, h, T, kind) {
+    const bottom = y0 + h;
+    if (kind === "city" || kind === "dark") {
+      R(c, kind === "dark" ? "#05060c" : "#0b1530", x0, y0, w, h);
+      if (kind === "dark") {
+        strip(x0, w, T, 140, 70, (x, n) => { if (hash(n) > 0.4) R(c, "#1c2340", x, y0 + 8 + hash(n + 3) * 24, 30, 2); });
+        return;
+      }
+      R(c, "#14204a", x0, bottom - 18, w, 18);
+      for (let i = 0; i < 12; i++) if (hash(i + 90) > 0.3) R(c, "#c8d4ff", x0 + hash(i) * w, y0 + 2 + hash(i + 40) * 10, 1, 1);
+      strip(x0, w, T, 8, 14, (x, n) => {
+        const bh = 12 + Math.floor(hash(n) * 20);
+        R(c, "#1a2550", x, bottom - bh, 12, bh);
+        for (let yy = bottom - bh + 3; yy < bottom - 2; yy += 4) for (let xx = 2; xx < 11; xx += 3)
+          if (hash(n * 13 + yy * 7 + xx) > 0.58) R(c, "#ffd86b", x + xx, yy, 1, 2);
+      });
+      strip(x0, w, T, 26, 22, (x, n) => {
+        const bh = 8 + Math.floor(hash(n + 50) * 16);
+        R(c, "#0c1229", x, bottom - bh, 18, bh);
+        for (let yy = bottom - bh + 3; yy < bottom - 2; yy += 5) if (hash(n * 3 + yy) > 0.6) R(c, "#ffe9a6", x + 4 + (yy % 3) * 4, yy, 2, 2);
+      });
+      strip(x0, w, T, 110, 52, x => { R(c, "#04060d", x, y0, 3, h); R(c, "#04060d", x - 20, y0 + 5, 60, 1); });
+    } else if (kind === "mountains" || kind === "molars" || kind === "aurora") {
+      const bands = ["#24184a", "#3d2560", "#6a3466", "#b0545e", "#e38a58"];
+      bands.forEach((col, i) => R(c, col, x0, y0 + i * (h / 5), w, Math.ceil(h / 5)));
+      R(c, "#f6efd8", x0 + w - 26, y0 + 5, 7, 7); R(c, "#f6efd8", x0 + w - 27, y0 + 6, 9, 5);
+      if (kind === "aurora") {
+        for (let i = 0; i < w; i += 2) {
+          const yy = y0 + 6 + Math.sin(i / 11 + T * 1.3) * 4 + Math.sin(i / 5 + T * 2.1) * 2;
+          R(c, "rgba(110, 255, 170, 0.55)", x0 + i, yy, 2, 6 + Math.sin(i / 7 + T) * 3);
+          R(c, "rgba(140, 120, 255, 0.35)", x0 + i, yy + 8, 2, 4);
+        }
+      }
+      if (kind === "molars") {
+        // the mountains are molars: crowns with cusps, one is a gold crown
+        strip(x0, w, T, 6, 40, (x, n) => {
+          const base = bottom - 6, cw = 30, ch = 14 + Math.floor(hash(n) * 8), gold = hash(n + 7) > 0.82;
+          const col = gold ? "#ffcc33" : "#f4efe0", sh = gold ? "#c8941a" : "#cfc6b0";
+          R(c, col, x, base - ch, cw, ch);
+          R(c, col, x + 2, base - ch - 4, 8, 4); R(c, col, x + 12, base - ch - 5, 7, 5); R(c, col, x + 21, base - ch - 4, 8, 4);
+          R(c, sh, x + cw - 4, base - ch - 3, 4, ch + 3);
+          R(c, sh, x + 10, base - ch - 1, 1, 4); R(c, sh, x + 19, base - ch - 1, 1, 4);
+        });
+      } else {
+        strip(x0, w, T, 5, 44, (x, n) => {
+          const ph = 18 + Math.floor(hash(n) * 12), half = 22;
+          for (let dx = -half; dx <= half; dx++) {
+            const hh = Math.max(0, Math.round(ph * (1 - Math.abs(dx) / half)));
+            if (!hh) continue;
+            R(c, "#4b3f6b", x + dx, bottom - hh, 1, hh);
+            const snow = Math.round(hh * 0.3);
+            if (hh > ph * 0.55) R(c, "#eef0f6", x + dx, bottom - hh, 1, Math.max(1, snow - Math.round(ph * 0.55 * 0.3)));
+          }
+        });
+      }
+      R(c, "#22183a", x0, bottom - 6, w, 6);
+      strip(x0, w, T, 46, 13, (x, n) => {
+        const th = 7 + Math.floor(hash(n + 30) * 8);
+        for (let i = 0; i < th; i++) R(c, "#13201f", x + 6 - Math.floor(i / 2), bottom - i, 1 + Math.floor(i / 2) * 2, 1);
+      });
+    } else if (kind === "tunnel") {
+      R(c, "#0a0a0c", x0, y0, w, h);
+      strip(x0, w, T, 180, 34, x => { R(c, "#ffb347", x, y0 + 8, 5, 2); R(c, "rgba(255, 179, 71, 0.25)", x - 14, y0 + 7, 14, 4); });
+    } else if (kind === "cave") {
+      R(c, "#061a20", x0, y0, w, h);
+      R(c, "#0a2a32", x0, y0, w, 8);
+      strip(x0, w, T, 12, 9, (x, n) => {
+        const len = 4 + Math.floor(hash(n) * 10);
+        for (let i = 0; i < len; i++) R(c, i > len - 3 ? "#2f7a83" : "#134049", x + Math.floor(i / 3), y0 + 6 + i, Math.max(1, 5 - Math.floor(i / 2)), 1);
+      });
+      const water = bottom - 12;
+      R(c, "#0b5c63", x0, water, w, 12);
+      for (let i = 0; i < w; i += 3) {
+        const yy = water + 2 + Math.round(Math.sin(i / 6 + T * 2) * 1.5);
+        R(c, "#22d3c5", x0 + i, yy, 2, 1);
+      }
+      for (let i = 0; i < 24; i++) {
+        const tw = Math.sin(T * 3 + i * 1.7) > 0.3;
+        if (tw) R(c, i % 3 ? "#7cf9e8" : "#bff7ef", x0 + hash(i + 200) * w, y0 + 10 + hash(i + 300) * (h - 24), 1, 1);
+      }
+      // a jellyfish drifting up
+      const jx = x0 + 20 + ((T * 7) % (w - 30)), jy = water - 4 - ((T * 5) % 18);
+      R(c, "#ff9de0", jx, jy, 5, 2); R(c, "#ff9de0", jx + 1, jy - 1, 3, 1);
+      R(c, "#ffc4ec", jx, jy + 2, 1, 2); R(c, "#ffc4ec", jx + 2, jy + 2, 1, 3); R(c, "#ffc4ec", jx + 4, jy + 2, 1, 2);
+    } else if (kind === "sea") {
+      R(c, "#0a1430", x0, y0, w, h);
+      for (let i = 0; i < 14; i++) if (Math.sin(T * 2 + i) > -0.3) R(c, "#e8eeff", x0 + hash(i + 7) * w, y0 + 2 + hash(i + 70) * 12, 1, 1);
+      R(c, "#f6efd8", x0 + 22, y0 + 4, 6, 6);
+      const sea = y0 + Math.round(h * 0.55);
+      R(c, "#0e2a4a", x0, sea, w, bottom - sea);
+      for (let yy = sea + 1; yy < bottom; yy += 3) {
+        const off = ((T * 20 + yy * 5) % 12);
+        for (let xx = -12; xx < w; xx += 12) R(c, "#2a5a8a", x0 + xx + off, yy, 5, 1);
+        R(c, "#f6efd8", x0 + 23 + Math.round(Math.sin(T * 3 + yy) * 2), yy, 4, 1);   // moonlight path
+      }
+      // the whale: jumps every few seconds
+      const ph = (T % 5) / 5;
+      if (ph < 0.5) {
+        const k = ph / 0.5, wx = x0 + 70 + k * 40, wy = sea - Math.sin(k * Math.PI) * 14;
+        R(c, "#1a2a40", wx, wy, 16, 5); R(c, "#1a2a40", wx + 2, wy - 2, 10, 2); R(c, "#1a2a40", wx + 15, wy - 3, 3, 3); R(c, "#1a2a40", wx + 17, wy - 5, 3, 2);
+        R(c, "#9fb8d8", wx + 2, wy + 3, 8, 1);
+        if (k > 0.85 || k < 0.15) for (let i = 0; i < 6; i++) R(c, "#e8f4ff", wx + i * 3, sea - 2 - (i % 3), 1, 1);
+      }
+    }
+  }
+  function drawCar(c, t, T, out, hero) {
+    const jolt = Math.sin(T * 9) > 0.96 ? 1 : 0;
+    c.save(); c.translate(0, jolt);
+    R(c, "#b9c4cf", 0, -2, 160, 124);
+    R(c, "#e8edf2", 0, 0, 160, 8); R(c, "#fffbe8", 20, 2, 50, 3); R(c, "#fffbe8", 90, 2, 50, 3);
+    c.save(); c.beginPath(); c.rect(6, 14, 148, 42); c.clip();
+    drawOutside(c, 6, 14, 148, 42, T, out);
+    R(c, "rgba(255, 255, 255, 0.06)", 6, 14, 148, 42);
+    for (const sx of [20, 110]) for (let i = 0; i < 16; i++) R(c, "rgba(255, 255, 255, 0.07)", sx + i, 14 + i * 2.6, 2, 3);
+    c.restore();
+    R(c, "#7d8894", 4, 12, 152, 2); R(c, "#7d8894", 4, 56, 152, 3); R(c, "#7d8894", 54, 12, 4, 46); R(c, "#7d8894", 102, 12, 4, 46);
+    R(c, "#5d6672", 4, 12, 2, 46); R(c, "#5d6672", 154, 12, 2, 46);
+    for (let x = 14; x < 160; x += 24) { R(c, "#9aa3ad", x, 8, 1, 3); R(c, "#d0d6dc", x - 2, 11, 5, 3); R(c, "#b9c4cf", x - 1, 12, 3, 1); }
+    R(c, "#2f4e8f", 4, 60, 152, 22); R(c, "#3a5ea8", 4, 80, 152, 10); R(c, "#24407a", 4, 89, 152, 2);
+    for (let x = 4; x < 156; x += 30) R(c, "#24407a", x, 60, 1, 30);
+    R(c, "#6b6f78", 0, 92, 160, 30); R(c, "#d9b23a", 0, 106, 160, 1);
+    R(c, "#d8dde3", 30, 8, 2, 84); R(c, "#9aa3ad", 31, 8, 1, 84);
+    drawHero(c, 70, 52, Object.assign({ pose: "sit" }, hero));
+    if (hero && hero.eyes === "closed") zzz(c, 92, 52, t);
+    if (hero && hero.eyes === "wide") { pxText(c, "!", 92, 44, "#ffe27a", 8); pxText(c, "!", 98, 42, "#ffe27a", 8); }
+    c.restore();
+  }
+  function drawCoast(c, t, T) {
+    const bands = ["#1b1640", "#2c1d55", "#4a2a63", "#7a3d63"];
+    bands.forEach((col, i) => R(c, col, 0, i * 20, 160, 20));
+    for (let i = 0; i < 20; i++) if (Math.sin(T * 2 + i) > -0.2) R(c, "#e8eeff", hash(i + 3) * 160, hash(i + 33) * 40, 1, 1);
+    R(c, "#f6efd8", 24, 10, 8, 8); R(c, "#f6efd8", 23, 11, 10, 6);
+    R(c, "#0e2a4a", 0, 80, 160, 40);
+    for (let yy = 82; yy < 120; yy += 4) { const off = (T * 14 + yy * 3) % 16; for (let x = -16; x < 160; x += 16) R(c, "#2a5a8a", x + off, yy, 6, 1); }
+    // the bridge
+    R(c, "#5b4a3a", 0, 74, 126, 2);
+    for (let x = 4; x < 124; x += 12) { R(c, "#3a2f28", x, 76, 2, 10); R(c, "#3a2f28", x - 5, 80, 12, 1); }
+    // the train heads into the sea cave
+    const tx = -84 + Math.min(1, t / 5.5) * 230;
+    for (let k = 0; k < 3; k++) {
+      const x = tx + k * 27;
+      R(c, "#c84b4b", x, 64, 25, 10); R(c, "#8f2f35", x, 72, 25, 2);
+      for (let wx = 3; wx < 22; wx += 6) R(c, "#ffe27a", x + wx, 66, 4, 3);
+      R(c, "#1a1418", x + 4, 74, 4, 2); R(c, "#1a1418", x + 17, 74, 4, 2);
+    }
+    const front = tx + 3 * 27 - 2;
+    R(c, "#c84b4b", front, 66, 4, 8); R(c, "#ffe27a", front + 3, 68, 2, 2);
+    c.fillStyle = "rgba(255, 236, 160, 0.25)"; c.beginPath(); c.moveTo(front + 5, 68); c.lineTo(front + 40, 60); c.lineTo(front + 40, 78); c.closePath(); c.fill();
+    // the cliff with a glowing cave
+    R(c, "#3b3048", 112, 26, 48, 94); R(c, "#2b2236", 112, 26, 4, 94);
+    for (let i = 0; i < 18; i++) R(c, "#4a3d5a", 116 + hash(i + 5) * 40, 30 + hash(i + 50) * 80, 3, 1);
+    const glow = 0.55 + 0.25 * Math.sin(T * 2.4);
+    R(c, "#03070a", 118, 58, 30, 30); R(c, "#03070a", 121, 54, 24, 4); R(c, "#03070a", 125, 51, 16, 3);
+    R(c, `rgba(34, 211, 197, ${glow})`, 124, 74, 20, 14); R(c, `rgba(124, 249, 232, ${glow * 0.6})`, 128, 70, 12, 4);
+    for (let i = 0; i < 5; i++) R(c, "#2b2236", 122 + i * 5, 54 + (i % 2) * 2, 2, 4);
+    R(c, "#0e2a4a", 112, 88, 48, 32);
+    R(c, `rgba(34, 211, 197, ${glow * 0.5})`, 118, 90, 30, 2);
+  }
+  function drawHome(c, t, mode) {
+    R(c, "#2a2440", 0, 0, 160, 120); R(c, "#3a2f28", 0, 96, 160, 24);
+    R(c, "#0b1530", 14, 16, 34, 32); R(c, "#f6efd8", 36, 21, 6, 6); R(c, "#8a7a6a", 12, 14, 38, 2); R(c, "#8a7a6a", 12, 48, 38, 2);
+    R(c, "#8a7a6a", 12, 14, 2, 36); R(c, "#8a7a6a", 48, 14, 2, 36); R(c, "#8a7a6a", 30, 14, 2, 36);
+    R(c, "#6a3a5a", 8, 12, 6, 44); R(c, "#6a3a5a", 48, 12, 6, 44);
+    R(c, "#6b4a2a", 60, 70, 92, 4); R(c, "#6b4a2a", 60, 74, 4, 22); R(c, "#6b4a2a", 148, 62, 4, 34);
+    R(c, "#4a6fb8", 64, 74, 84, 14); R(c, "#3a5a9a", 64, 86, 84, 2);
+    R(c, "#f4efe0", 126, 66, 20, 8); R(c, "#d8d0bc", 126, 72, 20, 2);
+    if (mode === "collapse") {
+      const k = Math.min(1, t / 0.6);
+      if (k < 1) drawHero(c, 64, 46 + k * 10, { pose: "stand", eyes: "closed", mouth: "flat" });
+      else {
+        // face down on top of the blanket, shoes still on
+        R(c, "#1fa9b8", 88, 68, 36, 8); R(c, "#127c88", 88, 74, 36, 2);
+        R(c, "#2a3550", 64, 70, 26, 6); R(c, "#151515", 60, 70, 5, 6);
+        R(c, "#3a2618", 124, 64, 10, 10); R(c, "#f0c49a", 125, 72, 3, 2);
+        R(c, "#f0c49a", 92, 76, 4, 6); R(c, "#f0c49a", 114, 76, 4, 6);
+        if (t < 1.4) pxText(c, "БУХ!", 84, 50, "#ffe27a", 7);
+        zzz(c, 136, 56, t);
+      }
+    } else {
+      R(c, "#3a2618", 128, 60, 10, 8); R(c, "#f0c49a", 130, 64, 7, 5); R(c, "#1a1418", 131, 66, 3, 1);
+      R(c, "#5a7fc8", 64, 72, 70, 4);
+      zzz(c, 138, 52, t);
+    }
+  }
+  function drawMorning(c, t, mode) {
+    R(c, "#f3e2c0", 0, 0, 160, 120); R(c, "#b88a5a", 0, 96, 160, 24);
+    R(c, "#9fd8ff", 14, 16, 34, 32); R(c, "#ffe27a", 36, 20, 7, 7); R(c, "#ffffff", 18, 30, 10, 3); R(c, "#ffffff", 20, 28, 6, 2);
+    R(c, "#c8a87a", 12, 14, 38, 2); R(c, "#c8a87a", 12, 48, 38, 2); R(c, "#c8a87a", 12, 14, 2, 36); R(c, "#c8a87a", 48, 14, 2, 36); R(c, "#c8a87a", 30, 14, 2, 36);
+    if (mode === "good") for (let i = 0; i < 4; i++) R(c, "rgba(255, 236, 160, 0.35)", 50 + i * 6, 20 + i * 10, 40, 3);
+    R(c, "#6b4a2a", 60, 70, 92, 4); R(c, "#6b4a2a", 60, 74, 4, 22); R(c, "#6b4a2a", 148, 62, 4, 34);
+    R(c, "#4a6fb8", 64, 74, 84, 14); R(c, "#f4efe0", 126, 66, 20, 8);
+    drawHero(c, 96, 40, { pose: "sit", noBag: true, eyes: mode === "bad" ? "half" : mode === "good" ? "open" : "open", mouth: mode === "good" ? "smile" : mode === "bad" ? "flat" : "flat", bags: mode === "bad" });
+    R(c, "#4a6fb8", 64, 70, 84, 18);   // the blanket over the legs
+    R(c, "#8a5a3a", 28, 76, 22, 20); R(c, "#6b4a2a", 28, 76, 22, 2);
+    const ring = mode !== "good" && t < 4;
+    const sx = ring ? Math.round(Math.sin(t * 60)) : 0;
+    R(c, "#e04848", 33 + sx, 66, 12, 10); R(c, "#ffffff", 35 + sx, 68, 8, 6); R(c, "#1a1418", 38 + sx, 69, 1, 3); R(c, "#1a1418", 39 + sx, 71, 2, 1);
+    R(c, "#e04848", 32 + sx, 64, 3, 2); R(c, "#e04848", 43 + sx, 64, 3, 2);
+    if (ring && Math.sin(t * 10) > 0) pxText(c, "ДЗЫНЬ!", 22, 52, "#e04848", 7);
+    if (mode === "good" && Math.sin(t * 4) > 0) { pxText(c, "♪", 60, 18, "#3a8a4a", 8); }
+  }
+  function drawLeave(c, t) {
+    R(c, "#d8d0c0", 0, 0, 160, 120); R(c, "#8a7a6a", 0, 96, 160, 24); R(c, "#6a5a4a", 0, 95, 160, 1);
+    // the exit door
+    R(c, "#5a6a7a", 10, 30, 34, 66); R(c, "#7a8a9a", 13, 33, 28, 60); R(c, "#d8dde3", 36, 62, 3, 6);
+    R(c, "#2a9a4a", 12, 18, 30, 9); pxText(c, "ВЫХОД", 14, 20, "#ffffff", 5);
+    // a window with the sunset
+    R(c, "#e38a58", 104, 20, 44, 34); R(c, "#b0545e", 104, 20, 44, 12); R(c, "#ffd86b", 134, 40, 8, 8);
+    R(c, "#8a7a6a", 102, 18, 48, 2); R(c, "#8a7a6a", 102, 54, 48, 2); R(c, "#8a7a6a", 102, 18, 2, 38); R(c, "#8a7a6a", 148, 18, 2, 38); R(c, "#8a7a6a", 125, 18, 2, 38);
+    const yawn = (t % 3) < 1.4;
+    drawHero(c, 66, 50, { pose: "stand", eyes: yawn ? "closed" : "half", mouth: yawn ? "yawn" : "flat" });
+    if (yawn) pxText(c, "ааа…", 88, 46, "#5a4a3a", 5);
+  }
+  function drawCatPay(c, t, pay) {
+    c.imageSmoothingEnabled = false;
+    if (throneImg.complete) c.drawImage(throneImg, 0, 0, 160, 120);
+    const coins = Math.max(1, Math.min(24, Math.round(Math.log10(pay + 1) * 6)));
+    for (let i = 0; i < coins; i++) {
+      const t0 = i * 0.12, k = Math.min(1, Math.max(0, (t - t0) / 0.5));
+      if (t < t0) continue;
+      const px = 12 + (i % 6) * 5, py = 112 - Math.floor(i / 6) * 3;
+      const y = -6 + (py + 6) * k * k;
+      R(c, "#ffcc33", px, y, 4, 3); R(c, "#b8860b", px, y + 2, 4, 1);
+    }
+    if (t > 0.4) pxText(c, `+${rub(pay)} ₽`, 8, 88 - Math.min(10, t * 6), "#ffe27a", 6);
+  }
+  function drawDayCard(c, t, n) {
+    R(c, "#000", 0, 0, 160, 120);
+    const k = Math.min(1, t / 0.5), y = 30 - Math.round((1 - k) * 12);
+    R(c, "#f4efe0", 50, y, 60, 64); R(c, "#d0141e", 50, y, 60, 14); R(c, "#9a0e16", 50, y + 13, 60, 1);
+    R(c, "#1a1418", 60, y - 4, 4, 8); R(c, "#1a1418", 96, y - 4, 4, 8);
+    pxText(c, "ДЕНЬ", 80, y + 4, "#ffffff", 6, "center");
+    pxText(c, String(n), 80, y + 26, "#1a1418", n > 99 ? 14 : 20, "center");
+  }
+  function drawDayScene(c, st, t, T) {
+    c.save();
+    c.imageSmoothingEnabled = false;
+    if (st.scene === "leave") drawLeave(c, t);
+    else if (st.scene === "cat") drawCatPay(c, t, st.pay || 0);
+    else if (st.scene === "car") drawCar(c, t, T, st.out, st.hero);
+    else if (st.scene === "coast") drawCoast(c, t, T);
+    else if (st.scene === "home") drawHome(c, t, st.mode);
+    else if (st.scene === "morning") drawMorning(c, t, st.mode);
+    else if (st.scene === "day") drawDayCard(c, t, st.n);
+    c.restore();
+  }
+
+  // ----- the end-of-day sequence -----
+  let de = null;   // { steps, i, t0, start, onDone, demo, stats, items, pay, mood }
+  function catPayLine(stats, left) {
+    if (!stats.pay) return "Мяу. Зарплата за сегодня — 0 ₽. Зато опыт бесценен. Мур.";
+    const sum = `Зарплата за день — ${rub(stats.pay)} ₽. До миллиарда осталось ${rub(left)} ₽.`;
+    if (stats.mood === "good") return `Мяу! Верных ответов — ${stats.right} из ${stats.total}. ${sum} Почти.`;
+    if (stats.mood === "bad") return `Мяу. ${sum} И то — за то, что пришёл. Иди выспись, на тебе лица нет.`;
+    return `Мяу. ${sum} Нормально. Не трать всё на брекеты.`;
+  }
+  function rideSteps(mood) {
+    const S = [];
+    if (mood === "good") {
+      const v = Math.floor(Math.random() * 3);
+      S.push({ scene: "car", out: "city", hero: { eyes: "open" }, line: "Вечерний поезд. За окном огни города.", alt: "Вагон поезда, за окном ночной город", sfx: "train" });
+      if (v === 0) {
+        S.push({ scene: "car", out: "mountains", hero: { eyes: "open", mouth: "o" }, who: "ТЫ:", line: "Стоп. Откуда тут горы? Это точно не моя ветка.", alt: "За окном вместо города — горы" });
+        S.push({ scene: "coast", line: "Поезд ныряет в тоннель — и выезжает к морю, прямо в светящуюся пещеру.", alt: "Поезд едет по мосту над морем в светящуюся пещеру", sfx: "chime" });
+        S.push({ scene: "car", out: "cave", hero: { eyes: "wide", mouth: "o" }, who: "ТЫ:", line: "Ничего себе…", alt: "За окном морская пещера, вода светится" });
+        S.push({ scene: "car", out: "cave", hero: { eyes: "open" }, who: "ТЫ:", line: "Так. Это либо магия окклюзии, либо недосып. Ладно, надо идти спать, у меня уже глюки.", alt: "Пещера за окном" });
+      } else if (v === 1) {
+        S.push({ scene: "car", out: "molars", hero: { eyes: "open", mouth: "o" }, who: "ТЫ:", line: "Горы… в форме моляров? С буграми, с фиссурами. Одна даже с золотой коронкой.", alt: "За окном горы в форме зубов" });
+        S.push({ scene: "car", out: "sea", hero: { eyes: "wide", mouth: "o" }, who: "ТЫ:", line: "А теперь море. И кит. Кит машет хвостом. Мне.", alt: "За окном ночное море и кит", sfx: "chime" });
+        S.push({ scene: "car", out: "sea", hero: { eyes: "open" }, who: "ТЫ:", line: "Ничего себе… Ладно. Надо идти спать, у меня уже глюки.", alt: "Море за окном" });
+      } else {
+        S.push({ scene: "car", out: "tunnel", hero: { eyes: "open" }, line: "Тоннель. Длинный. Слишком длинный для нашей ветки.", alt: "Поезд в тоннеле" });
+        S.push({ scene: "car", out: "aurora", hero: { eyes: "wide", mouth: "o" }, who: "ТЫ:", line: "Северное сияние. Над горами. В нашем городе.", alt: "За окном горы и северное сияние", sfx: "chime" });
+        S.push({ scene: "car", out: "aurora", hero: { eyes: "open" }, who: "ТЫ:", line: "Ничего себе… Всё. Надо идти спать, у меня уже глюки.", alt: "Северное сияние за окном" });
+      }
+      S.push({ scene: "home", mode: "sleep", line: "Дома ты засыпаешь, едва коснувшись подушки. Снится что-то хорошее.", alt: "Ночь, герой спит" });
+      S.push({ scene: "morning", mode: "good", who: "ТЫ:", line: "Выспался. Странно, но приятно.", alt: "Солнечное утро" });
+    } else if (mood === "bad") {
+      S.push({ scene: "car", out: "city", hero: { eyes: "half", nod: 1 }, line: "Поезд качает. Глаза закрываются сами.", alt: "Герой засыпает в вагоне", sfx: "train", fx: () => sleepy(1) });
+      S.push({ scene: "car", out: "dark", hero: { eyes: "closed", nod: 2 }, line: "…Ты проехал свою станцию. Пришлось возвращаться.", alt: "Герой спит в вагоне", fx: () => blinkOnce(1800) });
+      S.push({ scene: "home", mode: "collapse", line: "Дошёл. Не раздеваясь — лицом в подушку. Отрубился.", alt: "Герой падает на кровать", sfx: "thud" });
+      S.push({ scene: "morning", mode: "bad", who: "ТЫ:", line: "ДЗЫНЬ! Голова кружится. Всё плывёт… Недосып.", alt: "Утро, звонит будильник", sfx: "ring", fx: () => sleepy(2) });
+    } else {
+      S.push({ scene: "car", out: "city", hero: { eyes: "open" }, line: "Вечерний поезд. Огни города. Всё как обычно.", alt: "Вагон поезда, за окном ночной город", sfx: "train" });
+      S.push({ scene: "car", out: "city", hero: { eyes: "half" }, line: "Глаза слипаются. Главное — не проспать станцию.", alt: "Герой клюёт носом" });
+      S.push({ scene: "home", mode: "sleep", line: "Дом. Душ. Кровать. Сон без снов.", alt: "Ночь, герой спит" });
+      S.push({ scene: "morning", mode: "normal", who: "ТЫ:", line: "Будильник. Встаём.", alt: "Утро, звонит будильник", sfx: "ring" });
+    }
+    return S;
+  }
+  function daySteps(items, stats, n) {
+    const left = Math.max(0, 1e9 - (DAYS.wallet + stats.pay));
+    return [
+      { scene: "leave", recap: true, who: "ТЫ:", title: `КОНЕЦ СМЕНЫ · ДЕНЬ ${n}`,
+        line: pick(["Ладно. Смена окончена, я пошёл спать.", "Всё. На сегодня хватит. Я домой.", "Смена закончилась. Ноги гудят. Домой, спать."]), alt: "Герой зевает у выхода" },
+      { scene: "cat", who: "КОТ:", title: "ЗАРПЛАТА", pay: stats.pay, line: catPayLine(stats, left), alt: "Кот на троне, падают монетки", sfx: "coin" },
+      ...rideSteps(stats.mood).map(s => Object.assign({ title: "ДОРОГА ДОМОЙ" }, s)),
+      { scene: "day", n: n + 1, title: `ДЕНЬ ${n + 1}`, alt: `Календарь: день ${n + 1}`,
+        line: stats.mood === "good" ? "Бодрый и отдохнувший. Вперёд!" : stats.mood === "bad" ? "Ладно… Как-нибудь доживу до вечера." : "Новый день — новые зубы." },
+    ];
+  }
+  // opts: { onDone, demo }
+  function endDay(opts) {
+    de = { onDone: opts.onDone || (() => show(2)), demo: !!opts.demo, i: 0, steps: [] };
+    if (de.demo) {
+      de.steps = [{ scene: "leave", title: "КОНЕЦ ДНЯ · ПРЕВЬЮ", alt: "Герой зевает у выхода", line: "Тестовая версия: выбери, как прошёл день, — от этого зависит дорога домой.",
+        buttons: [["ХОРОШО", () => dayDemo("good")], ["НОРМАЛЬНО", () => dayDemo("normal")], ["ПЛОХО", () => dayDemo("bad")]] }];
+    } else {
+      de.items = DAYS.today.slice();
+      de.stats = dayStats(de.items);
+      de.steps = daySteps(de.items, de.stats, DAYS.day);
+    }
+    show(12);
+  }
+  function dayDemo(mood) {
+    const sample = {
+      good: [["Свиток 1. Как всё начиналось", 10, 11], ["Свиток 2. Гнатология: взлёт и падение", 12, 13]],
+      normal: [["Свиток 1. Как всё начиналось", 8, 11], ["Свиток 2. Гнатология: взлёт и падение", 9, 13]],
+      bad: [["Свиток 1. Как всё начиналось", 4, 11], ["Свиток 2. Гнатология: взлёт и падение", 5, 13]],
+    }[mood];
+    de.items = [{ kind: "story", title: "Урок кота: этапы лечения на брекетах", right: 0, total: 0, pay: 0 },
+      ...sample.map(([title, right, total]) => ({ kind: "scroll", title, right, total, pay: right * payPerStep }))];
+    de.stats = dayStats(de.items);
+    de.steps = daySteps(de.items, de.stats, DAYS.day);
+    de.i = 0;
+    dayRender();
+  }
+  function startDayEnd() {
+    if (!de) return show(2);
+    de.start = performance.now();
+    sleepy(0);
+    dayRender();
+    requestAnimationFrame(dayLoop);
+  }
+  function dayRender() {
+    const st = de.steps[de.i], last = de.i === de.steps.length - 1;
+    de.t0 = performance.now();
+    $("dayTitle").textContent = st.title || "";
+    $("dayWho").textContent = st.who || "";
+    $("dayLine").textContent = st.line || "";
+    $("dayScene").setAttribute("aria-label", st.alt || "");
+    const recap = $("dayRecap");
+    recap.hidden = !st.recap;
+    if (st.recap) renderRecap(recap, de.items, de.stats, DAYS.day);
+    if (st.sfx && typeof mSfx === "function") mSfx(st.sfx);
+    if (st.fx) st.fx();
+    const btns = st.buttons || [[last ? "НАЧАТЬ ДЕНЬ ▶" : "ДАЛЬШЕ ▶", dayNext]];
+    $("dayBtns").replaceChildren(...btns.map(([text, fn]) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "btn"; b.textContent = text;
+      b.addEventListener("click", e => { e.stopPropagation(); fn(); });
+      return b;
+    }));
+  }
+  function renderRecap(box, items, stats, n) {
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const ul = mk("ul", "dr-list");
+    const list = items.length ? items : [{ title: "Ничего не сделано. Но устал, как будто сделал всё.", total: 0 }];
+    list.forEach((x, i) => {
+      const li = mk("li");
+      li.style.animationDelay = `${0.15 + i * 0.3}s`;
+      li.append(mk("span", "dr-tick", "✓"), mk("span", "dr-t", x.title));
+      if (x.total) li.append(mk("span", "dr-s", `${x.right}/${x.total}`));
+      ul.append(li);
+    });
+    const parts = [mk("p", "dr-h", `ИТОГИ ДНЯ ${n}`), ul];
+    if (stats.total) parts.push(mk("p", "dr-sum", `ВЕРНО: ${stats.right} ИЗ ${stats.total} · ${Math.round(stats.pct * 100)}%`));
+    const stamp = mk("p", `dr-stamp ${stats.mood}`, stats.mood === "good" ? "ДЕНЬ УДАЛСЯ" : stats.mood === "bad" ? "ТЯЖЁЛЫЙ ДЕНЬ" : "ОБЫЧНЫЙ ДЕНЬ");
+    stamp.style.animationDelay = `${0.3 + list.length * 0.3}s`;
+    parts.push(stamp);
+    box.replaceChildren(...parts);
+  }
+  function dayNext() {
+    if (de.i < de.steps.length - 1) { de.i++; return dayRender(); }
+    const mood = de.stats ? de.stats.mood : "normal", done = de.onDone;
+    if (!de.demo) {
+      DAYS.wallet += de.stats.pay;
+      DAYS.lastPay = de.stats.pay;
+      DAYS.day += 1;
+      DAYS.today = [];
+      dayStore();
+      day = DAYS.day;
+    }
+    de = null;
+    sleepy(mood === "bad" ? 1 : 0, mood === "bad" ? 45000 : 0);   // a bad night lingers into the morning
+    done();
+  }
+  function dayLoop(now) {
+    if (current !== 12 || !de) return;
+    const st = de.steps[de.i];
+    drawDayScene(dayCtx, st, (now - de.t0) / 1000, (now - de.start) / 1000);
+    requestAnimationFrame(dayLoop);
+  }
+  // ---------- Days end ----------
 
   // ---------- The master's scrolls: lesson content ----------
   // Retold in plain Russian from a textbook on occlusion and mandibular movement:
@@ -3175,6 +3750,10 @@
     jingle: ac => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => mTone(ac, f, 0, i * 0.12, 0.16, "square", 0.035)),
     click: ac => mTone(ac, 2400, 700, 0, 0.05, "square", 0.06),
     gong: ac => { mTone(ac, 110, 98, 0, 2.2, "sine", 0.1); mTone(ac, 220, 196, 0, 1.6, "sine", 0.04); },
+    train: ac => [0, 0.14, 0.7, 0.84, 1.4, 1.54, 2.1, 2.24].forEach(t0 => mTone(ac, 95, 55, t0, 0.07, "square", 0.05)),
+    chime: ac => [1047, 1319, 1568, 2093, 1568, 2637].forEach((f, i) => mTone(ac, f, 0, i * 0.1, 0.55, "sine", 0.035)),
+    coin: ac => [0, 0.16, 0.32].forEach(t0 => { mTone(ac, 988, 0, t0, 0.07, "square", 0.035); mTone(ac, 1319, 0, t0 + 0.06, 0.16, "square", 0.035); }),
+    thud: ac => { mTone(ac, 140, 38, 0, 0.3, "sine", 0.14); mTone(ac, 70, 30, 0.02, 0.25, "square", 0.04); },
   };
   function mSfx(name) {
     if (!mSave.sound || !M_SFX[name]) return;
@@ -3549,17 +4128,18 @@
     mSave.stars[k] = Math.max(mSave.stars[k], stars);
     mSave.done[k] = true;
     mStore();
-    const lastDay = mSave.done.every(Boolean) && !mSave.dayEnd;
+    // the day ends after two scrolls (or four scored tasks): the master sends you home
+    dayLog("scroll", `Свиток ${k + 1}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
+    const over = dayFull();
     const words = ["Не спеши. Пройди свиток ещё раз.", "Ты ступил на путь. Перечитай свиток.", "Хорошо. Но путь ещё не окончен.", "Безупречно. Ты понял суть."];
     mResults({
       title: `Свиток ${k + 1} пройден`, stars, score: `С первого раза: ${ms.right} из ${ms.total}`,
-      line: lastDay ? `${words[stars]} И это был последний свиток дня.` : words[stars],
-      buttons: [
-        ...(k + 1 < MASTER_CHAPTERS.length && !lastDay ? [["Следующий свиток", () => mStartChapter(k + 1), "main"]] : []),
+      line: over ? `${words[stars]} А на сегодня — хватит.` : words[stars],
+      buttons: over ? [["Закончить день", mGoHome, "main"]] : [
+        ...(k + 1 < MASTER_CHAPTERS.length ? [["Следующий свиток", () => mStartChapter(k + 1), "main"]] : []),
         ["Пройти ещё раз", () => mStartChapter(k)],
         ["К свиткам", () => mMenu()],
       ],
-      after: lastDay ? mDayEnd : null,
     });
     if (stars === 3) mSfx("star");
   }
@@ -3578,20 +4158,20 @@
     setMood(stars == null ? "calm" : stars >= 2 ? "happy" : stars === 1 ? "calm" : "stern");
     mSay(line, { next: after || null });
   }
-  function mDayEnd() {
-    mSave.dayEnd = true; mStore();
+  // The master sends you home at dusk; then the end of the day: recap, pay, the ride home, morning.
+  let mMorning = false;
+  function mGoHome() {
+    ms = null;
     mLeaveLesson();
     mEl.stage.classList.add("dusk");
     mSfx("gong");
+    const allNow = mSave.done.every(Boolean) && !mSave.dayEnd;
+    if (allNow) { mSave.dayEnd = true; mStore(); }
     mLines([
       { text: "Солнце садится за крышу храма. Во дворе зажигаются фонари.", narr: true },
-      { text: "Первый день окончен, ученик.", mood: "calm" },
-      { text: "Ты узнал, как люди двести лет искали движения челюсти, почему сустав человека так рискует и как ночной бруксизм ломает то, что мы строим днём.", mood: "think" },
-      { text: "Завтра — новые свитки. А сегодня можешь сдать экзамен. Или просто отдохни.", mood: "happy" },
-    ], () => {
-      mMenu("Свитки первого дня — твои. Экзамен ждёт, когда будешь готов.");
-      mTitleCard("Конец", "Первый день с мастером", "продолжение следует");
-    });
+      { text: pick(["На сегодня хватит, ученик. Иди отдыхай.", "Два свитка за день — достаточно. Голова не бездонная.", "Всё. Остальное — завтра. Иди спать."]), mood: "calm" },
+      allNow ? { text: "Все восемь свитков позади. Завтра можешь сдать экзамен.", mood: "happy" } : null,
+    ], () => endDay({ onDone: () => { mMorning = true; show(11); } }));
   }
 
   // ----- exam, certificate, glossary -----
@@ -3607,7 +4187,7 @@
     }
     mShuffle(qs);
     mRun([{ s: `Экзамен. ${qs.length} вопросов из всех свитков. ${M_PASS} верных — и свиток ученика твой.`, m: "stern" }, ...qs],
-      { mode: "exam", title: "Экзамен первого дня", onDone: mExamDone });
+      { mode: "exam", title: "Экзамен мастера", onDone: mExamDone });
   }
   function mConfirmExam() {
     ms = null;
@@ -3621,10 +4201,13 @@
     mSave.exam = Math.max(mSave.exam, right);
     if (pass) { mSave.passed = true; mSave.date = new Date().toLocaleDateString("ru-RU"); }
     mStore();
+    dayLog("exam", "Экзамен мастера", right, total, right * payPerStep);
+    const over = dayFull();
     mResults({
       title: pass ? "Экзамен сдан" : "Экзамен не сдан", stars: null, score: `Верных: ${right} из ${total}`,
       line: pass ? "Ты достоин свитка ученика. Впиши в него своё имя." : `Нужно ${M_PASS} верных. Перечитай свитки — и возвращайся.`,
-      buttons: [...(pass ? [["Свиток ученика", mCertificate, "main"]] : []), ["Сдать ещё раз", mStartExam], ["К свиткам", () => mMenu()]],
+      buttons: [...(pass ? [["Свиток ученика", mCertificate, "main"]] : []),
+        ...(over ? [["Закончить день", mGoHome, pass ? "" : "main"]] : [["Сдать ещё раз", mStartExam], ["К свиткам", () => mMenu()]])],
       trophy: pass,
     });
     mSfx(pass ? "star" : "no");
@@ -3642,7 +4225,7 @@
     name.addEventListener("click", e => e.stopPropagation());
     const stars = mSave.stars.reduce((a, b) => a + b, 0);
     w.append(name,
-      mNode("p", null, `прошёл(а) первый день у мастера окклюзии и выдержал(а) экзамен: ${mSave.exam} из ${M_EXAM}.`),
+      mNode("p", null, `прошёл(а) восемь свитков мастера окклюзии и выдержал(а) экзамен: ${mSave.exam} из ${M_EXAM}.`),
       mNode("p", null, `Звёзд за свитки: ${stars} из ${mSave.stars.length * 3}.`),
       mNode("p", "m-cert-date", mSave.date || new Date().toLocaleDateString("ru-RU")),
       mNode("div", "m-seal", "МАСТЕР"),
@@ -3684,13 +4267,13 @@
     mEl.ad.hidden = true;
     mEl.meme.hidden = true;
     mLeaveLesson();
-    mEl.stage.classList.toggle("dusk", mSave.dayEnd);
-    const list = [mNode("h2", "m-h", "Свитки мастера · день первый")];
+    mEl.stage.classList.remove("dusk");
+    const list = [mNode("h2", "m-h", `Свитки мастера · день ${day}`)];
     const nextK = mSave.done.indexOf(false);
     MASTER_CHAPTERS.forEach((ch, k) => {
       list.push(mItem(`${k + 1}. ${ch.title}`, ch.sub, mStars(mSave.stars[k]), () => mStartChapter(k), k === nextK ? "next" : ""));
     });
-    list.push(mItem("Экзамен первого дня", mSave.exam ? `лучший результат: ${mSave.exam} из ${M_EXAM}` : `${M_EXAM} вопросов из всех свитков, нужно ${M_PASS}`,
+    list.push(mItem("Экзамен мастера", mSave.exam ? `лучший результат: ${mSave.exam} из ${M_EXAM}` : `${M_EXAM} вопросов из всех свитков, нужно ${M_PASS}`,
       null, () => (nextK === -1 || mSave.passed ? mStartExam() : mConfirmExam()), "exam"));
     list.push(mItem("Свиток терминов", `${MASTER_GLOSSARY.length} понятий с объяснениями`, null, mGlossary));
     if (mSave.passed) list.push(mItem("Свиток ученика", "твой сертификат", null, mCertificate, "cert"));
@@ -3712,7 +4295,13 @@
     mEl.ad.hidden = true;
     mEl.meme.hidden = true;
     mEl.card.hidden = true;
-    if (mSave.met) return mMenu(pick(["С возвращением, ученик.", "Ты вернулся. Хорошо.", "Свитки ждут."]));
+    if (mSave.met) {
+      const greet = mMorning
+        ? pick([`Утро, ученик. День ${day}. Продолжим.`, `Новый день — новые свитки. День ${day}.`, `День ${day}. Чай остыл, свитки ждут.`])
+        : pick(["С возвращением, ученик.", "Ты вернулся. Хорошо.", "Свитки ждут."]);
+      mMorning = false;
+      return mMenu(greet);
+    }
     mSave.met = true; mStore();
     ms = null;
     mLeaveLesson();
@@ -4071,7 +4660,10 @@
   function nextNovel() {
     if (!$("vnChoices").hidden) return;     // answer the choice first
     novel.i++;
-    if (novel.i >= NOVEL.length) return show(11);  // the master in the temple courtyard
+    if (novel.i >= NOVEL.length) {   // then the master in the temple courtyard
+      dayLog("story", "Кабинет: разговор, который лучше не слышать");
+      return show(11);
+    }
     const st = NOVEL[novel.i];
     const bg = $("vnBg"), sp = $("vnSprite"), box = $("vnBox");
     const bgSrc = VN + st.bg + ".webp";
@@ -4125,6 +4717,7 @@
   const sceneCanvas = $("bossScene"), sctx = sceneCanvas.getContext("2d");
   let boss = null; // { step, x, walk, laughT0 }
   function startBossScene() {
+    dayLog("story", "Тронный зал: гость в чёрном костюме");
     boss = { step: -1, x: 172, walk: null, laughT0: 0 };
     nextBossStep();
     requestAnimationFrame(bossLoop);
@@ -4204,6 +4797,8 @@
 
   function showVerdict() {
     $("catImg").src = THRONE_SRC;
+    const acts = Math.round(game.money / payPerStep);
+    dayLog("shift", `Приём: ${PATIENTS_PER_SHIFT} пациента, щипцы`, acts, acts + game.mistakesTotal, game.money);
     const clean = game.mistakesTotal === 0;
     $("catVerdict").textContent =
       `Так. ${PATIENTS_PER_SHIFT} пациента, ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, все щипцы поданы, кондилографию переждал в коридоре, ` +
@@ -4219,7 +4814,7 @@
     current = i;
     clearTimeout(pending);
     screens.forEach((s, j) => { s.hidden = j !== i; });
-    $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS || i === 11;   // already at the newest scene
+    $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS || i >= 11;   // the temple and the end of the day: no dev button over the scene
     if (i === 1) { startTyping(); requestAnimationFrame(frame); }
     if (i === 2) { if (resume) startPatient(); else startGame(); requestAnimationFrame(gameLoop); }
     if (i === 5) startCondy();
@@ -4229,6 +4824,7 @@
     if (i === 9) startPayScene();
     if (i === 10) startNovel();
     if (i === 11) startMaster();
+    if (i === 12) startDayEnd();
     if (i === 3) showVerdict();
     if (i === 4) startTools();
   }
@@ -4264,8 +4860,8 @@
   // ---------- Dev shortcut: jump straight to whatever was added last ----------
   // Update this whenever a new scene goes in.
   function goToLatest() {
-    day = 2;
-    show(11);   // latest: the master's lessons on occlusion and jaw movement
+    // latest: the end of the day, the ride home and the morning after (a preview with a choice of how the day went)
+    endDay({ demo: true, onDone: () => show(11) });
   }
   $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS;
   $("latestBtn").addEventListener("click", e => { e.stopPropagation(); goToLatest(); });
