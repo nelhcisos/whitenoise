@@ -2,8 +2,8 @@
 export const KINDS = ['creative', 'funny', 'wild']; // ✍️ 😂 🫪
 export const MAX_STARS = 3;
 
-// Points for the weekly leaderboard. "Friend of the week" is whoever has the
-// most points; "most active" only looks at the activity part.
+// Points behind the weekly awards. They are never shown: "friend of the week"
+// is whoever has the most, "most active" only looks at the activity part.
 export const POINTS = {
   star: 1, // each star your photos received
   reaction: 1, // each ✍️ / 😂 / 🫪 your photos received
@@ -64,23 +64,13 @@ export function computeStandings({ members, photos, reactions, stars = [] }) {
     (a, b) => b.points - a.points || b.stars - a.stars || a.name.localeCompare(b.name) || a.userId.localeCompare(b.userId),
   );
 
-  // Photo of the week: most stars in total; ties go to more reactions, then the earlier photo.
-  let bestPhoto = null;
-  for (const p of photoById.values()) {
-    if (!stats.has(p.authorId) || p.stars === 0) continue; // author left the circle / no stars
-    const reactionsCount = p.creative + p.funny + p.wild;
-    if (
-      !bestPhoto ||
-      p.stars > bestPhoto.stars ||
-      (p.stars === bestPhoto.stars &&
-        (reactionsCount > bestPhoto.reactions || (reactionsCount === bestPhoto.reactions && p.createdAt < bestPhoto.createdAt)))
-    ) {
-      bestPhoto = { ...p, reactions: reactionsCount, authorName: stats.get(p.authorId).name };
-    }
-  }
+  // Every photo of the circle with what it collected (authors who left are out).
+  const circlePhotos = [...photoById.values()]
+    .filter((p) => stats.has(p.authorId))
+    .map((p) => ({ ...p, reactions: p.creative + p.funny + p.wild, authorName: stats.get(p.authorId).name }));
+  const bestPhoto = bestPhotoOf(circlePhotos);
 
-  // The leaderboard is already ordered by points, so ties in a nomination go
-  // to whoever has more points overall.
+  // Ordered by points, so ties in a nomination go to whoever has more points overall.
   const leader = (key) => {
     let best = null;
     for (const s of leaderboard) if (s[key] > 0 && (!best || s[key] > best[key])) best = s;
@@ -89,6 +79,7 @@ export function computeStandings({ members, photos, reactions, stars = [] }) {
 
   return {
     leaderboard,
+    photos: circlePhotos,
     bestPhoto,
     friendOfWeek: leader('points'),
     mostCreative: leader('creative'),
@@ -96,4 +87,37 @@ export function computeStandings({ members, photos, reactions, stars = [] }) {
     mostWild: leader('wild'),
     mostActive: leader('activity'),
   };
+}
+
+const earlier = (a, b) => a.createdAt < b.createdAt;
+
+/**
+ * Post of the week (or of a day): most stars in total; ties go to more
+ * reactions, then the earlier photo. A photo without stars can't win.
+ */
+export function bestPhotoOf(photos) {
+  let best = null;
+  for (const p of photos) {
+    if (p.stars === 0) continue;
+    if (
+      !best ||
+      p.stars > best.stars ||
+      (p.stars === best.stars && (p.reactions > best.reactions || (p.reactions === best.reactions && earlier(p, best))))
+    ) {
+      best = p;
+    }
+  }
+  return best;
+}
+
+/** Most ✍️ / 😂 / 🫪 post: most of that reaction; ties go to more stars, then the earlier photo. */
+export function mostReactedPhoto(photos, kind) {
+  let best = null;
+  for (const p of photos) {
+    if (!(p[kind] > 0)) continue;
+    if (!best || p[kind] > best[kind] || (p[kind] === best[kind] && (p.stars > best.stars || (p.stars === best.stars && earlier(p, best))))) {
+      best = p;
+    }
+  }
+  return best;
 }

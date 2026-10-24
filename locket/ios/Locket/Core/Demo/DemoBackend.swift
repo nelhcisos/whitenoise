@@ -220,7 +220,7 @@ actor DemoBackend {
 
         // Weeks
         if route("GET", "api/week/current") != nil {
-            return reply(weekResults(viewer: me.id, weekId: currentWeek, closedAt: nil))
+            return reply(weekPreview(viewer: me.id))
         }
         if route("GET", "api/weeks") != nil {
             let past = weekResults(viewer: me.id, weekId: previousWeek, closedAt: weekStart)
@@ -229,7 +229,7 @@ actor DemoBackend {
             return reply(["weeks": weeks])
         }
         if let ids = route("GET", "api/weeks/*") {
-            if ids[0] == currentWeek { return reply(weekResults(viewer: me.id, weekId: currentWeek, closedAt: nil)) }
+            if ids[0] == currentWeek { return reply(weekPreview(viewer: me.id)) }
             if ids[0] == previousWeek { return reply(weekResults(viewer: me.id, weekId: previousWeek, closedAt: weekStart)) }
             return failure(404, "Неделя не найдена")
         }
@@ -286,7 +286,7 @@ actor DemoBackend {
         }
         ranked.sort { $0.count != $1.count ? $0.count > $1.count : usernameKey($0.name) < usernameKey($1.name) }
         guard let winner = ranked.first else { return NSNull() }
-        return ["userId": winner.id, "name": winner.name, "value": winner.count] as [String: Any]
+        return ["userId": winner.id, "name": winner.name]
     }
 
     // MARK: - Day rating
@@ -561,35 +561,25 @@ actor DemoBackend {
         return photo
     }
 
+    /// Ratings are blind: a photo carries only what the viewer gave it, never totals
+    /// or who else rated (server/src/app.js serializePhotos).
     private func photoJSON(_ p: Photo, viewer: String) -> [String: Any] {
         let authorName = users[p.authorId]?.username ?? ""
         guard isOpen(p, for: viewer) else {
             return [
                 "id": p.id, "authorId": p.authorId, "authorName": authorName, "createdAt": p.createdAt, "weekId": p.weekId,
                 "locked": true, "caption": NSNull(), "imageUrl": NSNull(), "canReact": false,
-                "counts": ["creative": 0, "funny": 0, "wild": 0],
-                "stars": ["count": 0, "total": 0, "average": 0],
-                "myStars": 0, "mine": [String](), "reactors": [[String: Any]](), "raters": [[String: Any]](),
+                "myStars": 0, "mine": [String](),
             ]
         }
-        let photoReactions = reactions.filter { $0.photoId == p.id }.sorted { $0.at < $1.at }
-        let photoStars = stars.filter { $0.photoId == p.id }.sorted { $0.at < $1.at }
-        var counts: [String: Int] = ["creative": 0, "funny": 0, "wild": 0]
-        for r in photoReactions { counts[r.kind, default: 0] += 1 }
-        let total = photoStars.reduce(0) { $0 + $1.value }
-        let average = photoStars.isEmpty ? 0 : (Double(total) / Double(photoStars.count) * 10).rounded() / 10
         return [
             "id": p.id, "authorId": p.authorId, "authorName": authorName, "createdAt": p.createdAt, "weekId": p.weekId,
             "locked": false,
             "caption": p.caption.map { $0 as Any } ?? NSNull(),
             "imageUrl": p.url.absoluteString,
             "canReact": p.authorId != viewer && p.weekId == currentWeek,
-            "counts": counts,
-            "stars": ["count": photoStars.count, "total": total, "average": average] as [String: Any],
-            "myStars": photoStars.first { $0.userId == viewer }?.value ?? 0,
-            "mine": photoReactions.filter { $0.userId == viewer }.map(\.kind),
-            "reactors": photoReactions.map { ["userId": $0.userId, "name": users[$0.userId]?.username ?? "", "kind": $0.kind] },
-            "raters": photoStars.map { ["userId": $0.userId, "name": users[$0.userId]?.username ?? "", "stars": $0.value] as [String: Any] },
+            "myStars": stars.first { $0.photoId == p.id && $0.userId == viewer }?.value ?? 0,
+            "mine": reactions.filter { $0.photoId == p.id && $0.userId == viewer }.sorted { $0.at < $1.at }.map(\.kind),
         ]
     }
 
@@ -642,7 +632,7 @@ actor DemoBackend {
         }
     }
 
-    // MARK: - Week results (computeStandings from server/src/awards.js)
+    // MARK: - Week results (computeStandings and the winners in server/src/awards.js, app.js)
 
     private struct Stat {
         let userId: String
@@ -662,8 +652,33 @@ actor DemoBackend {
     }
 
     private struct Tally {
-        var stars = 0, starCount = 0, creative = 0, funny = 0, wild = 0
+        var stars = 0, creative = 0, funny = 0, wild = 0
         var reactions: Int { creative + funny + wild }
+
+        func count(_ kind: String) -> Int {
+            switch kind {
+            case "creative": return creative
+            case "funny": return funny
+            default: return wild
+            }
+        }
+    }
+
+    /// The week so far: dates and how many photos the circle posted. No results until it closes.
+    private func weekPreview(viewer: String) -> [String: Any] {
+        let circle = Set([viewer] + friendIds(viewer))
+        return [
+            "weekId": currentWeek, "startsAt": weekStart, "endsAt": weekEnd, "closedAt": NSNull(),
+            "photoCount": photos.filter { $0.weekId == currentWeek && circle.contains($0.authorId) }.count,
+        ]
+    }
+
+    /// "2026-10-14": the day a photo was posted, Moscow time (the server's localDate).
+    private static func moscowDate(_ ms: Double) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 3 * 3600) ?? .current
+        let parts = calendar.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: ms / 1000))
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
     private func weekResults(viewer: String, weekId: String, closedAt: Double?) -> [String: Any] {
@@ -696,7 +711,6 @@ actor DemoBackend {
         for s in stars {
             guard let author = authorOf[s.photoId], s.userId != author else { continue }
             tallies[s.photoId]?.stars += s.value
-            tallies[s.photoId]?.starCount += 1
             stats[author]?.stars += s.value
             stats[s.userId]?.given += 1
         }
@@ -706,39 +720,64 @@ actor DemoBackend {
             s.points = s.stars + s.creative + s.funny + s.wild + s.activity
             stats[id] = s
         }
-        let leaderboard = stats.values.sorted { a, b in
+        // Never sent: it only orders ties in the nominations below.
+        let ranked = stats.values.sorted { a, b in
             if a.points != b.points { return a.points > b.points }
             if a.stars != b.stars { return a.stars > b.stars }
             if a.name != b.name { return a.name < b.name }
             return a.userId < b.userId
         }
+        let circlePhotos = weekPhotos.filter { circle.contains($0.authorId) }
 
-        // Photo of the week: most stars; then more reactions; then the earlier one.
-        var best: Photo?
-        for p in weekPhotos where circle.contains(p.authorId) {
-            guard let t = tallies[p.id], t.stars > 0 else { continue }
-            guard let current = best, let ct = tallies[current.id] else { best = p; continue }
-            if t.stars > ct.stars || (t.stars == ct.stars && (t.reactions > ct.reactions || (t.reactions == ct.reactions && p.createdAt < current.createdAt))) {
-                best = p
+        // Post of the week (or of a day): most stars; then more reactions; then the earlier one.
+        func bestOf(_ list: [Photo]) -> Photo? {
+            var best: Photo?
+            for p in list {
+                guard let t = tallies[p.id], t.stars > 0 else { continue }
+                guard let current = best, let ct = tallies[current.id] else { best = p; continue }
+                if t.stars > ct.stars || (t.stars == ct.stars && (t.reactions > ct.reactions || (t.reactions == ct.reactions && p.createdAt < current.createdAt))) {
+                    best = p
+                }
             }
+            return best
         }
 
+        // Most ✍️ / 😂 / 🫪 post: most of that reaction; then more stars; then the earlier one.
+        func mostReacted(_ kind: String) -> Photo? {
+            var best: Photo?
+            for p in circlePhotos {
+                guard let t = tallies[p.id], t.count(kind) > 0 else { continue }
+                guard let current = best, let ct = tallies[current.id] else { best = p; continue }
+                if t.count(kind) > ct.count(kind) || (t.count(kind) == ct.count(kind) && (t.stars > ct.stars || (t.stars == ct.stars && p.createdAt < current.createdAt))) {
+                    best = p
+                }
+            }
+            return best
+        }
+
+        // A winning post: no counts. Its picture shows even where it was locked.
+        func prize(_ p: Photo?) -> Any {
+            guard let p else { return NSNull() }
+            return [
+                "photoId": p.id, "authorId": p.authorId, "authorName": users[p.authorId]?.username ?? "",
+                "caption": p.caption.map { $0 as Any } ?? NSNull(), "imageUrl": p.url.absoluteString,
+            ] as [String: Any]
+        }
+
+        // Winners are named, never scored.
         func leader(_ key: String) -> Any {
             var winner: Stat?
-            for s in leaderboard where s.value(key) > 0 {
+            for s in ranked where s.value(key) > 0 {
                 if winner == nil || s.value(key) > (winner?.value(key) ?? 0) { winner = s }
             }
             guard let winner else { return NSNull() }
-            return ["userId": winner.userId, "name": winner.name, "value": winner.value(key)] as [String: Any]
+            return ["userId": winner.userId, "name": winner.name]
         }
 
-        var bestJSON: Any = NSNull()
-        if let best, let t = tallies[best.id] {
-            bestJSON = [
-                "photoId": best.id, "authorId": best.authorId, "authorName": users[best.authorId]?.username ?? "",
-                "caption": best.caption.map { $0 as Any } ?? NSNull(), "imageUrl": best.url.absoluteString,
-                "stars": t.stars, "starCount": t.starCount, "creative": t.creative, "funny": t.funny, "wild": t.wild,
-            ] as [String: Any]
+        let byDay = Dictionary(grouping: circlePhotos) { Self.moscowDate($0.createdAt) }
+        let postsOfDay: [[String: Any]] = byDay.keys.sorted().compactMap { date in
+            guard let best = bestOf(byDay[date] ?? []) else { return nil }
+            return ["date": date, "photo": prize(best)] as [String: Any]
         }
         let isCurrent = weekId == currentWeek
         return [
@@ -746,12 +785,12 @@ actor DemoBackend {
             "startsAt": isCurrent ? weekStart : weekStart - Self.week,
             "endsAt": isCurrent ? weekEnd : weekStart,
             "closedAt": closedAt.map { $0 as Any } ?? NSNull(),
-            "photoCount": weekPhotos.filter { circle.contains($0.authorId) }.count,
-            "leaderboard": leaderboard.map {
-                ["userId": $0.userId, "name": $0.name, "points": $0.points, "activity": $0.activity, "posts": $0.posts,
-                 "given": $0.given, "stars": $0.stars, "creative": $0.creative, "funny": $0.funny, "wild": $0.wild] as [String: Any]
-            },
-            "bestPhoto": bestJSON,
+            "photoCount": circlePhotos.count,
+            "bestPhoto": prize(bestOf(circlePhotos)),
+            "mostCreativePost": prize(mostReacted("creative")),
+            "mostFunnyPost": prize(mostReacted("funny")),
+            "mostWildPost": prize(mostReacted("wild")),
+            "postsOfDay": postsOfDay,
             "friendOfWeek": leader("points"),
             "favoriteFriend": favoriteFriend(weekId: weekId),
             "mostCreative": leader("creative"),

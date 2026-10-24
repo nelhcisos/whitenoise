@@ -95,47 +95,8 @@ struct UserSearchResult: Codable, Hashable, Identifiable {
 
 struct UsersResponse: Decodable { let users: [UserSearchResult] }
 
-struct ReactionCounts: Codable, Hashable {
-    var creative: Int
-    var funny: Int
-    var wild: Int
-
-    subscript(kind: ReactionKind) -> Int {
-        get {
-            switch kind {
-            case .creative: return creative
-            case .funny: return funny
-            case .wild: return wild
-            }
-        }
-        set {
-            switch kind {
-            case .creative: creative = newValue
-            case .funny: funny = newValue
-            case .wild: wild = newValue
-            }
-        }
-    }
-}
-
-struct StarSummary: Codable, Hashable {
-    var count: Int
-    var total: Int
-    var average: Double
-}
-
-struct Reactor: Codable, Hashable {
-    let userId: String
-    let name: String
-    let kind: ReactionKind
-}
-
-struct Rater: Codable, Hashable {
-    let userId: String
-    let name: String
-    let stars: Int
-}
-
+/// Ratings are blind: a photo carries only what *you* gave it, never totals or
+/// who else rated. Winners are announced when the week closes (WeekResults).
 struct Photo: Codable, Hashable, Identifiable {
     let id: String
     let authorId: String
@@ -147,74 +108,56 @@ struct Photo: Codable, Hashable, Identifiable {
     let createdAt: Double
     let weekId: String
     var canReact: Bool
-    var counts: ReactionCounts
-    var stars: StarSummary
     var myStars: Int
     var mine: [ReactionKind]
-    var reactors: [Reactor]
-    var raters: [Rater]
 
     var date: Date { Date(timeIntervalSince1970: createdAt / 1000) }
 
-    /// Applies the viewer's new rating locally, keeping the totals consistent.
+    /// Applies the viewer's new rating locally.
     mutating func apply(_ rating: MyRating) {
-        for kind in ReactionKind.allCases {
-            let was = mine.contains(kind), now = rating.mine.contains(kind)
-            if was != now { counts[kind] = max(0, counts[kind] + (now ? 1 : -1)) }
-        }
-        if myStars != rating.myStars {
-            stars.total += rating.myStars - myStars
-            if myStars == 0 { stars.count += 1 }
-            if rating.myStars == 0 { stars.count = max(0, stars.count - 1) }
-            stars.average = stars.count > 0 ? Double(stars.total) / Double(stars.count) : 0
-        }
         mine = rating.mine
         myStars = rating.myStars
     }
 }
 
-struct Standing: Codable, Hashable, Identifiable {
-    let userId: String
-    let name: String
-    let points: Int
-    let activity: Int
-    let posts: Int
-    let given: Int
-    let stars: Int
-    let creative: Int
-    let funny: Int
-    let wild: Int
-
-    var id: String { userId }
-}
-
+/// A winner: only the name, never a score.
 struct Nominee: Codable, Hashable {
     let userId: String
     let name: String
-    let value: Int
 }
 
+/// A winning post. Its picture shows even to whoever had it locked: it's the prize.
 struct BestPhoto: Codable, Hashable {
     let photoId: String
     let authorId: String
     let authorName: String
     let caption: String?
     let imageUrl: URL
-    let stars: Int
-    let starCount: Int
-    let creative: Int
-    let funny: Int
-    let wild: Int
 }
 
+/// «Пост дня»: the best post of one day of the week (`date` is "2026-10-14", Moscow time).
+struct DayPost: Codable, Hashable, Identifiable {
+    let date: String
+    let photo: BestPhoto
+
+    var id: String { date }
+}
+
+/// A closed week names its winners; the current week (closedAt == nil) has only
+/// its dates and how many photos the circle posted — every winner field is nil.
 struct WeekResults: Codable, Hashable, Identifiable {
     let weekId: String
     let startsAt: Double
     let endsAt: Double
     let closedAt: Double?
     let photoCount: Int?
-    let leaderboard: [Standing]
+    /// «Пост недели».
     let bestPhoto: BestPhoto?
+    let mostCreativePost: BestPhoto?
+    let mostFunnyPost: BestPhoto?
+    let mostWildPost: BestPhoto?
+    /// «Посты дня», oldest day first. Missing in weeks closed before it existed.
+    let postsOfDay: [DayPost]?
     let friendOfWeek: Nominee?
     /// «Кто лучше?»: the most picked friend. Who was picked least is never sent.
     let favoriteFriend: Nominee?
@@ -224,6 +167,7 @@ struct WeekResults: Codable, Hashable, Identifiable {
     let mostActive: Nominee?
 
     var id: String { weekId }
+    var isClosed: Bool { closedAt != nil }
     var endDate: Date { Date(timeIntervalSince1970: endsAt / 1000) }
 
     /// "12 окт. – 18 окт." — nudged so a week ending Sunday 21:00 reads Monday–Sunday.
@@ -285,7 +229,4 @@ enum Russian {
         if (2...4).contains(mod10) && !(12...14).contains(mod100) { return few }
         return many
     }
-
-    /// "11 очков", with a non-breaking space so the number never wraps away from its word.
-    static func points(_ n: Int) -> String { "\(n)\(nbsp)\(plural(n, "очко", "очка", "очков"))" }
 }

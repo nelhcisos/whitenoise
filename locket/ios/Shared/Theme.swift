@@ -70,5 +70,5 @@ enum AvatarSize {
 // Five sizes per screen at most: title 28 · title3 20 · body 17 · subheadline 15 · footnote 13.
 // Weights: regular, semibold, bold (bold only for the screen title).
 
-/// Non-breaking space: keeps a number with its unit ("11 очков", "3 фото").
+/// Non-breaking space: keeps a number with its unit ("3 фото", "2 дня").
 let nbsp = "\u{00A0}"

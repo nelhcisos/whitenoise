@@ -181,7 +181,8 @@ struct FeedView: View {
     }
 }
 
-/// One photo: who posted it and when, the photo with its caption, the rating, who rated it.
+/// One photo: who posted it and when, the photo with its caption, and your rating.
+/// Ratings are blind: nobody sees totals or who gave what, not even the author.
 struct PhotoCard: View {
     @Environment(AppModel.self) private var model
     let photo: Photo
@@ -219,14 +220,10 @@ struct PhotoCard: View {
                 .accessibilityLabel(photoSpoken)
                 .accessibilityAddTraits(.isImage)
 
-            RatingBar(photo: photo, isMine: isMine)
-
-            if !photo.reactors.isEmpty || !photo.raters.isEmpty {
-                Text(reactorsLine)
-                    .font(.footnote)
-                    .foregroundStyle(Palette.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityLabel(reactorsSpoken)
+            if isMine {
+                SecretRatingNote()
+            } else {
+                RatingBar(photo: photo)
             }
         }
         .padding(.horizontal, Space.margin)
@@ -269,54 +266,22 @@ struct PhotoCard: View {
         guard let caption = photo.caption, !caption.isBlank else { return "Фото" }
         return "Фото, подпись «\(caption)»"
     }
+}
 
-    /// One person's rating of this photo.
-    private struct Given {
-        let name: String
-        var stars = 0
-        var kinds: Set<ReactionKind> = []
-    }
-
-    /// Everyone who rated, in the order they first did.
-    private var given: [Given] {
-        var order: [String] = []
-        var byUser: [String: Given] = [:]
-        func note(_ userId: String, _ name: String) {
-            if byUser[userId] == nil {
-                order.append(userId)
-                byUser[userId] = Given(name: name)
-            }
+/// Under your own photo instead of stars: friends rate it, but the numbers stay
+/// hidden from everyone. Only the winners are named when the week closes.
+private struct SecretRatingNote: View {
+    var body: some View {
+        Label {
+            Text("Оценки друзей — секрет. Победителей объявим в\(nbsp)воскресенье")
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "eye.slash")
         }
-        for rater in photo.raters {
-            note(rater.userId, rater.name)
-            byUser[rater.userId]?.stars = rater.stars
-        }
-        for reactor in photo.reactors {
-            note(reactor.userId, reactor.name)
-            byUser[reactor.userId]?.kinds.insert(reactor.kind)
-        }
-        return order.compactMap { byUser[$0] }
-    }
-
-    /// "Петя ★★★ 😂 · Оля ★ ✍️"
-    private var reactorsLine: String {
-        given.map { entry -> String in
-            let stars = String(repeating: "★", count: entry.stars)
-            let marks = ReactionKind.allCases.filter { entry.kinds.contains($0) }.map(\.emoji).joined()
-            return [entry.name, stars, marks].filter { !$0.isEmpty }.joined(separator: " ")
-        }
-        .joined(separator: " · ")
-    }
-
-    /// The same line for VoiceOver: "Петя: 3 из 3, Смешно. Оля: 1 из 3, Креатив".
-    private var reactorsSpoken: String {
-        given.map { entry -> String in
-            var parts: [String] = []
-            if entry.stars > 0 { parts.append("\(entry.stars) из \(Stars.max)") }
-            parts += ReactionKind.allCases.filter { entry.kinds.contains($0) }.map(\.title)
-            return "\(entry.name): \(parts.joined(separator: ", "))"
-        }
-        .joined(separator: ". ")
+        .font(.footnote)
+        .foregroundStyle(Palette.muted)
+        .frame(minHeight: Space.hitTarget, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -402,26 +367,17 @@ private extension Photo {
     }
 }
 
-/// Stars 1–3 and the reactions under a photo. Your choice is yellow, filled and marked
-/// selected; your own photo shows its average. Own photos and closed weeks are read-only.
+/// Stars 1–3 and the reactions under a friend's photo. Your choice is yellow, filled
+/// and marked selected. No counts: you see only what you gave. Closed weeks are read-only.
 struct RatingBar: View {
     @Environment(AppModel.self) private var model
     let photo: Photo
-    let isMine: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 0) {
                 ForEach(1...Stars.max, id: \.self) { value in
                     star(value)
-                }
-                if let summary = starsSummary(spoken: false) {
-                    Text(summary)
-                        .font(.subheadline)
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.muted)
-                        .padding(.leading, 8)
-                        .accessibilityLabel(starsSummary(spoken: true) ?? summary)
                 }
                 Spacer(minLength: 0)
             }
@@ -446,28 +402,10 @@ struct RatingBar: View {
         .sensoryFeedback(.selection, trigger: photo.myStars)
     }
 
-    private var isClosed: Bool { !photo.canReact && !isMine }
-
-    /// Your own photo shows its average; a friend's shows what you gave.
-    private var shownStars: Int {
-        isMine ? Int(photo.stars.average.rounded()) : photo.myStars
-    }
-
-    /// "2,5 · 4 оценки"; spoken "Средняя оценка 2,5 из 3, 4 оценки".
-    /// Nothing for a friend's photo nobody has rated yet.
-    private func starsSummary(spoken: Bool) -> String? {
-        let count = photo.stars.count
-        guard count > 0 else {
-            guard isMine else { return nil }
-            return spoken ? "Ещё нет оценок" : "ещё нет оценок"
-        }
-        let average = photo.stars.average.formatted(.number.precision(.fractionLength(0...1)).locale(.ru))
-        let ratings = "\(count)\(nbsp)\(Russian.plural(count, "оценка", "оценки", "оценок"))"
-        return spoken ? "Средняя оценка \(average) из \(Stars.max), \(ratings)" : "\(average) · \(ratings)"
-    }
+    private var isClosed: Bool { !photo.canReact }
 
     private func star(_ value: Int) -> some View {
-        let lit = value <= shownStars
+        let lit = value <= photo.myStars
         return Button {
             guard photo.canReact else { return }
             Task { await model.setStars(value, on: photo) }
@@ -482,10 +420,8 @@ struct RatingBar: View {
         .allowsHitTesting(photo.canReact)
         .accessibilityLabel("\(value) из \(Stars.max)")
         // Selected is your own pick only, not every lit star.
-        .accessibilityAddTraits(!isMine && value == photo.myStars ? .isSelected : [])
+        .accessibilityAddTraits(value == photo.myStars ? .isSelected : [])
         .accessibilityRemoveTraits(photo.canReact ? [] : .isButton)
-        // On your photo the stars draw the average, which the summary next to them reads out.
-        .accessibilityHidden(isMine)
     }
 
     private var reactions: some View {
@@ -496,22 +432,13 @@ struct RatingBar: View {
 
     private func chip(_ kind: ReactionKind) -> some View {
         let active = photo.mine.contains(kind)
-        let count = photo.counts[kind]
         return Button {
             guard photo.canReact else { return }
             Task { await model.toggle(kind, on: photo) }
         } label: {
-            HStack(spacing: 6) {
-                Text(kind.emoji)
-                    .font(.title3)
-                if count > 0 {
-                    Text("\(count)")
-                        .font(.subheadline.weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.text)
-                }
-            }
-            .padding(.horizontal, 14)
+            Text(kind.emoji)
+                .font(.title3)
+                .padding(.horizontal, 14)
             .frame(minWidth: 56, minHeight: Space.hitTarget)
             .background(active ? Palette.accentTint : Palette.surface, in: Capsule())
             .overlay(Capsule().strokeBorder(active ? Palette.accent : Color.clear, lineWidth: 1.5))
@@ -520,7 +447,6 @@ struct RatingBar: View {
         .buttonStyle(.plain)
         .allowsHitTesting(photo.canReact)
         .accessibilityLabel(kind.title)
-        .accessibilityValue(String(count))
         .accessibilityAddTraits(active ? .isSelected : [])
         .accessibilityRemoveTraits(photo.canReact ? [] : .isButton)
     }

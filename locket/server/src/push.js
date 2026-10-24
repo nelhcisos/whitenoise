@@ -7,7 +7,6 @@ export const CATEGORY_FRIEND_REQUEST = 'FRIEND_REQUEST'; // has the «Приня
 export const CATEGORY_DUEL = 'FRIEND_DUEL'; // «Кто лучше?»: the content extension shows two friends
 
 // Reaction marks are the app's rating scale (data), the only emoji in push copy.
-const EMOJI = { creative: '✍️', funny: '😂', wild: '🫪' };
 const NBSP = '\u00a0';
 
 function plural(n, one, few, many) {
@@ -80,17 +79,14 @@ export function lockedPhotoMessage({ photo }) {
   };
 }
 
-// Someone rated your photo. One notification per (photo, friend): later taps
-// replace it via apns-collapse-id instead of stacking up.
-export function reactionMessage({ photo, reactor, stars, kinds, imageUrl }) {
-  const parts = [];
-  if (stars) parts.push(`${stars}${NBSP}${plural(stars, 'звезда', 'звезды', 'звёзд')}`);
-  const marks = Object.keys(EMOJI).filter((k) => kinds.includes(k)).map((k) => EMOJI[k]);
-  if (marks.length) parts.push(marks.join(' '));
+// Someone rated your photo. Ratings are blind: who, but never how many stars or
+// which reactions. One notification per (photo, friend): later taps replace it
+// via apns-collapse-id instead of stacking up.
+export function reactionMessage({ photo, reactor, imageUrl }) {
   return {
     payload: {
       aps: {
-        alert: { title: reactor.username, body: `${parts.join(' · ')} — твоему фото` },
+        alert: { title: 'Твоё фото оценили', body: `${reactor.username} — что именно, секрет. Победителей объявим в воскресенье` },
         sound: 'default',
         'mutable-content': 1,
         'thread-id': 'reactions',
@@ -106,7 +102,7 @@ export function reactionMessage({ photo, reactor, stars, kinds, imageUrl }) {
 export function weeklyResultsMessage(results) {
   const lines = [];
   if (results.friendOfWeek) lines.push(`Друг недели — ${results.friendOfWeek.name}`);
-  if (results.bestPhoto) lines.push(`Фото недели — ${results.bestPhoto.authorName}`);
+  if (results.bestPhoto) lines.push(`Пост недели — ${results.bestPhoto.authorName}`);
   if (results.favoriteFriend) lines.push(`Самый любимый друг — ${results.favoriteFriend.name}`);
   const nominations = [
     results.mostCreative && `✍️ ${results.mostCreative.name}`,

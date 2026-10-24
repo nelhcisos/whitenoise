@@ -369,12 +369,8 @@ test('locked photos: one free per friend each week, one more for every photo you
     caption: null,
     imageUrl: null,
     canReact: false,
-    counts: { creative: 0, funny: 0, wild: 0 },
-    stars: { count: 0, total: 0, average: 0 },
     myStars: 0,
     mine: [],
-    reactors: [],
-    raters: [],
   });
   assert.equal(feed.find((p) => p.id === y2.photo.id).locked, false);
   const file = new URL(y3.imageUrl).pathname;
@@ -421,15 +417,13 @@ test('locked photos: one free per friend each week, one more for every photo you
   assert.equal((await api('GET', `/api/photos/${y2.photo.id}`, { auth: ezh.token })).status, 404);
   assert.deepEqual([...new Set((await h.feedOf(ezh)).map((p) => p.authorName))].sort(), ['барсук', 'ёжик']);
 
-  // The photo of the week is the prize: its picture shows even where it is locked.
+  // While the week runs there are no results at all, only how many photos the circle posted.
   const live = (await api('GET', '/api/week/current', { auth: me.token })).body;
-  assert.deepEqual(live.leaderboard.map((s) => s.name).sort(), ['барсук', 'добрыня', 'ярослава', 'ёжик']);
-  assert.equal(live.bestPhoto.photoId, y4.id);
-  assert.equal(live.bestPhoto.imageUrl, y4.imageUrl);
+  assert.deepEqual(Object.keys(live).sort(), PREVIEW_KEYS);
   assert.equal(live.photoCount, 11);
-  assert.equal((await h.feedOf(me)).find((p) => p.id === y4.id).locked, true);
   // ёжик's circle is only ёжик and барсук.
-  assert.deepEqual((await api('GET', '/api/week/current', { auth: ezh.token })).body.leaderboard.map((s) => s.name).sort(), ['барсук', 'ёжик']);
+  const ezhWeek = (await h.feedOf(ezh)).filter((p) => p.weekId === '2026-W42').length;
+  assert.equal((await api('GET', '/api/week/current', { auth: ezh.token })).body.photoCount, ezhWeek);
 
   // Sunday 18:30 MSK: unrated and locked counts.
   h.clock.now = Date.UTC(2026, 9, 18, 15, 30);
@@ -445,6 +439,11 @@ test('locked photos: one free per friend each week, one more for every photo you
   assert.equal(h.lastPushTo(token('a')).type, 'weekly');
   assert.equal(h.lastPushTo(token('a')).imageUrl, y4.imageUrl);
   assert.equal(h.sent.length, 4);
+  // The post of the week is the prize: its picture shows even where it is locked.
+  const closed = (await api('GET', '/api/weeks/2026-W42', { auth: me.token })).body;
+  assert.equal(closed.bestPhoto.photoId, y4.id);
+  assert.equal(closed.bestPhoto.imageUrl, y4.imageUrl);
+  assert.equal((await h.feedOf(me)).find((p) => p.id === y4.id).locked, true);
 
   // A new week: her first photo is free again; last week's stays as it was.
   const y5 = (await h.upload(yara)).photo;
@@ -460,6 +459,12 @@ test('locked photos: one free per friend each week, one more for every photo you
 });
 
 const pushTypes = (payloads) => payloads.map((p) => p.type);
+
+// Ratings are blind: a photo carries only what you gave it yourself.
+const PHOTO_KEYS = ['authorId', 'authorName', 'canReact', 'caption', 'createdAt', 'id', 'imageUrl', 'locked', 'mine', 'myStars', 'weekId'];
+const PREVIEW_KEYS = ['closedAt', 'endsAt', 'photoCount', 'startsAt', 'weekId'];
+const PRIZE_KEYS = ['authorId', 'authorName', 'caption', 'imageUrl', 'photoId'];
+const BLIND = '— что именно, секрет. Победителей объявим в воскресенье';
 
 test('a full week: photos, ratings on the lock screen, reminder, awards', async (t) => {
   const h = await harness(t);
@@ -514,16 +519,17 @@ test('a full week: photos, ratings on the lock screen, reminder, awards', async 
   let res = await starIt(petya, m1.id, 3);
   assert.equal(res.status, 200);
   assert.equal(res.body.photo.myStars, 3);
-  assert.deepEqual(res.body.photo.stars, { count: 1, total: 3, average: 3 });
+  assert.deepEqual(Object.keys(res.body.photo).sort(), PHOTO_KEYS);
+  // The author learns who rated, never how.
   const firstReactionPush = sent.at(-1);
   assert.equal(firstReactionPush.token, token('a'));
-  assert.equal(firstReactionPush.payload.aps.alert.title, 'барсук');
-  assert.equal(firstReactionPush.payload.aps.alert.body, '3 звезды — твоему фото');
+  assert.equal(firstReactionPush.payload.aps.alert.title, 'Твоё фото оценили');
+  assert.equal(firstReactionPush.payload.aps.alert.body, `барсук ${BLIND}`);
 
   res = await rate(petya, m1.id, 'creative');
-  assert.deepEqual(res.body.photo.counts, { creative: 1, funny: 0, wild: 0 });
   assert.deepEqual(res.body.photo.mine, ['creative']);
-  assert.equal(lastPushTo(token('a')).aps.alert.body, '3 звезды · ✍️ — твоему фото');
+  assert.deepEqual(Object.keys(res.body.photo).sort(), PHOTO_KEYS);
+  assert.equal(lastPushTo(token('a')).aps.alert.body, `барсук ${BLIND}`);
   assert.equal(sent.at(-1).opts.collapseId, firstReactionPush.opts.collapseId, 'replaces the earlier notification');
 
   const before = sent.length;
@@ -532,11 +538,10 @@ test('a full week: photos, ratings on the lock screen, reminder, awards', async 
   assert.equal(sent.length, before, 'repeating a rating sends nothing');
 
   await starIt(petya, m1.id, 2);
-  assert.equal(lastPushTo(token('a')).aps.alert.body, '2 звезды · ✍️ — твоему фото');
   res = await rate(petya, m1.id, 'creative', 'DELETE');
-  assert.deepEqual(res.body.photo.counts, { creative: 0, funny: 0, wild: 0 });
+  assert.deepEqual(res.body.photo.mine, []);
   await rate(petya, m1.id, 'funny');
-  assert.equal(lastPushTo(token('a')).aps.alert.body, '2 звезды · 😂 — твоему фото');
+  assert.equal(lastPushTo(token('a')).aps.alert.body, `барсук ${BLIND}`);
   await starIt(olya, m1.id, 1);
   await rate(olya, m1.id, 'funny');
 
@@ -567,11 +572,9 @@ test('a full week: photos, ratings on the lock screen, reminder, awards', async 
   assert.equal(feed.length, 6, 'plus the three sign-up photos of last week');
   assert.deepEqual(feed[1].mine, ['creative']);
   assert.equal(feed[1].myStars, 2);
-  assert.deepEqual(feed[1].stars, { count: 2, total: 5, average: 2.5 });
-  assert.deepEqual(feed[2].counts, { creative: 0, funny: 2, wild: 0 });
-  assert.deepEqual(feed[2].stars, { count: 2, total: 3, average: 1.5 });
-  assert.deepEqual(feed[2].reactors.map((r) => `${r.name}:${r.kind}`), ['барсук:funny', 'ёжик:funny']);
-  assert.deepEqual(feed[2].raters.map((r) => `${r.name}:${r.stars}`), ['барсук:2', 'ёжик:1']);
+  // Her own photo, rated by two friends: she sees nothing of it.
+  assert.deepEqual([feed[2].myStars, feed[2].mine], [0, []]);
+  for (const p of feed) assert.deepEqual(Object.keys(p).sort(), PHOTO_KEYS);
   assert.ok(feed.every((p) => !p.locked));
   const widget = (await api('GET', '/api/widget', { auth: olya.token })).body.photo;
   assert.equal(widget.id, p1.id, "the widget shows a friend's newest photo, not your own");
@@ -580,11 +583,12 @@ test('a full week: photos, ratings on the lock screen, reminder, awards', async 
   const page2 = (await api('GET', `/api/photos?before=${feed[1].createdAt}&limit=1`, { auth: masha.token })).body.photos;
   assert.deepEqual(page2.map((p) => p.id), [m1.id]);
 
-  // --- live standings ---
+  // --- the week so far: no standings, no leader, no counts ---
   const live = (await api('GET', '/api/week/current', { auth: olya.token })).body;
+  assert.deepEqual(Object.keys(live).sort(), PREVIEW_KEYS);
   assert.equal(live.closedAt, null);
   assert.equal(live.photoCount, 3);
-  assert.deepEqual(live.leaderboard.map((s) => [s.name, s.points]), [['барсук', 11], ['ярослава', 9], ['ёжик', 6]]);
+  assert.deepEqual((await api('GET', '/api/weeks/2026-W42', { auth: olya.token })).body, live);
 
   // --- Sunday 18:30 MSK: reminder to those with unrated photos ---
   h.clock.now = Date.UTC(2026, 9, 18, 15, 30);
@@ -604,7 +608,7 @@ test('a full week: photos, ratings on the lock screen, reminder, awards', async 
   assert.equal(weeklies().length, 3);
   const weekly = weeklies().find((s) => s.token === token('c')).payload;
   assert.equal(weekly.aps.alert.title, 'Итоги недели');
-  assert.equal(weekly.aps.alert.body, 'Друг недели — барсук\nФото недели — барсук\n✍️ барсук · 😂 ярослава · 🫪 барсук · самый активный — ёжик');
+  assert.equal(weekly.aps.alert.body, 'Друг недели — барсук\nПост недели — барсук\n✍️ барсук · 😂 ярослава · 🫪 барсук · самый активный — ёжик');
   assert.equal(weekly.aps.category, 'WEEKLY_RESULTS');
   assert.equal(weekly.weekId, '2026-W42');
   assert.equal(weekly.imageUrl, p1.imageUrl);
@@ -614,9 +618,21 @@ test('a full week: photos, ratings on the lock screen, reminder, awards', async 
   const weeks = (await api('GET', '/api/weeks', { auth: petya.token })).body.weeks;
   assert.deepEqual(weeks.map((w) => w.weekId), ['2026-W42', '2026-W41']);
   assert.equal(weeks[0].closedAt, h.clock.now);
-  assert.equal(weeks[0].bestPhoto.photoId, p1.id);
-  assert.deepEqual([weeks[0].bestPhoto.stars, weeks[0].bestPhoto.starCount], [5, 2]);
-  assert.equal(weeks[0].friendOfWeek.name, 'барсук');
+  // Only winners: posts and names, no points, no table.
+  const w = weeks[0];
+  assert.deepEqual(Object.keys(w).sort(), [
+    'bestPhoto', 'closedAt', 'endsAt', 'favoriteFriend', 'friendOfWeek', 'mostActive', 'mostCreative', 'mostCreativePost',
+    'mostFunny', 'mostFunnyPost', 'mostWild', 'mostWildPost', 'photoCount', 'postsOfDay', 'startsAt', 'weekId',
+  ]);
+  assert.equal(w.bestPhoto.photoId, p1.id);
+  assert.deepEqual(Object.keys(w.bestPhoto).sort(), PRIZE_KEYS);
+  assert.equal(w.mostCreativePost.photoId, p1.id);
+  assert.equal(w.mostFunnyPost.photoId, m1.id);
+  assert.equal(w.mostWildPost.photoId, p1.id);
+  assert.deepEqual(w.postsOfDay, [{ date: '2026-10-14', photo: w.bestPhoto }], 'one day with posts, its best post');
+  assert.equal(w.favoriteFriend, null, 'nobody played «Кто лучше?»');
+  assert.deepEqual(w.friendOfWeek, { userId: petya.id, name: 'барсук' });
+  for (const k of ['friendOfWeek', 'mostCreative', 'mostFunny', 'mostWild', 'mostActive']) assert.deepEqual(Object.keys(w[k]).sort(), ['name', 'userId']);
   assert.equal(weeks[0].mostFunny.name, 'ярослава');
   assert.equal(weeks[0].mostCreative.name, 'барсук');
   assert.equal(weeks[0].mostWild.name, 'барсук');
@@ -778,14 +794,10 @@ test('«Кто лучше?»: once a day at a random moment, pick one of two peo
   duel = (await today(me)).body.duel;
   await choose(me, duel.id, duel.left.id === favourite.id ? 'left' : 'right');
 
-  // The favourite is the same for everyone, even without friends; nothing about the others.
   const picksFor = (id) => 2 * (id === favourite.id) + (yaraChose.id === id ? 1 : 0);
   const expected = [...nameOf.keys()].map((id) => [id, picksFor(id)]).sort((a, b) => b[1] - a[1])[0];
-  for (const who of [me, dobr]) {
-    const live = (await api('GET', '/api/week/current', { auth: who.token })).body;
-    assert.deepEqual(live.favoriteFriend, { userId: expected[0], name: nameOf.get(expected[0]), value: expected[1] });
-    assert.ok(!JSON.stringify(live).includes('picks'));
-  }
+  // Secret until the week closes.
+  assert.ok(!('favoriteFriend' in (await api('GET', '/api/week/current', { auth: me.token })).body));
 
   // Sunday 21:00: the weekly push names the favourite.
   await h.befriend(me, yara); // a snapshot needs a photo in the circle; everyone has one
@@ -793,6 +805,12 @@ test('«Кто лучше?»: once a day at a random moment, pick one of two peo
   await h.app.runDue();
   const weekly = h.pushesTo(token('a')).find((p) => p.type === 'weekly');
   assert.ok(weekly.aps.alert.body.includes(`Самый любимый друг — ${nameOf.get(expected[0])}`));
+  // The same for everyone, even without friends; nothing about the others.
+  for (const who of [me, dobr]) {
+    const week = (await api('GET', '/api/weeks/2026-W42', { auth: who.token })).body;
+    assert.deepEqual(week.favoriteFriend, { userId: expected[0], name: nameOf.get(expected[0]) });
+    assert.ok(!JSON.stringify(week).includes('picks'));
+  }
 });
 
 test('«Кто лучше?» needs two other people', async (t) => {

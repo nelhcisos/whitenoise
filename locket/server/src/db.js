@@ -316,13 +316,14 @@ export function createStore(db) {
       );
     },
 
-    reactionsFor(photoIds) {
+    // Ratings are blind: these two are the only per-photo ratings anyone is sent,
+    // and only the viewer's own.
+    myReactionsFor(photoIds, userId) {
       if (!photoIds.length) return [];
       return q(
-        `SELECT r.photo_id AS photoId, r.user_id AS userId, r.kind, u.username AS name
-         FROM reactions r JOIN users u ON u.id = r.user_id
-         WHERE r.photo_id IN (${placeholders(photoIds.length)}) ORDER BY r.created_at, r.rowid`,
-      ).all(...photoIds);
+        `SELECT photo_id AS photoId, kind FROM reactions
+         WHERE user_id = ? AND photo_id IN (${placeholders(photoIds.length)}) ORDER BY created_at, rowid`,
+      ).all(userId, ...photoIds);
     },
     // Returns true when the reaction state actually changed.
     setReaction(photoId, userId, kind, on, now) {
@@ -331,17 +332,13 @@ export function createStore(db) {
         : q('DELETE FROM reactions WHERE photo_id = ? AND user_id = ? AND kind = ?').run(photoId, userId, kind);
       return res.changes > 0;
     },
-    kindsBy: (photoId, userId) =>
-      q('SELECT kind FROM reactions WHERE photo_id = ? AND user_id = ? ORDER BY created_at, rowid').all(photoId, userId).map((r) => r.kind),
-    starsFor(photoIds) {
+    myStarsFor(photoIds, userId) {
       if (!photoIds.length) return [];
-      return q(
-        `SELECT s.photo_id AS photoId, s.user_id AS userId, s.value, u.username AS name
-         FROM stars s JOIN users u ON u.id = s.user_id
-         WHERE s.photo_id IN (${placeholders(photoIds.length)}) ORDER BY s.updated_at, s.rowid`,
-      ).all(...photoIds);
+      return q(`SELECT photo_id AS photoId, value FROM stars WHERE user_id = ? AND photo_id IN (${placeholders(photoIds.length)})`).all(
+        userId,
+        ...photoIds,
+      );
     },
-    starsBy: (photoId, userId) => q('SELECT value FROM stars WHERE photo_id = ? AND user_id = ?').get(photoId, userId)?.value ?? 0,
     // Returns true when the rating actually changed. value 0 clears it.
     setStars(photoId, userId, value, now) {
       const res = value

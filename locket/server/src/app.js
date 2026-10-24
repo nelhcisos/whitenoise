@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { KINDS, MAX_STARS, computeStandings } from './awards.js';
+import { KINDS, MAX_STARS, bestPhotoOf, computeStandings, mostReactedPhoto } from './awards.js';
 import { createAttemptLimiter, hashToken, newSessionToken, passwordKey } from './auth.js';
 import { createStore } from './db.js';
 import { HttpError, createRouter, readBody, readJson, sendJson } from './http.js';
@@ -106,9 +106,7 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     };
   }
 
-  const zeroCounts = () => Object.fromEntries(KINDS.map((k) => [k, 0]));
-
-  // A locked photo keeps only who and when: no picture, no caption, no ratings.
+  // A locked photo keeps only who and when: no picture, no caption.
   const lockedPhoto = (p) => ({
     id: p.id,
     authorId: p.authorId,
@@ -119,29 +117,24 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     caption: null,
     imageUrl: null,
     canReact: false,
-    counts: zeroCounts(),
-    stars: { count: 0, total: 0, average: 0 },
     myStars: 0,
     mine: [],
-    reactors: [],
-    raters: [],
   });
 
+  /**
+   * Ratings are blind: a photo carries only what the viewer gave it, never the
+   * totals, the average or who gave what (low numbers would hurt). Winners are
+   * announced at the end of the week instead.
+   */
   function serializePhotos(photos, viewerId, isOpen = visibilityFor(viewerId)) {
     const weekId = currentWeekId();
-    const open = photos.filter(isOpen);
-    const ids = open.map((p) => p.id);
-    const reactionsBy = new Map(ids.map((id) => [id, []]));
-    const starsBy = new Map(ids.map((id) => [id, []]));
-    for (const r of store.reactionsFor(ids)) reactionsBy.get(r.photoId).push(r);
-    for (const s of store.starsFor(ids)) starsBy.get(s.photoId).push(s);
+    const openIds = photos.filter(isOpen).map((p) => p.id);
+    const myStars = new Map(openIds.map((id) => [id, 0]));
+    const mine = new Map(openIds.map((id) => [id, []]));
+    for (const s of store.myStarsFor(openIds, viewerId)) myStars.set(s.photoId, s.value);
+    for (const r of store.myReactionsFor(openIds, viewerId)) mine.get(r.photoId).push(r.kind);
     return photos.map((p) => {
-      if (!reactionsBy.has(p.id)) return lockedPhoto(p);
-      const reactions = reactionsBy.get(p.id);
-      const ratings = starsBy.get(p.id);
-      const counts = zeroCounts();
-      for (const r of reactions) counts[r.kind]++;
-      const total = ratings.reduce((sum, s) => sum + s.value, 0);
+      if (!myStars.has(p.id)) return lockedPhoto(p);
       return {
         id: p.id,
         authorId: p.authorId,
@@ -152,12 +145,8 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
         caption: p.caption,
         imageUrl: mediaUrl(p.file),
         canReact: p.authorId !== viewerId && p.weekId === weekId,
-        counts,
-        stars: { count: ratings.length, total, average: ratings.length ? Math.round((total / ratings.length) * 10) / 10 : 0 },
-        myStars: ratings.find((s) => s.userId === viewerId)?.value ?? 0,
-        mine: reactions.filter((r) => r.userId === viewerId).map((r) => r.kind),
-        reactors: reactions.map((r) => ({ userId: r.userId, name: r.name, kind: r.kind })),
-        raters: ratings.map((s) => ({ userId: s.userId, name: s.name, stars: s.value })),
+        myStars: myStars.get(p.id),
+        mine: mine.get(p.id),
       };
     });
   }
@@ -171,40 +160,62 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     return top ? { userId: top.userId, name: top.name, value: top.picks } : null;
   }
 
-  /** Weekly results as one viewer sees them: the viewer and their friends right now. */
+  // A prize post: its picture is shown even to whoever had it locked.
+  const prizePhoto = (p) =>
+    p && {
+      photoId: p.id,
+      authorId: p.authorId,
+      authorName: p.authorName,
+      caption: p.caption,
+      imageUrl: mediaUrl(p.file),
+    };
+
+  /** The week so far: when it ends and whether anything was posted. No results until it closes. */
+  function weekPreview(viewer, weekId) {
+    const memberIds = [viewer.id, ...store.friendIds(viewer.id)];
+    const inCircle = new Set(memberIds);
+    const { photos } = store.weekData(memberIds, weekId);
+    return { weekId, ...calendar.weekBounds(weekId), closedAt: null, photoCount: photos.filter((p) => inCircle.has(p.authorId)).length };
+  }
+
+  /**
+   * A closed week as one viewer sees it: the viewer and their friends. Only the
+   * winners are named — no table, no points, no counts (low numbers would hurt).
+   */
   function weekResults(viewer, weekId, closedAt = null) {
     const memberIds = [viewer.id, ...store.friendIds(viewer.id)];
     const members = store.usersByIds(memberIds).map((u) => ({ id: u.id, name: u.username ?? '' }));
     const { photos, reactions, stars } = store.weekData(memberIds, weekId);
     const s = computeStandings({ members, photos, reactions, stars });
-    const inCircle = new Set(memberIds);
-    const best = s.bestPhoto;
+    const name = (n) => n && { userId: n.userId, name: n.name };
+    // Posts of the day: the best post of each local day of the week that had stars.
+    const byDay = new Map();
+    for (const p of s.photos) {
+      const day = localDate(p.createdAt);
+      if (!byDay.has(day)) byDay.set(day, []);
+      byDay.get(day).push(p);
+    }
+    const postsOfDay = [...byDay.keys()]
+      .sort()
+      .map((date) => ({ date, photo: prizePhoto(bestPhotoOf(byDay.get(date))) }))
+      .filter((d) => d.photo);
     return {
       weekId,
       ...calendar.weekBounds(weekId),
       closedAt,
-      photoCount: photos.filter((p) => inCircle.has(p.authorId)).length,
-      leaderboard: s.leaderboard,
-      // The photo of the week is the prize: its picture is shown even to whoever had it locked.
-      bestPhoto: best && {
-        photoId: best.id,
-        authorId: best.authorId,
-        authorName: best.authorName,
-        caption: best.caption,
-        imageUrl: mediaUrl(best.file),
-        stars: best.stars,
-        starCount: best.starCount,
-        creative: best.creative,
-        funny: best.funny,
-        wild: best.wild,
-      },
-      friendOfWeek: s.friendOfWeek,
+      photoCount: s.photos.length,
+      bestPhoto: prizePhoto(s.bestPhoto),
+      mostCreativePost: prizePhoto(mostReactedPhoto(s.photos, 'creative')),
+      mostFunnyPost: prizePhoto(mostReactedPhoto(s.photos, 'funny')),
+      mostWildPost: prizePhoto(mostReactedPhoto(s.photos, 'wild')),
+      postsOfDay,
+      friendOfWeek: name(s.friendOfWeek),
       // «Кто лучше?»: only the most picked is told; the least picked stays a secret.
-      favoriteFriend: favoriteFriend(weekId),
-      mostCreative: s.mostCreative,
-      mostFunny: s.mostFunny,
-      mostWild: s.mostWild,
-      mostActive: s.mostActive,
+      favoriteFriend: name(favoriteFriend(weekId)),
+      mostCreative: name(s.mostCreative),
+      mostFunny: name(s.mostFunny),
+      mostWild: name(s.mostWild),
+      mostActive: name(s.mostActive),
     };
   }
 
@@ -532,15 +543,9 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     return photo;
   }
 
-  // Tells the author what this friend gave the photo so far (one notification per friend).
+  // Tells the author that this friend rated the photo, never how (one notification per friend).
   function notifyAuthor(photo, user) {
-    const { payload, opts } = reactionMessage({
-      photo,
-      reactor: user,
-      stars: store.starsBy(photo.id, user.id),
-      kinds: store.kindsBy(photo.id, user.id),
-      imageUrl: mediaUrl(photo.file),
-    });
+    const { payload, opts } = reactionMessage({ photo, reactor: user, imageUrl: mediaUrl(photo.file) });
     background(push.sendToUsers([photo.authorId], payload, opts));
   }
 
@@ -635,14 +640,14 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
 
   // ----- weeks -----
 
-  router.get('/api/week/current', ({ user }) => weekResults(user, currentWeekId()));
+  router.get('/api/week/current', ({ user }) => weekPreview(user, currentWeekId()));
 
   router.get('/api/weeks', ({ user }) => ({ weeks: store.closedWeeks(user.id, 52) }));
 
   router.get('/api/weeks/:weekId', ({ user, params }) => {
     const week = store.closedWeek(user.id, params.weekId);
     if (week) return week;
-    if (params.weekId === currentWeekId()) return weekResults(user, params.weekId);
+    if (params.weekId === currentWeekId()) return weekPreview(user, params.weekId);
     throw new HttpError(404, 'Неделя не найдена');
   });
 

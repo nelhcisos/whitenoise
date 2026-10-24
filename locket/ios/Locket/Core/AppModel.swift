@@ -413,7 +413,6 @@ final class AppModel {
             let updated = try await request()
             replace(updated)
             WidgetRefresh.now()
-            Task { await refreshWeek() }
         } catch {
             replace(original)
             if !(error is CancellationError) {
