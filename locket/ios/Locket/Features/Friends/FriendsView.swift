@@ -23,8 +23,7 @@ struct FriendsView: View {
     @State private var rowErrors: [String: String] = [:]
     @State private var friendToRemove: FriendEntry?
 
-    /// The wishlist open in a sheet: yours or a friend's.
-    @State private var openWishlist: WishlistOwner?
+    @State private var pickingBirthday = false
 
     @State private var confirmSignOut = false
     @State private var signingOut = false
@@ -85,11 +84,8 @@ struct FriendsView: View {
             if newPhase == .active { Task { await refreshNotificationStatus() } }
         }
         .onChange(of: model.social) { reconcile() }
-        .sheet(item: $openWishlist, onDismiss: {
-            // Counts next to friends may have changed meanwhile.
-            Task { await model.refreshSocial() }
-        }) { owner in
-            WishlistView(owner: owner)
+        .sheet(isPresented: $pickingBirthday) {
+            BirthdayPicker()
         }
     }
 
@@ -124,9 +120,17 @@ struct FriendsView: View {
             .buttonStyle(LocketButtonStyle(.secondary))
 
             Button {
-                if let id = model.myId { openWishlist = WishlistOwner(id: id, username: username) }
+                if let id = model.myId { model.presentedWishlist = WishlistOwner(id: id, username: username) }
             } label: {
                 Label("Мой виш-лист", systemImage: "scroll")
+            }
+            .buttonStyle(LocketButtonStyle(.secondary))
+
+            // Friends hear about it a month before, 5 days before and on the day.
+            Button {
+                pickingBirthday = true
+            } label: {
+                Label(model.birthday.map { "День рождения — \($0.title)" } ?? "Указать день рождения", systemImage: "birthday.cake")
             }
             .buttonStyle(LocketButtonStyle(.secondary))
         }
@@ -378,7 +382,7 @@ struct FriendsView: View {
 
     private func friendRow(_ friend: FriendEntry) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            personRow(friend.username, status: busy[friend.id] == .remove ? "Удаляю…" : nil) {
+            personRow(friend.username, status: busy[friend.id] == .remove ? "Удаляю…" : Birthday(friend.birthday)?.friendLine) {
                 HStack(spacing: 0) {
                     wishlistButton(friend)
                     friendMenu(friend)
@@ -392,7 +396,7 @@ struct FriendsView: View {
     private func wishlistButton(_ friend: FriendEntry) -> some View {
         let count = friend.wishCount ?? 0
         return Button {
-            openWishlist = WishlistOwner(id: friend.id, username: friend.username)
+            model.presentedWishlist = WishlistOwner(id: friend.id, username: friend.username)
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "scroll")

@@ -53,6 +53,10 @@ struct FeedView: View {
             DuelPrompt(duel: duel)
                 .padding(.horizontal, Space.margin)
         }
+        if model.shouldAskBirthday {
+            BirthdayPrompt()
+                .padding(.horizontal, Space.margin)
+        }
         if model.friends.isEmpty {
             // Without friends the feed holds only your own photos (a new account starts
             // with one), so this shows above them, not only when the feed is empty.

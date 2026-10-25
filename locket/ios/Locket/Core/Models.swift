@@ -9,6 +9,8 @@ struct User: Codable, Hashable {
 struct Friend: Codable, Hashable, Identifiable {
     let id: String
     let username: String
+    /// "11-14"; sent with a wishlist.
+    var birthday: String? = nil
 }
 
 struct WeekInfo: Codable, Hashable {
@@ -22,6 +24,67 @@ struct MeResponse: Codable {
     let friends: [Friend]
     let incomingRequests: Int
     let week: WeekInfo
+    /// "11-14", or nil when not given.
+    let birthday: String?
+    /// True after a few of your own photos while no birthday is given (and not just put off).
+    let askBirthday: Bool?
+}
+
+/// A birthday: the day and the month, never the year ("11-14" in the API).
+struct Birthday: Hashable {
+    let month: Int
+    let day: Int
+
+    init(month: Int, day: Int) {
+        self.month = month
+        self.day = day
+    }
+
+    init?(_ key: String?) {
+        let parts = key?.split(separator: "-").compactMap { Int($0) } ?? []
+        guard parts.count == 2, (1...12).contains(parts[0]), (1...Self.days(in: parts[0])).contains(parts[1]) else { return nil }
+        self.init(month: parts[0], day: parts[1])
+    }
+
+    /// Month names as they follow a day: "14 ноября".
+    static let months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+
+    /// 29 for February: a birthday may be on the 29th.
+    static func days(in month: Int) -> Int {
+        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+    }
+
+    /// "14 ноября", with the number kept next to its month.
+    var title: String { "\(day)\(nbsp)\(Self.months[month - 1])" }
+
+    /// Days from `date` to the next one, on the phone's calendar; 0 on the day.
+    /// In other years 29 February is celebrated on the 28th, like the server does.
+    func daysLeft(from date: Date = Date()) -> Int {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let today = calendar.startOfDay(for: date)
+        let year = calendar.component(.year, from: today)
+        for candidate in [year, year + 1] {
+            let leap = (candidate % 4 == 0 && candidate % 100 != 0) || candidate % 400 == 0
+            let shownDay = month == 2 && day == 29 && !leap ? 28 : day
+            if let next = calendar.date(from: DateComponents(year: candidate, month: month, day: shownDay)), next >= today {
+                return calendar.dateComponents([.day], from: today, to: next).day ?? 0
+            }
+        }
+        return 0
+    }
+
+    /// Next to a friend's name: "Сегодня день рождения 🎂", "День рождения завтра",
+    /// "День рождения через 5 дней" within a month, otherwise "День рождения 14 ноября".
+    var friendLine: String {
+        let left = daysLeft()
+        switch left {
+        case 0: return "Сегодня день рождения 🎂"
+        case 1: return "День рождения завтра"
+        case 2...30: return "День рождения через \(left)\(nbsp)\(Russian.plural(left, "день", "дня", "дней"))"
+        default: return "День рождения \(title)"
+        }
+    }
 }
 
 /// POST api/auth/password and api/auth/register. `token`/`me` are present unless status == .new.
@@ -69,6 +132,8 @@ struct FriendEntry: Codable, Hashable, Identifiable {
     let since: Double
     /// How many wishes are in their wishlist.
     let wishCount: Int?
+    /// "11-14", or nil when they haven't given it.
+    let birthday: String?
 }
 
 /// One wish: what, where to get it (a web link) and a picture. Friends see it; only its owner deletes it.
@@ -229,12 +294,15 @@ struct PushInfo: Sendable {
     var weekId: String?
     /// friend_request / friend_accepted: the other person.
     var userId: String?
+    /// birthday: whose it is, to title their wishlist.
+    var username: String?
 
-    init(type: String, photoId: String? = nil, weekId: String? = nil, userId: String? = nil) {
+    init(type: String, photoId: String? = nil, weekId: String? = nil, userId: String? = nil, username: String? = nil) {
         self.type = type
         self.photoId = photoId
         self.weekId = weekId
         self.userId = userId
+        self.username = username
     }
 
     init(_ userInfo: [AnyHashable: Any]) {
@@ -242,6 +310,7 @@ struct PushInfo: Sendable {
         photoId = userInfo["photoId"] as? String
         weekId = userInfo["weekId"] as? String
         userId = userInfo["userId"] as? String
+        username = userInfo["username"] as? String
     }
 }
 

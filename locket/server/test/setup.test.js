@@ -24,7 +24,7 @@ test('a version 1 database (companies + email) is moved aside, not deleted', () 
   const kept = new DatabaseSync(backup);
   assert.equal(kept.prepare('SELECT id FROM circles').get().id, 'c1');
   kept.close();
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 3);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
   const columns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
   assert.ok(columns.includes('password_key') && columns.includes('username_key') && !columns.includes('email'));
   db.prepare("INSERT INTO users (id, password_key, created_at) VALUES ('u1', 'k1', 0)").run();
@@ -36,7 +36,7 @@ test('a version 1 database (companies + email) is moved aside, not deleted', () 
   assert.ok(!fs.existsSync(path.join(dir, 'locket.v1-T2.db')));
   again.close();
 
-  // A version 2 file (before wishlists) keeps its data and gains the wishes table.
+  // A version 2 file (before wishlists and birthdays) keeps its data and gains the new tables.
   const v2file = path.join(dir, 'v2.db');
   const v2 = new DatabaseSync(v2file);
   v2.exec("CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT, username_key TEXT UNIQUE, password_key TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL); INSERT INTO users VALUES ('u2', 'барсук', 'барсук', 'k2', 0); PRAGMA user_version = 2;");
@@ -44,7 +44,8 @@ test('a version 1 database (companies + email) is moved aside, not deleted', () 
   const upgraded = openDb(v2file, { log: quiet, stamp: () => 'T3' });
   assert.equal(upgraded.prepare('SELECT username FROM users').get().username, 'барсук');
   assert.equal(upgraded.prepare('SELECT COUNT(*) AS n FROM wishes').get().n, 0);
-  assert.equal(upgraded.prepare('PRAGMA user_version').get().user_version, 3);
+  assert.equal(upgraded.prepare('SELECT COUNT(*) AS n FROM birthdays').get().n, 0);
+  assert.equal(upgraded.prepare('PRAGMA user_version').get().user_version, 4);
   assert.ok(!fs.existsSync(path.join(dir, 'locket.v1-T3.db')));
   upgraded.close();
 });

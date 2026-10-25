@@ -140,6 +140,20 @@ extension APIClient {
         try await request("POST", "api/me/username", json: ["username": username])
     }
 
+    /// Day and month only.
+    func setBirthday(_ birthday: Birthday) async throws -> MeResponse {
+        try await request("PUT", "api/me/birthday", json: ["month": String(birthday.month), "day": String(birthday.day)])
+    }
+
+    func clearBirthday() async throws -> MeResponse {
+        try await request("DELETE", "api/me/birthday")
+    }
+
+    /// «Не сейчас»: the question comes back in a month.
+    func askBirthdayLater() async throws -> MeResponse {
+        try await request("POST", "api/me/birthday/later")
+    }
+
     func registerDevice(token: String, environment: String) async throws {
         let _: OKResponse = try await request("POST", "api/devices", json: ["token": token, "env": environment])
     }
@@ -174,10 +188,9 @@ extension APIClient {
 
     // MARK: Wishlists
 
-    /// Yours or a friend's.
-    func wishlist(of userId: String) async throws -> [Wish] {
-        let response: WishlistResponse = try await request("GET", "api/users/\(segment(userId))/wishes")
-        return response.wishes
+    /// Yours or a friend's, with whose it is (and their birthday).
+    func wishlist(of userId: String) async throws -> WishlistResponse {
+        try await request("GET", "api/users/\(segment(userId))/wishes")
     }
 
     /// Title and link travel in the query; the picture, if any, is the body.

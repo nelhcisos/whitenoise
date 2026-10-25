@@ -152,6 +152,12 @@ struct MainTabView: View {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active { Task { await model.refreshAll() } }
         }
+        .sheet(item: $model.presentedWishlist, onDismiss: {
+            // Wish counts next to friends may have changed meanwhile.
+            Task { await model.refreshSocial() }
+        }) { owner in
+            WishlistView(owner: owner)
+        }
         .sheet(item: $model.presentedWeek) { week in
             NavigationStack {
                 WeekResultsView(results: week)

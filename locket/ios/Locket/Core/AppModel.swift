@@ -55,6 +55,8 @@ final class AppModel {
     var selectedTab: Tab = .camera
     var focusPhotoId: String?
     var presentedWeek: WeekResults?
+    /// A wishlist in a sheet over any tab: from the Friends tab or a birthday push.
+    var presentedWishlist: WishlistOwner?
     private(set) var toast: Toast?
 
     @ObservationIgnored private var deviceToken: String?
@@ -63,6 +65,8 @@ final class AppModel {
     private let pageSize = 30
 
     var myId: String? { me?.user.id }
+    var birthday: Birthday? { Birthday(me?.birthday) }
+    var shouldAskBirthday: Bool { me?.askBirthday == true }
     var username: String? { me?.user.username }
     var friends: [Friend] { me?.friends ?? [] }
 
@@ -149,6 +153,21 @@ final class AppModel {
     func chooseUsername(_ username: String) async throws {
         let newMe = try await signedIn { try await self.api.chooseUsername(username) }
         apply(newMe)
+    }
+
+    // MARK: - Birthday
+
+    func setBirthday(_ birthday: Birthday) async throws {
+        apply(try await signedIn { try await self.api.setBirthday(birthday) })
+    }
+
+    func clearBirthday() async throws {
+        apply(try await signedIn { try await self.api.clearBirthday() })
+    }
+
+    /// «Не сейчас»; a failure is not worth a toast: the question simply stays.
+    func askBirthdayLater() async {
+        if let newMe = try? await signedIn({ try await self.api.askBirthdayLater() }) { apply(newMe) }
     }
 
     func signOut() async {
@@ -318,7 +337,7 @@ final class AppModel {
 
     // MARK: - Wishlists
 
-    func wishlist(of userId: String) async throws -> [Wish] {
+    func wishlist(of userId: String) async throws -> WishlistResponse {
         try await signedIn { try await self.api.wishlist(of: userId) }
     }
 
@@ -397,9 +416,11 @@ final class AppModel {
             show(toast: "Фото отправлено друзьям")
         }
         // Posting opens friends' locked photos, so the whole feed changes.
+        // The profile too: after a few photos the birthday question appears.
         Task {
             await refreshFeed()
             await refreshWeek()
+            await refreshMe()
         }
     }
 
@@ -514,7 +535,7 @@ final class AppModel {
             if let userId = push.userId {
                 try? await acceptFriendRequest(from: userId)
             }
-        } else if action == UNNotificationDefaultActionIdentifier {
+        } else if action == UNNotificationDefaultActionIdentifier || action == PushCategories.openWishlistAction {
             open(push)
         }
     }
@@ -545,6 +566,10 @@ final class AppModel {
             // The pick waits at the top of the feed.
             selectedTab = .feed
             Task { await refreshDuel() }
+        case "birthday":
+            // Someone's birthday (or yours): their wishlist, over whatever tab is open.
+            guard let userId = push.userId else { break }
+            presentedWishlist = WishlistOwner(id: userId, username: push.username ?? "")
         default:
             break
         }

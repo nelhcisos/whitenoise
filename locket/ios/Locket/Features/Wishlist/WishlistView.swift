@@ -17,6 +17,8 @@ struct WishlistView: View {
     let owner: WishlistOwner
 
     @State private var wishes: [Wish]?
+    /// Whose list it is, as the server says (a push may not carry the name).
+    @State private var person: Friend?
     @State private var loadFailure: String?
     @State private var actionFailure: String?
     @State private var adding = false
@@ -79,14 +81,16 @@ struct WishlistView: View {
         }
     }
 
-    /// "ёжик · 3 желания"; yours also says who sees it.
+    /// "ёжик · День рождения через 5 дней · 3 желания"; yours says who sees it.
     private var subtitle: String {
         let count = wishes.map { Self.count($0.count) }
         if isMine {
             let who = "друзья видят его рядом с твоим именем"
             return count.map { "\($0) · \(who)" } ?? "Друзья видят его рядом с твоим именем"
         }
-        return count.map { "\(owner.username) · \($0)" } ?? owner.username
+        let name = person?.username ?? owner.username
+        let parts = [name, Birthday(person?.birthday)?.friendLine, count].compactMap { $0 }.filter { !$0.isEmpty }
+        return parts.joined(separator: " · ")
     }
 
     /// "3 желания", with the number kept next to its word.
@@ -130,7 +134,9 @@ struct WishlistView: View {
 
     private func load() async {
         do {
-            wishes = try await model.wishlist(of: owner.id)
+            let response = try await model.wishlist(of: owner.id)
+            person = response.user
+            wishes = response.wishes
             loadFailure = nil
         } catch is CancellationError {
             // Signed out, or the sheet closed.

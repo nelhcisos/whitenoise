@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -109,6 +109,13 @@ CREATE TABLE IF NOT EXISTS wishes (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS wishes_user ON wishes(user_id, created_at);
+CREATE TABLE IF NOT EXISTS birthdays (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  month INTEGER CHECK (month BETWEEN 1 AND 12),
+  day INTEGER CHECK (day BETWEEN 1 AND 31),
+  asked_later_at INTEGER,
+  updated_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS jobs (
   key TEXT PRIMARY KEY,
   done_at INTEGER NOT NULL
@@ -116,8 +123,8 @@ CREATE TABLE IF NOT EXISTS jobs (
 `;
 
 /**
- * Opens (or creates) the database. Version 2 → 3 only adds tables (wishes), which
- * CREATE TABLE IF NOT EXISTS does in place. A version 1 file — companies, email sign-in —
+ * Opens (or creates) the database. Versions 3 and 4 only add tables (wishes,
+ * birthdays), which CREATE TABLE IF NOT EXISTS does in place. A version 1 file — companies, email sign-in —
  * is moved aside as locket.v1-<time>.db and a fresh one is created next to it:
  * nothing is deleted, but the old data is not carried over.
  */
@@ -258,8 +265,10 @@ export function createStore(db) {
     friends: (userId) =>
       q(
         `SELECT u.id, u.username, f.created_at AS since,
-           (SELECT COUNT(*) FROM wishes w WHERE w.user_id = u.id) AS wishCount
-         FROM (${FRIEND_IDS}) f JOIN users u ON u.id = f.id ORDER BY u.username_key`,
+           (SELECT COUNT(*) FROM wishes w WHERE w.user_id = u.id) AS wishCount,
+           CASE WHEN b.month IS NULL THEN NULL ELSE printf('%02d-%02d', b.month, b.day) END AS birthday
+         FROM (${FRIEND_IDS}) f JOIN users u ON u.id = f.id LEFT JOIN birthdays b ON b.user_id = u.id
+         ORDER BY u.username_key`,
       ).all(userId),
     friendCount: (userId) => q('SELECT COUNT(*) AS n FROM friendships WHERE user_a = ?1 OR user_b = ?1').get(userId).n,
     areFriends: (a, b) => Boolean(q('SELECT 1 AS x FROM friendships WHERE user_a = ? AND user_b = ?').get(...pair(a, b))),
@@ -286,6 +295,27 @@ export function createStore(db) {
     incomingCount: (userId) => q('SELECT COUNT(*) AS n FROM friend_requests WHERE to_id = ?').get(userId).n,
 
     // ---------- photos ----------
+    // ---------- birthdays ----------
+    birthday: (userId) => q('SELECT month, day, asked_later_at AS askedLaterAt FROM birthdays WHERE user_id = ?').get(userId),
+    setBirthday: (userId, month, day, now) =>
+      q(
+        `INSERT INTO birthdays (user_id, month, day, updated_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET month = excluded.month, day = excluded.day, updated_at = excluded.updated_at`,
+      ).run(userId, month, day, now),
+    clearBirthday: (userId, now) => q('UPDATE birthdays SET month = NULL, day = NULL, updated_at = ? WHERE user_id = ?').run(now, userId),
+    // «Не сейчас»: the question comes back later.
+    askBirthdayLater: (userId, now) =>
+      q(
+        `INSERT INTO birthdays (user_id, asked_later_at, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET asked_later_at = excluded.asked_later_at, updated_at = excluded.updated_at`,
+      ).run(userId, now, now),
+    knownBirthdays: () =>
+      q(
+        `SELECT b.user_id AS userId, u.username, b.month, b.day FROM birthdays b JOIN users u ON u.id = b.user_id
+         WHERE b.month IS NOT NULL AND u.username IS NOT NULL`,
+      ).all(),
+    photoCount: (userId) => q('SELECT COUNT(*) AS n FROM photos WHERE author_id = ?').get(userId).n,
+
     // ---------- wishes ----------
     wishes: (userId) =>
       q(

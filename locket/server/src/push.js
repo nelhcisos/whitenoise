@@ -5,6 +5,7 @@ export const CATEGORY_RATE_PHOTO = 'PHOTO_RATING';
 export const CATEGORY_WEEKLY = 'WEEKLY_RESULTS';
 export const CATEGORY_FRIEND_REQUEST = 'FRIEND_REQUEST'; // has the «Принять» button
 export const CATEGORY_DUEL = 'FRIEND_DUEL'; // «Кто лучше?»: the content extension shows two friends
+export const CATEGORY_BIRTHDAY = 'BIRTHDAY'; // has the «Открыть виш-лист» button
 
 // Reaction marks are the app's rating scale (data), the only emoji in push copy.
 const NBSP = '\u00a0';
@@ -176,5 +177,44 @@ export function friendAcceptedMessage({ user }) {
     aps: { alert: { title: 'Новый друг', body: `${user.username} теперь в друзьях` }, sound: 'default', 'thread-id': 'friends' },
     type: 'friend_accepted',
     userId: user.id,
+  };
+}
+
+// A friend's birthday: a month before (time for a parcel), 5 days before and on the day.
+// Tapping it (or «Открыть виш-лист») opens their wishlist.
+export function birthdayMessage({ person, daysLeft, date, wishCount }) {
+  const name = person.username;
+  let title;
+  let body;
+  if (daysLeft === 0) {
+    title = 'Сегодня день рождения 🎂';
+    body = wishCount > 0 ? `${name} празднует — поздравь! Виш-лист — по нажатию` : `${name} празднует — поздравь!`;
+  } else {
+    const when = daysLeft === 30 ? 'месяц' : `${daysLeft}${NBSP}${plural(daysLeft, 'день', 'дня', 'дней')}`;
+    title = `Через ${when} — день рождения`;
+    let hint = 'Виш-лист пока пустой — спроси, что подарить';
+    if (wishCount > 0) hint = daysLeft >= 14 ? 'Загляни в виш-лист — подарок успеет дойти' : 'Загляни в виш-лист';
+    body = `${name} — ${date}. ${hint}`;
+  }
+  return {
+    aps: { alert: { title, body }, sound: 'default', category: CATEGORY_BIRTHDAY, 'thread-id': 'birthdays' },
+    type: 'birthday',
+    userId: person.id,
+    username: name,
+    daysLeft,
+  };
+}
+
+// The person themselves, on the day. Tapping it opens their own wishlist.
+export function ownBirthdayMessage({ person, wishCount }) {
+  const body = wishCount > 0
+    ? 'Друзья получили напоминание и видят твой виш-лист'
+    : 'Друзья получили напоминание. Добавь в виш-лист, что хочешь получить';
+  return {
+    aps: { alert: { title: 'С днём рождения! 🎂', body }, sound: 'default', 'thread-id': 'birthdays' },
+    type: 'birthday',
+    userId: person.id,
+    username: person.username,
+    daysLeft: 0,
   };
 }

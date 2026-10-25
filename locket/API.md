@@ -83,11 +83,24 @@ IP: при `TRUST_PROXY=1` (так за Caddy) берётся первый ад�
   "user": { "id": "…", "username": "барсук" },
   "friends": [{ "id": "…", "username": "ярослава" }],
   "incomingRequests": 1,
-  "week": { "id": "2026-W42", "startsAt": 0, "endsAt": 0 }
+  "week": { "id": "2026-W42", "startsAt": 0, "endsAt": 0 },
+  "birthday": "11-14" | null,
+  "askBirthday": false
 }
 ```
 
 `username` равен `null`, пока юзернейм не выбран. Друзья отсортированы по `username_key`.
+
+### День рождения
+
+Только день и месяц, год не спрашиваем. Видят друзья: рядом с именем в списке друзей и в виш-листе.
+
+- `askBirthday` — пора спросить: юзернейм выбран, даты нет, своих фото уже 3 или больше, и «Не сейчас» не нажимали последние 30 дней. Приложение показывает вопрос вверху ленты.
+- **`PUT /api/me/birthday`** `{ "month": 11, "day": 14 }` (числа или строки) → `Me`. Несуществующая дата — `400 Такой даты нет`; 29 февраля можно.
+- **`DELETE /api/me/birthday`** → `Me`. Дата убирается, напоминаний больше нет.
+- **`POST /api/me/birthday/later`** → `Me`. «Не сейчас»: вопрос вернётся через 30 дней.
+
+**Напоминания.** Каждый день с `BIRTHDAY_HOUR` (по умолчанию 10:00 по времени недели) сервер смотрит, у кого из друзей день рождения через 30 дней, через 5 дней или сегодня. Друзьям уходит пуш `birthday`, в сам день самому человеку — «С днём рождения!». Метка `birthday:<userId>:<дата>` в `jobs` — один раз в день; если сервер лежал весь день, пуш не досылается. 29 февраля в невисокосный год празднуется 28-го.
 
 **`GET /api/usernames/suggestions`** → ровно три свободных варианта, по одному каждого вида:
 
@@ -134,13 +147,13 @@ IP: при `TRUST_PROXY=1` (так за Caddy) берётся первый ад�
 
 ```json
 {
-  "friends":  [{ "id": "…", "username": "ярослава", "since": 0, "wishCount": 3 }],
+  "friends":  [{ "id": "…", "username": "ярослава", "since": 0, "wishCount": 3, "birthday": "11-14" }],
   "incoming": [{ "id": "…", "username": "енот", "createdAt": 0 }],
   "outgoing": [{ "id": "…", "username": "лось", "createdAt": 0 }]
 }
 ```
 
-`friends` отсортированы по ключу, заявки — сначала новые. `wishCount` — сколько желаний в виш-листе друга.
+`friends` отсортированы по ключу, заявки — сначала новые. `wishCount` — сколько желаний в виш-листе друга, `birthday` — его день рождения или `null`.
 
 **`POST /api/friends/requests`** `{ "userId": "…" }` → `Friends`
 
@@ -164,7 +177,7 @@ IP: при `TRUST_PROXY=1` (так за Caddy) берётся первый ад�
 Wish = { "id", "title": "Плёночный фотоаппарат", "url": "https://…" | null, "imageUrl": "https://…/media/….jpg" | null, "createdAt" }
 ```
 
-**`GET /api/users/:userId/wishes`** → `{ "user": { "id", "username" }, "wishes": [Wish] }` — свой или друга, от новых к старым. Чужой — `404 Виш-лист не найден`.
+**`GET /api/users/:userId/wishes`** → `{ "user": { "id", "username", "birthday" }, "wishes": [Wish] }` — свой или друга, от новых к старым. Чужой — `404 Виш-лист не найден`.
 
 **`POST /api/wishes?title=…&url=…`** (тело — JPEG-картинка или пусто) → `{ "wish": Wish }`.
 
@@ -318,6 +331,7 @@ Winner = { "userId", "name" }
 | `friend_request` | тому, кому пришла заявка | title «Заявка в друзья», body «барсук хочет дружить», `category: FRIEND_REQUEST`, `thread-id: friends` | `userId` — кто зовёт |
 | `friend_accepted` | автору заявки | title «Новый друг», body «ярослава теперь в друзьях», `thread-id: friends` | `userId` |
 | `duel` | раз в день в случайный момент | title «Кто лучше?», body «барсук или ярослава — выбери одного», `category: FRIEND_DUEL`, `thread-id: duel` | `duelId`, `left` и `right` — `{ id, username }` |
+| `birthday` | друзьям — за 30 дней, за 5 дней и в день рождения; самому человеку — в день | `category: BIRTHDAY`, `thread-id: birthdays`. За месяц: «Через месяц — день рождения», «ярослава — 14 ноября. Загляни в виш-лист — подарок успеет дойти». За 5 дней: «Через 5 дней — день рождения», «ярослава — 14 ноября. Загляни в виш-лист». В день: «Сегодня день рождения 🎂», «ярослава празднует — поздравь! Виш-лист — по нажатию». С пустым виш-листом — «Виш-лист пока пустой — спроси, что подарить». Самому: «С днём рождения! 🎂», без категории | `userId`, `username` — чей день рождения; `daysLeft` |
 | `weekly` | каждому, у кого есть снимок | title «Итоги недели», body — только имена: «Друг недели — барсук», «Пост недели — ярослава», «Самый любимый друг — ёжик», «✍️ барсук · 😂 ярослава · 🫪 барсук · самый активный — ёжик» | `weekId`, `imageUrl` — пост недели |
 | `reminder` | см. выше | title «До итогов недели 3 ч». Body: «2 фото ждут твоей оценки — успей до итогов»; если есть закрытые, добавляется « · ещё 3 закрыты — выложи своё». Если ждущих оценки нет: «3 фото друзей закрыты — выложи своё, чтобы открыть» | |
 
@@ -327,8 +341,9 @@ Winner = { "userId", "name" }
 
 - Категория `FRIEND_REQUEST` с кнопкой `ACCEPT_FRIEND` «Принять» — заявку можно принять прямо с экрана блокировки, приложение отправит запрос в фоне.
 - Нажатие на `locked` открывает камеру. Нажатие на `friend_request` или `friend_accepted` открывает «Друзья».
+- Категория `BIRTHDAY` с кнопкой `OPEN_WISHLIST` «Открыть виш-лист». Она и нажатие на `birthday` открывают виш-лист `userId` поверх любой вкладки.
 
-## База (`user_version = 3`)
+## База (`user_version = 4`)
 
 ```sql
 users(id TEXT PRIMARY KEY, username TEXT, username_key TEXT UNIQUE, password_key TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL)
@@ -343,10 +358,11 @@ weeks(user_id → users ON DELETE CASCADE, week_id, closed_at, results, PRIMARY 
 days(user_id → users ON DELETE CASCADE, date, stars 1–5, reasons JSON, liked JSON, condition, place, updated_at, PRIMARY KEY(user_id, date))
 duels(id PRIMARY KEY, user_id, date, left_id, right_id, send_at, sent_at, choice, chosen_id, week_id, chosen_at, UNIQUE(user_id, date))
 wishes(id PRIMARY KEY, user_id → users ON DELETE CASCADE, title, url, file, created_at)
+birthdays(user_id PRIMARY KEY → users ON DELETE CASCADE, month 1–12, day 1–31, asked_later_at, updated_at)
   -- индекс: (user_id, created_at)
 ```
 
-Версия 3 только добавляет таблицу `wishes`: база версии 2 открывается как есть, таблица создаётся рядом.
+Версии 3 и 4 только добавляют таблицы `wishes` и `birthdays`: база версии 2 или 3 открывается как есть, новые таблицы создаются рядом.
 
 **Старая база.** Если версия файла меньше текущей и в нём есть таблица `circles`, это база первой версии с компаниями и email. Её файл (и `-wal`, `-shm`) переименовывается в `locket.v1-<время>.db`, а рядом создаётся новая. Старые данные не удаляются, но и не используются.
 
@@ -358,6 +374,7 @@ wishes(id PRIMARY KEY, user_id → users ON DELETE CASCADE, title, url, file, cr
 | `TRUST_PROXY` | `0` | `1` — брать IP клиента из `X-Forwarded-For` (за Caddy) |
 | `MAX_FRIENDS` | `100` | лимит друзей |
 | `DUEL_FROM_HOUR`, `DUEL_TO_HOUR` | `11`, `21` | окно, в котором приходит «Кто лучше?» |
+| `BIRTHDAY_HOUR` | `10` | с этого часа уходят напоминания о днях рождения |
 | `PORT`, `PUBLIC_URL`, `DATA_DIR`, `TZ_OFFSET_MINUTES`, `WEEK_END_DAY`, `WEEK_END_HOUR`, `REMINDER_HOURS_BEFORE`, `APNS_*` | как раньше | |
 
 `MAX_CIRCLE_MEMBERS` больше не нужна.

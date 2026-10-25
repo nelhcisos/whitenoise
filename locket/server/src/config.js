@@ -28,6 +28,8 @@ export function loadConfig(env = process.env) {
       fromHour: Number(env.DUEL_FROM_HOUR ?? 11),
       toHour: Number(env.DUEL_TO_HOUR ?? 21),
     },
+    // Birthday notices go out from this local hour.
+    birthday: { hour: Number(env.BIRTHDAY_HOUR ?? 10) },
     apns: readApnsConfig(env),
   };
 }

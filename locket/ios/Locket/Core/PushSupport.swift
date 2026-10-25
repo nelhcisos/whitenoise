@@ -8,6 +8,9 @@ enum PushCategories {
     static let friendRequest = "FRIEND_REQUEST"
     /// "Принять" on a friend request: runs in the background, even from the lock screen.
     static let acceptFriendAction = "ACCEPT_FRIEND"
+    static let birthday = "BIRTHDAY"
+    /// "Открыть виш-лист" on a birthday: opens the app on that friend's wishlist.
+    static let openWishlistAction = "OPEN_WISHLIST"
 
     static var all: Set<UNNotificationCategory> {
         // Photos have no action buttons: a long-press opens the NotificationContent extension,
@@ -38,7 +41,16 @@ enum PushCategories {
             hiddenPreviewsBodyPlaceholder: "Кто лучше?",
             options: []
         )
-        return [rate, weekly, friend, day, duel]
+        // A friend's birthday (a month before, 5 days before, on the day).
+        let wishlist = UNNotificationAction(identifier: openWishlistAction, title: "Открыть виш-лист", options: [.foreground])
+        let birthdayCategory = UNNotificationCategory(
+            identifier: birthday,
+            actions: [wishlist],
+            intentIdentifiers: [],
+            hiddenPreviewsBodyPlaceholder: "День рождения друга",
+            options: []
+        )
+        return [rate, weekly, friend, day, duel, birthdayCategory]
     }
 }
 

@@ -51,6 +51,13 @@ actor DemoBackend {
         let at: Double
     }
 
+    /// Day and month, or only when «Не сейчас» was said.
+    private struct BirthdayRecord {
+        var month: Int?
+        var day: Int?
+        var askedLaterAt: Double?
+    }
+
     private struct WishRecord {
         let id: String
         let userId: String
@@ -70,6 +77,7 @@ actor DemoBackend {
     private var requests: [Request] = []
     private var photos: [Photo] = []
     private var wishes: [WishRecord] = []
+    private var birthdays: [String: BirthdayRecord] = [:]
     private var stars: [Star] = []
     private var reactions: [Reaction] = []
     private var events: [(due: Date, event: Event)] = []
@@ -131,6 +139,24 @@ actor DemoBackend {
             return reply(["suggestions": suggestions()])
         }
         if route("POST", "api/me/username") != nil { return chooseUsername(me, input["username"]) }
+        if route("PUT", "api/me/birthday") != nil {
+            let month = Int(string(input["month"])) ?? 0
+            let day = Int(string(input["day"])) ?? 0
+            let days = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+            guard (1...12).contains(month), (1...days[month - 1]).contains(day) else { return failure(400, "Такой даты нет") }
+            birthdays[me.id, default: BirthdayRecord()].month = month
+            birthdays[me.id, default: BirthdayRecord()].day = day
+            return reply(meJSON(me))
+        }
+        if route("DELETE", "api/me/birthday") != nil {
+            birthdays[me.id]?.month = nil
+            birthdays[me.id]?.day = nil
+            return reply(meJSON(me))
+        }
+        if route("POST", "api/me/birthday/later") != nil {
+            birthdays[me.id, default: BirthdayRecord()].askedLaterAt = nowMs()
+            return reply(meJSON(me))
+        }
         if route("POST", "api/devices") != nil || route("DELETE", "api/devices/*") != nil { return reply(["ok": true]) }
         if route("GET", "api/widget") != nil {
             guard me.username != nil else { return reply(["photo": NSNull()]) }
@@ -170,7 +196,10 @@ actor DemoBackend {
                 return failure(404, "Виш-лист не найден")
             }
             let list = wishes.filter { $0.userId == ownerId }.sorted { $0.createdAt > $1.createdAt }.map(wishJSON)
-            return reply(["user": ["id": owner.id, "username": owner.username ?? ""], "wishes": list])
+            return reply([
+                "user": ["id": owner.id, "username": owner.username ?? "", "birthday": birthdayKey(owner.id)] as [String: Any],
+                "wishes": list,
+            ])
         }
         if route("POST", "api/wishes") != nil { return addWish(by: me.id, title: q["title"], url: q["url"], jpeg: body) }
         if let ids = route("DELETE", "api/wishes/*") {
@@ -496,6 +525,7 @@ actor DemoBackend {
                 [
                     "id": friend.id, "username": friend.username ?? "", "since": friendships[pairKey(id, friend.id)] ?? 0,
                     "wishCount": wishes.filter { $0.userId == friend.id }.count,
+                    "birthday": birthdayKey(friend.id),
                 ]
             }
         let incoming = requests.filter { $0.to == id }.sorted { $0.at > $1.at }
@@ -981,6 +1011,14 @@ actor DemoBackend {
                 choice: pick, chosenId: pick == "left" ? left : right, weekId: week
             ))
         }
+        // Birthdays: ярослава's is in 5 days, ёжик's in a month, добрыня's later on.
+        var moscow = Calendar(identifier: .gregorian)
+        moscow.timeZone = TimeZone(secondsFromGMT: 3 * 3600) ?? .current
+        for (who, days) in [("u-yara", 5), ("u-ezh", 30), ("u-dobr", 120)] {
+            let date = moscow.date(byAdding: .day, value: days, to: Date()) ?? Date()
+            let parts = moscow.dateComponents([.month, .day], from: date)
+            birthdays[who] = BirthdayRecord(month: parts.month, day: parts.day)
+        }
         // Wishlists: ярослава and ёжик have a few, барсук one.
         for (who, title, link, scene, hoursAgo) in [
             ("u-yara", "Плёночный фотоаппарат", nil, DemoArt.Scene.sunset, 50.0),
@@ -1048,7 +1086,24 @@ actor DemoBackend {
             "friends": friends,
             "incomingRequests": requests.filter { $0.to == user.id }.count,
             "week": ["id": currentWeek, "startsAt": weekStart, "endsAt": weekEnd] as [String: Any],
+            "birthday": birthdayKey(user.id),
+            "askBirthday": shouldAskBirthday(user),
         ]
+    }
+
+    /// "11-14", or null.
+    private func birthdayKey(_ userId: String) -> Any {
+        guard let b = birthdays[userId], let month = b.month, let day = b.day else { return NSNull() }
+        return String(format: "%02d-%02d", month, day)
+    }
+
+    /// The server's rule: after 3 photos of your own, and a month after «Не сейчас».
+    private func shouldAskBirthday(_ user: User) -> Bool {
+        guard user.username != nil else { return false }
+        let b = birthdays[user.id]
+        if b?.month != nil { return false }
+        if let later = b?.askedLaterAt, nowMs() - later < 30 * 86_400_000 { return false }
+        return photos.filter { $0.authorId == user.id }.count >= 3
     }
 
     private func isJPEG(_ data: Data) -> Bool {

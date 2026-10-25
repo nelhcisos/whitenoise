@@ -3,16 +3,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { domainToUnicode } from 'node:url';
 import { KINDS, MAX_STARS, bestPhotoOf, computeStandings, mostReactedPhoto } from './awards.js';
+import { BIRTHDAY_NOTICES, birthdayKey, birthdayTitle, daysUntilBirthday, isValidBirthday } from './birthdays.js';
 import { createAttemptLimiter, hashToken, newSessionToken, passwordKey } from './auth.js';
 import { createStore } from './db.js';
 import { HttpError, createRouter, readBody, readJson, sendJson } from './http.js';
 import {
+  birthdayMessage,
   createPushService,
   duelMessage,
   friendAcceptedMessage,
   friendRequestMessage,
   lockedPhotoMessage,
   newPhotoMessage,
+  ownBirthdayMessage,
   reactionMessage,
   reminderMessage,
   weeklyResultsMessage,
@@ -30,6 +33,9 @@ const DAY_MS = 24 * 60 * MINUTE;
 const MAX_WISHES = 50;
 const WISH_TITLE_MAX = 80;
 const WISH_URL_MAX = 2048;
+// The birthday question comes after this many of your own photos, and again a month after «Не сейчас».
+const BIRTHDAY_ASK_AFTER_PHOTOS = 3;
+const BIRTHDAY_ASK_AGAIN_MS = 30 * DAY_MS;
 // The day rating's option ids, shared with the iOS app (Shared/DayRating.swift).
 export const DAY_REASONS = ['unchanged', 'distracted', 'awkward', 'odor', 'issues', 'reckless', 'noChance', 'fatigued', 'gps', 'rude'];
 export const DAY_HIGHLIGHTS = ['advice', 'polite', 'comfort', 'clean', 'conversation', 'music'];
@@ -99,7 +105,24 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
       friends: store.friends(user.id).map((f) => ({ id: f.id, username: f.username })),
       incomingRequests: store.incomingCount(user.id),
       week: { id: weekId, ...calendar.weekBounds(weekId) },
+      birthday: birthdayOf(user.id),
+      askBirthday: shouldAskBirthday(user),
     };
+  }
+
+  /** "11-14", or null when not given. */
+  function birthdayOf(userId) {
+    const b = store.birthday(userId);
+    return b?.month ? birthdayKey(b.month, b.day) : null;
+  }
+
+  /** After a few photos of your own; a month after «Не сейчас» it asks again. */
+  function shouldAskBirthday(user) {
+    if (!user.username) return false;
+    const b = store.birthday(user.id);
+    if (b?.month) return false;
+    if (b?.askedLaterAt && now() - b.askedLaterAt < BIRTHDAY_ASK_AGAIN_MS) return false;
+    return store.photoCount(user.id) >= BIRTHDAY_ASK_AFTER_PHOTOS;
   }
 
   function friendsResponse(userId) {
@@ -620,7 +643,10 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
 
   router.get('/api/users/:userId/wishes', ({ user, params }) => {
     const owner = wishlistOwner(user, params.userId);
-    return { user: { id: owner.id, username: owner.username }, wishes: store.wishes(owner.id).map(wishJSON) };
+    return {
+      user: { id: owner.id, username: owner.username, birthday: birthdayOf(owner.id) },
+      wishes: store.wishes(owner.id).map(wishJSON),
+    };
   });
 
   // Title and link in the query; the body is an optional JPEG preview (empty: no picture).
@@ -646,6 +672,26 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     // Gone before the answer: the picture's link stops working with the wish.
     if (wish.file) fs.rmSync(path.join(mediaDir, wish.file), { force: true });
     return { ok: true };
+  });
+
+  // ----- birthday: the day and the month, seen by friends -----
+
+  router.put('/api/me/birthday', ({ user, body }) => {
+    const month = Number(body.month);
+    const day = Number(body.day);
+    if (!isValidBirthday(month, day)) throw new HttpError(400, 'Такой даты нет');
+    store.setBirthday(user.id, month, day, now());
+    return meResponse(user);
+  });
+
+  router.delete('/api/me/birthday', ({ user }) => {
+    store.clearBirthday(user.id, now());
+    return meResponse(user);
+  });
+
+  router.post('/api/me/birthday/later', ({ user }) => {
+    store.askBirthdayLater(user.id, now());
+    return meResponse(user);
   });
 
   // ----- «Кто лучше?»: once a day, pick one of two friends -----
@@ -860,9 +906,29 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     }
   }
 
+  /**
+   * From BIRTHDAY_HOUR on, friends hear about a birthday a month before, 5 days
+   * before and on the day; the person gets «С днём рождения!». Once a day each.
+   */
+  function runBirthdays(t) {
+    if (t < localMidnight(t) + (config.birthday?.hour ?? 10) * 60 * MINUTE) return;
+    const today = localDate(t);
+    for (const b of store.knownBirthdays()) {
+      const daysLeft = daysUntilBirthday(today, b.month, b.day);
+      if (!BIRTHDAY_NOTICES.includes(daysLeft)) continue;
+      if (!store.claimJob(`birthday:${b.userId}:${today}`, t)) continue;
+      const person = { id: b.userId, username: b.username };
+      const wishCount = store.wishCount(b.userId);
+      const message = birthdayMessage({ person, daysLeft, date: birthdayTitle(b.month, b.day), wishCount });
+      background(push.sendToUsers(store.friendIds(b.userId), message));
+      if (daysLeft === 0) background(push.sendToUsers([b.userId], ownBirthdayMessage({ person, wishCount })));
+    }
+  }
+
   async function runDue() {
     const t = now();
     runDuels(t);
+    runBirthdays(t);
     const weekId = calendar.weekIdFor(t);
     const { startsAt, endsAt } = calendar.weekBounds(weekId);
     const previousWeekId = calendar.weekIdFor(startsAt - 1);

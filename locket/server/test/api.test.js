@@ -836,7 +836,7 @@ test('wishlists: links or a title with a picture, seen by you and your friends o
   const listOf = (viewer, owner) => api('GET', `/api/users/${owner.id}/wishes`, { auth: viewer.token });
 
   // Empty to begin with, for me and my friend.
-  assert.deepEqual((await listOf(me, me)).body, { user: { id: me.id, username: 'барсук' }, wishes: [] });
+  assert.deepEqual((await listOf(me, me)).body, { user: { id: me.id, username: 'барсук', birthday: null }, wishes: [] });
   assert.deepEqual((await listOf(yara, me)).body.wishes, []);
 
   // A link alone: named after its site; a typed address gets https://.
@@ -872,7 +872,7 @@ test('wishlists: links or a title with a picture, seen by you and your friends o
 
   // My friend sees them, newest first; the friends list says how many.
   const seen = (await listOf(yara, me)).body;
-  assert.deepEqual(seen.user, { id: me.id, username: 'барсук' });
+  assert.deepEqual(seen.user, { id: me.id, username: 'барсук', birthday: null });
   assert.deepEqual(seen.wishes.map((w) => w.id), [camera.id, link.id]);
   const friends = (await api('GET', '/api/friends', { auth: yara.token })).body.friends;
   assert.deepEqual(friends.map((f) => [f.username, f.wishCount]), [['барсук', 2]]);
@@ -899,4 +899,89 @@ test('wishlists: links or a title with a picture, seen by you and your friends o
   res = await wish(me, { title: 'ещё одно' });
   assert.equal(res.status, 409);
   assert.equal(res.body.error, 'В виш-листе уже 50 желаний — удали что-нибудь');
+});
+
+test('birthdays: asked after a few photos, friends hear a month before, 5 days before and on the day', async (t) => {
+  const h = await harness(t);
+  const { api } = h;
+  h.clock.now = Date.UTC(2026, 9, 1, 9);
+  const me = await h.signUp('me-pass', 'барсук', { device: token('a') });
+  const yara = await h.signUp('yara-pass', 'ярослава', { device: token('b') });
+  await h.signUp('ezh-pass', 'ёжик', { device: token('c') });
+  await h.befriend(me, yara);
+  const meNow = async () => (await api('GET', '/api/me', { auth: me.token })).body;
+
+  // Not on the first photo: after the third.
+  assert.deepEqual([(await meNow()).birthday, (await meNow()).askBirthday], [null, false]);
+  await h.upload(me);
+  assert.equal((await meNow()).askBirthday, false);
+  await h.upload(me);
+  assert.equal((await meNow()).askBirthday, true);
+
+  // «Не сейчас»: asked again a month later.
+  assert.equal((await api('POST', '/api/me/birthday/later', { auth: me.token })).body.askBirthday, false);
+  h.clock.now += 29 * 24 * 3_600_000;
+  assert.equal((await meNow()).askBirthday, false);
+  h.clock.now += 2 * 24 * 3_600_000;
+  assert.equal((await meNow()).askBirthday, true);
+
+  // Only the day and the month; only real dates.
+  for (const json of [{ month: '2', day: '30' }, { month: '13', day: '1' }, { month: '', day: '5' }, {}]) {
+    const res = await api('PUT', '/api/me/birthday', { auth: me.token, json });
+    assert.equal(res.status, 400, JSON.stringify(json));
+    assert.equal(res.body.error, 'Такой даты нет');
+  }
+  let res = await api('PUT', '/api/me/birthday', { auth: me.token, json: { month: '11', day: '14' } });
+  assert.deepEqual([res.body.birthday, res.body.askBirthday], ['11-14', false]);
+
+  // Friends see it next to the name and in the wishlist.
+  assert.equal((await api('GET', '/api/friends', { auth: yara.token })).body.friends[0].birthday, '11-14');
+  assert.equal((await api('GET', '/api/friends', { auth: me.token })).body.friends[0].birthday, null);
+  assert.deepEqual((await api('GET', `/api/users/${me.id}/wishes`, { auth: yara.token })).body.user, { id: me.id, username: 'барсук', birthday: '11-14' });
+
+  const birthdayPushes = (device) => h.pushesTo(token(device)).filter((p) => p.type === 'birthday');
+  const at = async (ms) => {
+    h.clock.now = ms;
+    await h.app.runDue();
+  };
+
+  // A month before (15 October, Moscow): from 10:00, once, to friends only.
+  await at(Date.UTC(2026, 9, 15, 6, 30)); // 09:30 Moscow
+  assert.equal(birthdayPushes('b').length, 0, 'not before 10:00');
+  await at(Date.UTC(2026, 9, 15, 7, 5));
+  await at(Date.UTC(2026, 9, 15, 15));
+  assert.deepEqual(birthdayPushes('b'), [{
+    aps: { alert: { title: 'Через месяц — день рождения', body: 'барсук — 14 ноября. Виш-лист пока пустой — спроси, что подарить' }, sound: 'default', category: 'BIRTHDAY', 'thread-id': 'birthdays' },
+    type: 'birthday',
+    userId: me.id,
+    username: 'барсук',
+    daysLeft: 30,
+  }]);
+  assert.equal(birthdayPushes('c').length, 0, 'ёжик is not a friend');
+  assert.equal(birthdayPushes('a').length, 0, 'the person hears nothing before the day');
+
+  // Nothing in between; 5 days before, with something in the wishlist.
+  await api('POST', `/api/wishes?title=${encodeURIComponent('Плёночный фотоаппарат')}`, { auth: me.token });
+  await at(Date.UTC(2026, 10, 1, 8));
+  assert.equal(birthdayPushes('b').length, 1);
+  await at(Date.UTC(2026, 10, 9, 8));
+  assert.deepEqual(birthdayPushes('b').at(-1).aps.alert, { title: 'Через 5 дней — день рождения', body: 'барсук — 14 ноября. Загляни в виш-лист' });
+
+  // On the day: friends, and the person too.
+  await at(Date.UTC(2026, 10, 14, 7));
+  assert.deepEqual(birthdayPushes('b').at(-1).aps.alert, { title: 'Сегодня день рождения 🎂', body: 'барсук празднует — поздравь! Виш-лист — по нажатию' });
+  assert.equal(birthdayPushes('b').length, 3);
+  assert.deepEqual(birthdayPushes('a'), [{
+    aps: { alert: { title: 'С днём рождения! 🎂', body: 'Друзья получили напоминание и видят твой виш-лист' }, sound: 'default', 'thread-id': 'birthdays' },
+    type: 'birthday',
+    userId: me.id,
+    username: 'барсук',
+    daysLeft: 0,
+  }]);
+
+  // Taken back: no more notices.
+  res = await api('DELETE', '/api/me/birthday', { auth: me.token });
+  assert.deepEqual([res.body.birthday, res.body.askBirthday], [null, true]);
+  await at(Date.UTC(2027, 9, 15, 8));
+  assert.equal(birthdayPushes('b').length, 3);
 });
