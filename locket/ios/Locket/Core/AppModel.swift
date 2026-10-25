@@ -316,6 +316,21 @@ final class AppModel {
         friendsChanged(response, refreshPhotos: true)
     }
 
+    // MARK: - Wishlists
+
+    func wishlist(of userId: String) async throws -> [Wish] {
+        try await signedIn { try await self.api.wishlist(of: userId) }
+    }
+
+    /// `jpeg` is the optional picture.
+    func addWish(title: String, url: String, jpeg: Data?) async throws -> Wish {
+        try await signedIn { try await self.api.addWish(title: title, url: url, jpeg: jpeg) }
+    }
+
+    func deleteWish(id: String) async throws {
+        try await signedIn { try await self.api.deleteWish(id: id) }
+    }
+
     /// Shows the server's answer at once; the rest catches up in the background.
     private func friendsChanged(_ response: FriendsResponse, refreshPhotos: Bool) {
         social = response

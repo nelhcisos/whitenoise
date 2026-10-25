@@ -824,3 +824,79 @@ test('«Кто лучше?» needs two other people', async (t) => {
   assert.equal(h.app.store.duelFor(me.id, '2026-10-14'), undefined);
   assert.deepEqual((await h.api('GET', '/api/duels/today', { auth: me.token })).body, { duel: null });
 });
+
+test('wishlists: links or a title with a picture, seen by you and your friends only', async (t) => {
+  const h = await harness(t);
+  const { api } = h;
+  const me = await h.signUp('me-pass', 'барсук');
+  const yara = await h.signUp('yara-pass', 'ярослава');
+  const ezh = await h.signUp('ezh-pass', 'ёжик');
+  await h.befriend(me, yara);
+  const wish = (who, query, raw) => api('POST', `/api/wishes?${new URLSearchParams(query)}`, { auth: who.token, raw });
+  const listOf = (viewer, owner) => api('GET', `/api/users/${owner.id}/wishes`, { auth: viewer.token });
+
+  // Empty to begin with, for me and my friend.
+  assert.deepEqual((await listOf(me, me)).body, { user: { id: me.id, username: 'барсук' }, wishes: [] });
+  assert.deepEqual((await listOf(yara, me)).body.wishes, []);
+
+  // A link alone: named after its site; a typed address gets https://.
+  h.clock.now += 1000;
+  let res = await wish(me, { url: 'www.ozon.ru/product/plenka-123' });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
+  const link = res.body.wish;
+  assert.deepEqual(link, { id: link.id, title: 'ozon.ru', url: 'https://www.ozon.ru/product/plenka-123', imageUrl: null, createdAt: h.clock.now });
+
+  // A title with a picture, one line, at most 80 characters.
+  h.clock.now += 1000;
+  res = await wish(me, { title: `  Плёночный\n  фотоаппарат ${'а'.repeat(100)}` }, JPEG);
+  const camera = res.body.wish;
+  assert.equal(camera.title, `Плёночный фотоаппарат ${'а'.repeat(58)}`);
+  assert.equal([...camera.title].length, 80);
+  assert.equal(camera.url, null);
+  assert.match(camera.imageUrl, /^https:\/\/locket\.test\/media\/[a-f0-9]{32}\.jpg$/);
+  assert.deepEqual((await api('GET', new URL(camera.imageUrl).pathname)).body, JPEG);
+
+  // Only web links; nothing hidden behind "user@".
+  for (const [query, error] of [
+    [{ title: 'x', url: 'javascript:alert(1)' }, 'Это не похоже на ссылку'],
+    [{ title: 'x', url: 'ftp://files.example.com/a' }, 'Нужна ссылка на сайт — http:// или https://'],
+    [{ title: 'x', url: 'https://ozon.ru@evil.example' }, 'Нужна ссылка на сайт — http:// или https://'],
+    [{ title: 'x', url: 'https://localhost/a' }, 'Нужна ссылка на сайт — http:// или https://'],
+    [{ title: '   ' }, 'Напиши, что хочешь, или вставь ссылку'],
+  ]) {
+    res = await wish(me, query);
+    assert.equal(res.status, 400, JSON.stringify(query));
+    assert.equal(res.body.error, error);
+  }
+  assert.equal((await wish(me, { title: 'гифка' }, Buffer.from('GIF89a'))).body.error, 'Нужна картинка в формате JPEG');
+
+  // My friend sees them, newest first; the friends list says how many.
+  const seen = (await listOf(yara, me)).body;
+  assert.deepEqual(seen.user, { id: me.id, username: 'барсук' });
+  assert.deepEqual(seen.wishes.map((w) => w.id), [camera.id, link.id]);
+  const friends = (await api('GET', '/api/friends', { auth: yara.token })).body.friends;
+  assert.deepEqual(friends.map((f) => [f.username, f.wishCount]), [['барсук', 2]]);
+  assert.equal((await api('GET', '/api/friends', { auth: me.token })).body.friends[0].wishCount, 0);
+
+  // Not friends: there is nothing to see, and only the owner deletes.
+  assert.equal((await listOf(ezh, me)).status, 404);
+  assert.equal((await listOf(ezh, me)).body.error, 'Виш-лист не найден');
+  assert.equal((await listOf(me, { id: 'nobody' })).status, 404);
+  assert.equal((await api('DELETE', `/api/wishes/${camera.id}`, { auth: yara.token })).status, 404);
+  assert.equal((await api('DELETE', `/api/wishes/${camera.id}`, { auth: me.token })).status, 200);
+  assert.equal((await api('GET', new URL(camera.imageUrl).pathname)).status, 404, 'the picture goes with it');
+  assert.deepEqual((await listOf(me, me)).body.wishes.map((w) => w.id), [link.id]);
+  assert.equal((await api('DELETE', `/api/wishes/${camera.id}`, { auth: me.token })).status, 404);
+
+  // Unfriended: her wishlist is closed to me again.
+  await api('POST', `/api/wishes?title=${encodeURIComponent('Наушники')}`, { auth: yara.token });
+  assert.equal((await listOf(me, yara)).body.wishes[0].title, 'Наушники');
+  await api('DELETE', `/api/friends/${yara.id}`, { auth: me.token });
+  assert.equal((await listOf(me, yara)).status, 404);
+
+  // At most 50.
+  for (let i = 1; i < 50; i++) assert.equal((await wish(me, { title: `желание ${i}` })).status, 200);
+  res = await wish(me, { title: 'ещё одно' });
+  assert.equal(res.status, 409);
+  assert.equal(res.body.error, 'В виш-листе уже 50 желаний — удали что-нибудь');
+});

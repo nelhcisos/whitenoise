@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -100,6 +100,15 @@ CREATE TABLE IF NOT EXISTS duels (
 );
 CREATE INDEX IF NOT EXISTS duels_due ON duels(sent_at, send_at);
 CREATE INDEX IF NOT EXISTS duels_week ON duels(week_id, chosen_id);
+CREATE TABLE IF NOT EXISTS wishes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  url TEXT,
+  file TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS wishes_user ON wishes(user_id, created_at);
 CREATE TABLE IF NOT EXISTS jobs (
   key TEXT PRIMARY KEY,
   done_at INTEGER NOT NULL
@@ -107,7 +116,8 @@ CREATE TABLE IF NOT EXISTS jobs (
 `;
 
 /**
- * Opens (or creates) the database. A version 1 file — companies, email sign-in —
+ * Opens (or creates) the database. Version 2 → 3 only adds tables (wishes), which
+ * CREATE TABLE IF NOT EXISTS does in place. A version 1 file — companies, email sign-in —
  * is moved aside as locket.v1-<time>.db and a fresh one is created next to it:
  * nothing is deleted, but the old data is not carried over.
  */
@@ -247,8 +257,9 @@ export function createStore(db) {
     friendIds: (userId) => q(FRIEND_IDS).all(userId).map((r) => r.id),
     friends: (userId) =>
       q(
-        `SELECT u.id, u.username, f.created_at AS since FROM (${FRIEND_IDS}) f
-         JOIN users u ON u.id = f.id ORDER BY u.username_key`,
+        `SELECT u.id, u.username, f.created_at AS since,
+           (SELECT COUNT(*) FROM wishes w WHERE w.user_id = u.id) AS wishCount
+         FROM (${FRIEND_IDS}) f JOIN users u ON u.id = f.id ORDER BY u.username_key`,
       ).all(userId),
     friendCount: (userId) => q('SELECT COUNT(*) AS n FROM friendships WHERE user_a = ?1 OR user_b = ?1').get(userId).n,
     areFriends: (a, b) => Boolean(q('SELECT 1 AS x FROM friendships WHERE user_a = ? AND user_b = ?').get(...pair(a, b))),
@@ -275,6 +286,18 @@ export function createStore(db) {
     incomingCount: (userId) => q('SELECT COUNT(*) AS n FROM friend_requests WHERE to_id = ?').get(userId).n,
 
     // ---------- photos ----------
+    // ---------- wishes ----------
+    wishes: (userId) =>
+      q(
+        `SELECT id, user_id AS userId, title, url, file, created_at AS createdAt FROM wishes
+         WHERE user_id = ? ORDER BY created_at DESC, rowid DESC`,
+      ).all(userId),
+    wish: (id) => q('SELECT id, user_id AS userId, title, url, file, created_at AS createdAt FROM wishes WHERE id = ?').get(id),
+    wishCount: (userId) => q('SELECT COUNT(*) AS n FROM wishes WHERE user_id = ?').get(userId).n,
+    insertWish: ({ id, userId, title, url, file, now }) =>
+      q('INSERT INTO wishes (id, user_id, title, url, file, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, userId, title, url, file, now),
+    deleteWish: (id) => q('DELETE FROM wishes WHERE id = ?').run(id),
+
     insertPhoto: ({ id, authorId, weekId, caption, file, now }) =>
       q('INSERT INTO photos (id, author_id, week_id, caption, file, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
         id, authorId, weekId, caption, file, now,

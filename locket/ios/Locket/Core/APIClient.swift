@@ -36,9 +36,11 @@ final class APIClient: @unchecked Sendable {
         if basePath.hasSuffix("/") { basePath.removeLast() }
         components.percentEncodedPath = basePath + "/" + path
         if !query.isEmpty {
-            components.queryItems = query
-            // URLComponents leaves "+" alone, but servers read it as a space.
-            components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+            // Everything but unreserved ASCII is escaped, so "&", "=" and "+" inside a value
+            // (a pasted link, a caption) stay part of that value.
+            components.percentEncodedQuery = query
+                .map { "\(Self.queryEscaped($0.name))=\(Self.queryEscaped($0.value ?? ""))" }
+                .joined(separator: "&")
         }
         var request = URLRequest(url: components.url!)
         request.httpMethod = method
@@ -86,6 +88,12 @@ final class APIClient: @unchecked Sendable {
         } catch {
             throw APIError.server("Сервер ответил непонятно. Обнови приложение или попробуй позже.")
         }
+    }
+
+    private static let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+
+    private static func queryEscaped(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: unreserved) ?? ""
     }
 
     /// One path segment (an id), percent-encoded so it can't add segments or a query.
@@ -162,6 +170,29 @@ extension APIClient {
 
     func removeFriend(userId: String) async throws -> FriendsResponse {
         try await request("DELETE", "api/friends/\(segment(userId))")
+    }
+
+    // MARK: Wishlists
+
+    /// Yours or a friend's.
+    func wishlist(of userId: String) async throws -> [Wish] {
+        let response: WishlistResponse = try await request("GET", "api/users/\(segment(userId))/wishes")
+        return response.wishes
+    }
+
+    /// Title and link travel in the query; the picture, if any, is the body.
+    func addWish(title: String, url: String, jpeg: Data?) async throws -> Wish {
+        var query: [URLQueryItem] = []
+        if !title.isEmpty { query.append(URLQueryItem(name: "title", value: title)) }
+        if !url.isEmpty { query.append(URLQueryItem(name: "url", value: url)) }
+        let response: WishResponse = try await request(
+            "POST", "api/wishes", query: query, body: jpeg, contentType: jpeg == nil ? nil : "image/jpeg", timeout: 60
+        )
+        return response.wish
+    }
+
+    func deleteWish(id: String) async throws {
+        let _: OKResponse = try await request("DELETE", "api/wishes/\(segment(id))")
     }
 
     // MARK: Photos

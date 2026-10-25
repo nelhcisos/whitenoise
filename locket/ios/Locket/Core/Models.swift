@@ -67,7 +67,31 @@ struct FriendEntry: Codable, Hashable, Identifiable {
     let id: String
     let username: String
     let since: Double
+    /// How many wishes are in their wishlist.
+    let wishCount: Int?
 }
+
+/// One wish: what, where to get it (a web link) and a picture. Friends see it; only its owner deletes it.
+struct Wish: Codable, Hashable, Identifiable {
+    let id: String
+    let title: String
+    let url: URL?
+    let imageUrl: URL?
+    let createdAt: Double
+
+    /// "ozon.ru": where the link leads, shown under the title.
+    var site: String? {
+        guard let host = url?.host(percentEncoded: false) else { return nil }
+        return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+    }
+}
+
+struct WishlistResponse: Decodable {
+    let user: Friend
+    let wishes: [Wish]
+}
+
+struct WishResponse: Decodable { let wish: Wish }
 
 struct FriendRequest: Codable, Hashable, Identifiable {
     let id: String

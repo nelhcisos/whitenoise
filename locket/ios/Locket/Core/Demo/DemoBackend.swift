@@ -51,6 +51,15 @@ actor DemoBackend {
         let at: Double
     }
 
+    private struct WishRecord {
+        let id: String
+        let userId: String
+        let title: String
+        let url: String?
+        let image: URL?
+        let createdAt: Double
+    }
+
     private enum Event {
         case accept(stranger: String, user: String)
         case rate(photoId: String, by: String)
@@ -60,6 +69,7 @@ actor DemoBackend {
     private var friendships: [String: Double] = [:] // "a|b" (sorted) → since
     private var requests: [Request] = []
     private var photos: [Photo] = []
+    private var wishes: [WishRecord] = []
     private var stars: [Star] = []
     private var reactions: [Reaction] = []
     private var events: [(due: Date, event: Event)] = []
@@ -151,6 +161,24 @@ actor DemoBackend {
         if let ids = route("DELETE", "api/friends/*") {
             friendships[pairKey(me.id, ids[0])] = nil
             return reply(friendsJSON(me.id))
+        }
+
+        // Wishlists (server/src/app.js «wishlists»)
+        if let ids = route("GET", "api/users/*/wishes") {
+            let ownerId = ids[0]
+            guard let owner = users[ownerId], ownerId == me.id || areFriends(me.id, ownerId) else {
+                return failure(404, "Виш-лист не найден")
+            }
+            let list = wishes.filter { $0.userId == ownerId }.sorted { $0.createdAt > $1.createdAt }.map(wishJSON)
+            return reply(["user": ["id": owner.id, "username": owner.username ?? ""], "wishes": list])
+        }
+        if route("POST", "api/wishes") != nil { return addWish(by: me.id, title: q["title"], url: q["url"], jpeg: body) }
+        if let ids = route("DELETE", "api/wishes/*") {
+            guard let index = wishes.firstIndex(where: { $0.id == ids[0] && $0.userId == me.id }) else {
+                return failure(404, "Желание не найдено")
+            }
+            wishes.remove(at: index)
+            return reply(["ok": true])
         }
 
         // Photos
@@ -464,7 +492,12 @@ actor DemoBackend {
     private func friendsJSON(_ id: String) -> [String: Any] {
         let friends = friendIds(id).compactMap { users[$0] }
             .sorted { usernameKey($0.username ?? "") < usernameKey($1.username ?? "") }
-            .map { ["id": $0.id, "username": $0.username ?? "", "since": friendships[pairKey(id, $0.id)] ?? 0] as [String: Any] }
+            .map { friend -> [String: Any] in
+                [
+                    "id": friend.id, "username": friend.username ?? "", "since": friendships[pairKey(id, friend.id)] ?? 0,
+                    "wishCount": wishes.filter { $0.userId == friend.id }.count,
+                ]
+            }
         let incoming = requests.filter { $0.to == id }.sorted { $0.at > $1.at }
             .compactMap { r -> [String: Any]? in
                 guard let user = users[r.from] else { return nil }
@@ -550,12 +583,58 @@ actor DemoBackend {
         return (photo, unlocked)
     }
 
+    // MARK: - Wishlists
+
+    private func wishJSON(_ w: WishRecord) -> [String: Any] {
+        [
+            "id": w.id, "title": w.title, "url": w.url.map { $0 as Any } ?? NSNull(),
+            "imageUrl": w.image.map { $0.absoluteString as Any } ?? NSNull(), "createdAt": w.createdAt,
+        ]
+    }
+
+    /// The same rules as the server: a web link, a one-line title of up to 80 characters
+    /// (or the site's name), an optional JPEG, at most 50 wishes.
+    private func addWish(by userId: String, title rawTitle: String?, url rawURL: String?, jpeg: Data?) -> Reply {
+        var link: URL?
+        let typed = (rawURL ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !typed.isEmpty {
+            guard let url = URL(string: typed.contains("://") ? typed : "https://" + typed),
+                  let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http",
+                  let host = url.host(), host.contains("."), url.user() == nil, url.password() == nil
+            else { return failure(400, "Нужна ссылка на сайт — http:// или https://") }
+            link = url
+        }
+        var title = String((rawTitle ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ").prefix(80))
+        if title.isEmpty, let host = link?.host() {
+            title = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+        }
+        guard !title.isEmpty else { return failure(400, "Напиши, что хочешь, или вставь ссылку") }
+        guard wishes.filter({ $0.userId == userId }).count < 50 else {
+            return failure(409, "В виш-листе уже 50 желаний — удали что-нибудь")
+        }
+        var image: URL?
+        if let jpeg, !jpeg.isEmpty {
+            guard isJPEG(jpeg) else { return failure(400, "Нужна картинка в формате JPEG") }
+            image = saveMedia(jpeg)
+        }
+        let wish = WishRecord(
+            id: UUID().uuidString.lowercased(), userId: userId, title: title, url: link?.absoluteString, image: image, createdAt: nowMs()
+        )
+        wishes.append(wish)
+        return reply(["wish": wishJSON(wish)])
+    }
+
+    private func saveMedia(_ jpeg: Data) -> URL {
+        let url = Self.mediaDirectory.appendingPathComponent("\(UUID().uuidString.lowercased()).jpg")
+        try? jpeg.write(to: url)
+        return url
+    }
+
     @discardableResult
     private func addPhoto(author: String, week: String, caption: String?, at: Double, jpeg: Data) -> Photo {
         seq += 1
         let id = UUID().uuidString.lowercased()
-        let url = Self.mediaDirectory.appendingPathComponent("\(id).jpg")
-        try? jpeg.write(to: url)
+        let url = saveMedia(jpeg)
         let photo = Photo(id: id, authorId: author, weekId: week, caption: caption, url: url, createdAt: at, seq: seq)
         photos.append(photo)
         return photo
@@ -900,6 +979,20 @@ actor DemoBackend {
             duels.append(DuelRecord(
                 id: UUID().uuidString.lowercased(), userId: who, date: "", left: left, right: right,
                 choice: pick, chosenId: pick == "left" ? left : right, weekId: week
+            ))
+        }
+        // Wishlists: ярослава and ёжик have a few, барсук one.
+        for (who, title, link, scene, hoursAgo) in [
+            ("u-yara", "Плёночный фотоаппарат", nil, DemoArt.Scene.sunset, 50.0),
+            ("u-yara", "Билеты на концерт", "https://afisha.yandex.ru", .night, 30),
+            ("u-yara", "Кофемолка", "https://www.ozon.ru", .coffee, 5),
+            ("u-ezh", "Поход в горы вместе", nil, .hills, 70),
+            ("u-ezh", "Наушники", "https://market.yandex.ru", nil, 20),
+            ("u-barsuk", "Книга «Маленький принц»", nil, nil, 10),
+        ] as [(String, String, String?, DemoArt.Scene?, Double)] {
+            wishes.append(WishRecord(
+                id: UUID().uuidString.lowercased(), userId: who, title: title, url: link,
+                image: scene.map { saveMedia(art($0)) }, createdAt: now - hoursAgo * 3_600_000
             ))
         }
     }

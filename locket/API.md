@@ -134,13 +134,13 @@ IP: при `TRUST_PROXY=1` (так за Caddy) берётся первый ад�
 
 ```json
 {
-  "friends":  [{ "id": "…", "username": "ярослава", "since": 0 }],
+  "friends":  [{ "id": "…", "username": "ярослава", "since": 0, "wishCount": 3 }],
   "incoming": [{ "id": "…", "username": "енот", "createdAt": 0 }],
   "outgoing": [{ "id": "…", "username": "лось", "createdAt": 0 }]
 }
 ```
 
-`friends` отсортированы по ключу, заявки — сначала новые.
+`friends` отсортированы по ключу, заявки — сначала новые. `wishCount` — сколько желаний в виш-листе друга.
 
 **`POST /api/friends/requests`** `{ "userId": "…" }` → `Friends`
 
@@ -155,6 +155,26 @@ IP: при `TRUST_PROXY=1` (так за Caddy) берётся первый ад�
 **`DELETE /api/friends/requests/:userId`** → `Friends`. Отклоняет входящую или отменяет исходящую заявку. Повтор безопасен.
 
 **`DELETE /api/friends/:userId`** → `Friends`. Удаляет дружбу. Повтор безопасен.
+
+### Виш-лист
+
+Что человек хочет получить — на день рождения, праздник или просто так. Свой виш-лист заполняешь сам; виш-лист друга открывается значком-свитком рядом с его именем в списке друзей. Видят его только сам человек и его друзья.
+
+```json
+Wish = { "id", "title": "Плёночный фотоаппарат", "url": "https://…" | null, "imageUrl": "https://…/media/….jpg" | null, "createdAt" }
+```
+
+**`GET /api/users/:userId/wishes`** → `{ "user": { "id", "username" }, "wishes": [Wish] }` — свой или друга, от новых к старым. Чужой — `404 Виш-лист не найден`.
+
+**`POST /api/wishes?title=…&url=…`** (тело — JPEG-картинка или пусто) → `{ "wish": Wish }`.
+
+- `title` — одна строка, пробелы схлопываются, не длиннее 80 символов. Если названия нет, но есть ссылка, название — имя сайта («ozon.ru»). Нет ни того, ни другого — `400 Напиши, что хочешь, или вставь ссылку`.
+- `url` — только `http` или `https`, с настоящим доменом (с точкой), без части «логин@» перед адресом (ею маскируют, куда ведёт ссылка). Без схемы спереди добавляется `https://`. Иначе `400 Нужна ссылка на сайт — http:// или https://` или `400 Это не похоже на ссылку`. Длиннее 2048 символов — `400 Слишком длинная ссылка`.
+- Картинка — JPEG до 8 МБ, как у фото; другое — `400 Нужна картинка в формате JPEG`.
+- Не больше 50 желаний: `409 В виш-листе уже 50 желаний — удали что-нибудь`.
+- Сервер ссылки не открывает. Название и картинку по ссылке достаёт телефон (LinkPresentation) и присылает как обычные `title` и тело запроса.
+
+**`DELETE /api/wishes/:id`** → `{ "ok": true }`. Только своё; чужое или удалённое — `404 Желание не найдено`. Картинка удаляется вместе с ним.
 
 ### Фото
 
@@ -308,7 +328,7 @@ Winner = { "userId", "name" }
 - Категория `FRIEND_REQUEST` с кнопкой `ACCEPT_FRIEND` «Принять» — заявку можно принять прямо с экрана блокировки, приложение отправит запрос в фоне.
 - Нажатие на `locked` открывает камеру. Нажатие на `friend_request` или `friend_accepted` открывает «Друзья».
 
-## База (`user_version = 2`)
+## База (`user_version = 3`)
 
 ```sql
 users(id TEXT PRIMARY KEY, username TEXT, username_key TEXT UNIQUE, password_key TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL)
@@ -322,9 +342,13 @@ reactions, stars, jobs — как раньше
 weeks(user_id → users ON DELETE CASCADE, week_id, closed_at, results, PRIMARY KEY(user_id, week_id))
 days(user_id → users ON DELETE CASCADE, date, stars 1–5, reasons JSON, liked JSON, condition, place, updated_at, PRIMARY KEY(user_id, date))
 duels(id PRIMARY KEY, user_id, date, left_id, right_id, send_at, sent_at, choice, chosen_id, week_id, chosen_at, UNIQUE(user_id, date))
+wishes(id PRIMARY KEY, user_id → users ON DELETE CASCADE, title, url, file, created_at)
+  -- индекс: (user_id, created_at)
 ```
 
-**Старая база.** Если в файле нет `user_version = 2`, но есть таблица `circles`, это база первой версии с компаниями и email. Её файл (и `-wal`, `-shm`) переименовывается в `locket.v1-<время>.db`, а рядом создаётся новая. Старые данные не удаляются, но и не используются.
+Версия 3 только добавляет таблицу `wishes`: база версии 2 открывается как есть, таблица создаётся рядом.
+
+**Старая база.** Если версия файла меньше текущей и в нём есть таблица `circles`, это база первой версии с компаниями и email. Её файл (и `-wal`, `-shm`) переименовывается в `locket.v1-<время>.db`, а рядом создаётся новая. Старые данные не удаляются, но и не используются.
 
 ## Настройки сервера
 

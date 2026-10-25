@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { domainToUnicode } from 'node:url';
 import { KINDS, MAX_STARS, bestPhotoOf, computeStandings, mostReactedPhoto } from './awards.js';
 import { createAttemptLimiter, hashToken, newSessionToken, passwordKey } from './auth.js';
 import { createStore } from './db.js';
@@ -26,6 +27,9 @@ const PASSWORD_MIN = 4;
 const PASSWORD_MAX = 64;
 const MINUTE = 60_000;
 const DAY_MS = 24 * 60 * MINUTE;
+const MAX_WISHES = 50;
+const WISH_TITLE_MAX = 80;
+const WISH_URL_MAX = 2048;
 // The day rating's option ids, shared with the iOS app (Shared/DayRating.swift).
 export const DAY_REASONS = ['unchanged', 'distracted', 'awkward', 'odor', 'issues', 'reckless', 'noChance', 'fatigued', 'gps', 'rude'];
 export const DAY_HIGHLIGHTS = ['advice', 'polite', 'comfort', 'clean', 'conversation', 'music'];
@@ -530,7 +534,8 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     const photo = visiblePhoto(user, params.id);
     if (photo.authorId !== user.id) throw new HttpError(403, 'Удалять можно только свои фото');
     store.deletePhoto(photo.id);
-    fs.rm(path.join(mediaDir, photo.file), { force: true }, () => {});
+    // Gone before the answer: the picture's link stops working with the photo.
+    fs.rmSync(path.join(mediaDir, photo.file), { force: true });
     return { ok: true };
   });
 
@@ -570,6 +575,77 @@ export function createApp({ config, db, apns = null, now = () => Date.now(), log
     const photo = ratablePhoto(user, params.id);
     store.setStars(photo.id, user.id, 0, now());
     return { photo: serializePhotos([photo], user.id)[0] };
+  });
+
+  // ----- wishlists: what you'd like to get, seen by you and your friends -----
+
+  const wishJSON = (w) => ({ id: w.id, title: w.title, url: w.url, imageUrl: w.file ? mediaUrl(w.file) : null, createdAt: w.createdAt });
+
+  /** "Плёночный фотоаппарат": one line, at most 80 characters. */
+  const cleanWishTitle = (value) =>
+    [...String(value ?? '').replace(/\s+/g, ' ').trim()].slice(0, WISH_TITLE_MAX).join('').trim();
+
+  /**
+   * A link friends will open in the browser: http or https to a real host, no
+   * "user@" part (it can disguise where the link goes). "ozon.ru/item" gets https://.
+   */
+  function cleanWishUrl(value) {
+    let text = String(value ?? '').trim();
+    if (!text) return null;
+    if (text.length > WISH_URL_MAX) throw new HttpError(400, 'Слишком длинная ссылка');
+    if (!text.includes('://')) text = `https://${text}`;
+    let link;
+    try {
+      link = new URL(text);
+    } catch {
+      throw new HttpError(400, 'Это не похоже на ссылку');
+    }
+    const web = link.protocol === 'https:' || link.protocol === 'http:';
+    if (!web || !link.hostname.includes('.') || link.username || link.password) {
+      throw new HttpError(400, 'Нужна ссылка на сайт — http:// или https://');
+    }
+    return link.href;
+  }
+
+  /** A link without a title is called by its site: "ozon.ru". */
+  const siteName = (link) => domainToUnicode(new URL(link).hostname).replace(/^www\./, '');
+
+  /** Your own wishlist or a friend's; anyone else's does not exist for you. */
+  function wishlistOwner(user, userId) {
+    if (userId === user.id) return user;
+    const owner = store.user(userId);
+    if (!owner || !store.areFriends(user.id, owner.id)) throw new HttpError(404, 'Виш-лист не найден');
+    return owner;
+  }
+
+  router.get('/api/users/:userId/wishes', ({ user, params }) => {
+    const owner = wishlistOwner(user, params.userId);
+    return { user: { id: owner.id, username: owner.username }, wishes: store.wishes(owner.id).map(wishJSON) };
+  });
+
+  // Title and link in the query; the body is an optional JPEG preview (empty: no picture).
+  router.post(
+    '/api/wishes',
+    ({ user, url, body }) => {
+      const link = cleanWishUrl(url.searchParams.get('url'));
+      const title = cleanWishTitle(url.searchParams.get('title')) || (link ? siteName(link) : '');
+      if (!title) throw new HttpError(400, 'Напиши, что хочешь, или вставь ссылку');
+      if (store.wishCount(user.id) >= MAX_WISHES) throw new HttpError(409, `В виш-листе уже ${MAX_WISHES} желаний — удали что-нибудь`);
+      if (body.length) assertJpeg(body);
+      const id = crypto.randomUUID();
+      store.insertWish({ id, userId: user.id, title, url: link, file: body.length ? saveMedia(body) : null, now: now() });
+      return { wish: wishJSON(store.wish(id)) };
+    },
+    { raw: true },
+  );
+
+  router.delete('/api/wishes/:id', ({ user, params }) => {
+    const wish = store.wish(params.id);
+    if (!wish || wish.userId !== user.id) throw new HttpError(404, 'Желание не найдено');
+    store.deleteWish(wish.id);
+    // Gone before the answer: the picture's link stops working with the wish.
+    if (wish.file) fs.rmSync(path.join(mediaDir, wish.file), { force: true });
+    return { ok: true };
   });
 
   // ----- «Кто лучше?»: once a day, pick one of two friends -----

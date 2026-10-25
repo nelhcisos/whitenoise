@@ -1,8 +1,9 @@
 import SwiftUI
 import UserNotifications
 
-/// Friends, found by username: your own username to share, search, requests, the friends
-/// themselves, notifications and, last, the way out.
+/// Friends, found by username: your own username to share and your wishlist, search,
+/// requests, the friends themselves (each with their wishlist), notifications and, last,
+/// the way out.
 struct FriendsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
@@ -21,6 +22,9 @@ struct FriendsView: View {
     /// The last failed action, shown under that person's row.
     @State private var rowErrors: [String: String] = [:]
     @State private var friendToRemove: FriendEntry?
+
+    /// The wishlist open in a sheet: yours or a friend's.
+    @State private var openWishlist: WishlistOwner?
 
     @State private var confirmSignOut = false
     @State private var signingOut = false
@@ -81,6 +85,12 @@ struct FriendsView: View {
             if newPhase == .active { Task { await refreshNotificationStatus() } }
         }
         .onChange(of: model.social) { reconcile() }
+        .sheet(item: $openWishlist, onDismiss: {
+            // Counts next to friends may have changed meanwhile.
+            Task { await model.refreshSocial() }
+        }) { owner in
+            WishlistView(owner: owner)
+        }
     }
 
     /// "3 друга", or the next step when there are none yet.
@@ -110,6 +120,13 @@ struct FriendsView: View {
 
             ShareLink(item: "Найди меня в Locket: \(username)") {
                 Text("Поделиться юзернеймом…")
+            }
+            .buttonStyle(LocketButtonStyle(.secondary))
+
+            Button {
+                if let id = model.myId { openWishlist = WishlistOwner(id: id, username: username) }
+            } label: {
+                Label("Мой виш-лист", systemImage: "scroll")
             }
             .buttonStyle(LocketButtonStyle(.secondary))
         }
@@ -362,22 +379,54 @@ struct FriendsView: View {
     private func friendRow(_ friend: FriendEntry) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             personRow(friend.username, status: busy[friend.id] == .remove ? "Удаляю…" : nil) {
-                Menu {
-                    Button("Удалить из друзей…", systemImage: "person.badge.minus", role: .destructive) {
-                        friendToRemove = friend
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Palette.muted)
-                        .frame(width: Space.hitTarget, height: Space.hitTarget)
-                        .contentShape(Rectangle())
+                HStack(spacing: 0) {
+                    wishlistButton(friend)
+                    friendMenu(friend)
                 }
-                .accessibilityLabel("Ещё: \(friend.username)")
-                .disabled(busy[friend.id] != nil)
             }
             rowError(friend.id)
         }
+    }
+
+    /// The scroll next to a friend: their wishlist, with how many wishes are in it.
+    private func wishlistButton(_ friend: FriendEntry) -> some View {
+        let count = friend.wishCount ?? 0
+        return Button {
+            openWishlist = WishlistOwner(id: friend.id, username: friend.username)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "scroll")
+                    .font(.body.weight(.semibold))
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
+                }
+            }
+            .foregroundStyle(count > 0 ? Palette.text : Palette.muted)
+            .padding(.horizontal, 6)
+            .frame(minWidth: Space.hitTarget, minHeight: Space.hitTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Виш-лист: \(friend.username)")
+        .accessibilityValue(count > 0 ? WishlistView.count(count) : "пусто")
+    }
+
+    private func friendMenu(_ friend: FriendEntry) -> some View {
+        Menu {
+            Button("Удалить из друзей…", systemImage: "person.badge.minus", role: .destructive) {
+                friendToRemove = friend
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Palette.muted)
+                .frame(width: Space.hitTarget, height: Space.hitTarget)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Ещё: \(friend.username)")
+        .disabled(busy[friend.id] != nil)
     }
 
     private var removalTitle: String {
