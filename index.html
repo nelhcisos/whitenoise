@@ -716,7 +716,7 @@
 
 <section class="screen" id="s2" hidden>
   <div class="wrap">
-    <canvas id="throne" width="160" height="120" aria-label="Пиксельный белый котик с розовым бантиком на адском троне"></canvas>
+    <canvas id="throne" width="160" height="120" aria-label="Пиксельный рыжий котик на адском троне"></canvas>
     <div class="bubble" aria-live="polite"><span class="speaker">КОТ:</span> <span id="speech"></span><span class="cursor" id="cursor">█</span></div>
     <button class="btn" id="assistBtn" type="button" hidden>СТАТЬ АССИСТЕНТОМ</button>
   </div>
@@ -778,7 +778,7 @@
 
 <section class="screen" id="s7" hidden>
   <div class="wrap">
-    <img id="catImg2" class="cat-small" alt="Котик с бантиком на адском троне">
+    <img id="catImg2" class="cat-small" alt="Пиксельный рыжий котик на адском троне">
     <div class="bubble"><span class="speaker">КОТ:</span> <span id="thanksText"></span></div>
     <div class="choices" id="thanksChoices">
       <button class="btn btn-ghost" type="button">ТЕБЕ, БОСС</button>
@@ -810,8 +810,7 @@
     </div>
     <div class="btn-row">
       <button class="btn" id="aaBtn" type="button">СКАЗАТЬ СПАСИБО</button>
-      <button class="btn btn-ghost" id="aaAgainBtn" type="button" hidden>ЕЩЁ СМЕНА</button>
-      <button class="btn btn-ghost" id="aaBossBtn" type="button" hidden>ЗАГЛЯНУТЬ К БОССУ</button>
+      <button class="btn" id="aaAgainBtn" type="button" hidden>К МАСТЕРУ ▶</button>
     </div>
   </div>
 </section>
@@ -826,9 +825,8 @@
 
 <section class="screen" id="s10" hidden>
   <div class="wrap">
-    <p class="tagline" id="payDay">ДЕНЬ 2</p>
-    <canvas id="payScene" width="160" height="120" aria-label="Кот на адском троне"></canvas>
-    <canvas id="lessonCanvas" width="160" height="90" aria-label="Схема зубов на текущем этапе лечения" hidden></canvas>
+    <p class="tagline" id="payDay">УРОК КОТА</p>
+    <canvas id="lessonCanvas" width="160" height="90" aria-label="Схема зубов на текущем этапе лечения"></canvas>
     <div class="bubble"><span class="speaker" id="payWho">КОТ:</span> <span id="payLine"></span></div>
     <div class="btn-row" id="payBtns"></div>
   </div>
@@ -908,7 +906,7 @@
 
 <section class="screen" id="s4" hidden>
   <div class="wrap">
-    <img id="catImg" class="cat-small" alt="Котик с бантиком на адском троне">
+    <img id="catImg" class="cat-small" alt="Пиксельный рыжий котик на адском троне">
     <div class="bubble"><span class="speaker">КОТ:</span> <span id="catVerdict"></span></div>
     <div class="botrow" id="verdictBot" hidden>
       <canvas id="bot3" class="botface" width="16" height="16" aria-hidden="true"></canvas>
@@ -916,8 +914,7 @@
       <div class="botsay"><span class="speaker">БОТ-ОРТОДОНТ:</span> *смущённо прижимает к себе розу с тысячей*</div>
     </div>
     <div class="btn-row">
-      <button class="btn" id="nextBtn" type="button">ДАЛЬШЕ</button>
-      <button class="btn btn-ghost" id="againBtn" type="button">ЕЩЁ СМЕНА</button>
+      <button class="btn" id="nextBtn" type="button">К МАСТЕРУ ▶</button>
     </div>
   </div>
 </section>
@@ -925,9 +922,8 @@
 <script>
 (() => {
   const SPEECH = "Так, ну смотри. Симулятор ортодонта — это серьёзная игра. " +
-    "Сначала тебе нужно поассистировать ботам, которые играют в симулятор ортодонта, " +
-    "и посмотреть, как они это делают. Только после этого мы сможем допустить тебя " +
-    "к игровому процессу. Для начала ты будешь ассистентом.";
+    "Теорию тебе даёт мастер, а практику — я. Сначала поассистируешь ботам, которые играют " +
+    "в симулятор ортодонта, и посмотришь, как они это делают. Один пациент — и обратно к мастеру.";
 
   const screens = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "s12", "s13"].map(id => document.getElementById(id));
   let current = 0;
@@ -958,39 +954,113 @@
     });
   }
 
-  // ---------- Cat on the throne of hell (pixelated meme, 160x120) ----------
-  const THRONE_SRC = "data:image/png;base64,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";
+  // ---------- Cat on the throne of hell (pixel art) ----------
+  // The ginger cat from the very first version: a 24x24 sprite on a spiked throne, flames behind,
+  // a lava floor. One scene per canvas (each keeps its own flames); THRONE_SRC is a still for <img>.
+  const CAT = [
+    "....K..............K....",
+    "...KOK............KOK...",
+    "...KOPK..........KPOK...",
+    "..KOOPOK........KOPOOK..",
+    "..KOOOOOKKKKKKKKOOOOOK..",
+    "..KOOoOOOOOOOOOOOOoOOK..",
+    ".KOOOOOOOoOOOOoOOOOOOOK.",
+    ".KOOOKKKOOOOOOOOKKKOOOK.",
+    ".KOOKYYKKOOOOOOKKYYKOOK.",
+    ".KOOKYKYKOOOOOOKYKYKOOK.",
+    ".KOOOKKKOOOOOOOOKKKOOOK.",
+    ".KWWOOOOOOOKPKOOOOOOWWK.",
+    ".KWWWOOOOOOOKOOOOOOWWWK.",
+    "..KWWWOOOOKOKOKOOOWWWK..",
+    "...KKWWWWWWWWWWWWWWKK...",
+    "....KOOOWWWWWWWWOOOK....",
+    "...KOOOOWWWWWWWWOOOOK...",
+    "..KOOoOOWWWWWWWWOOoOOK..",
+    "..KOOOoOWWWWWWWWOoOOOK..",
+    ".KOOOOOOOWWWWWWOOOOOOOK.",
+    ".KOoOOOOOOWWWWOOOOOOoOK.",
+    ".KOOoOOOOOOOOOOOOOOoOOK.",
+    ".KOOOOKWWKOOOOKWWKOOOOK.",
+    ".KKKKKKKKKKKKKKKKKKKKKK.",
+  ];
+  const CAT_PAL = { K: "#120808", O: "#f28c28", o: "#b85a12", W: "#fff4e0", Y: "#ffe94d", P: "#ff8fa8" };
+  const SKULL = [".BBB.", "BKBKB", "BBBBB", ".BKB."];
+  const HELL_FIRE = ["#fff6a0", "#ffd23a", "#ff8a1c", "#e8361a", "#8f1010", "#3d0606"];
+  function drawThroneShape(c) {
+    const dark = "#2a0508", mid = "#5c0d14", hi = "#9e1b26", gold = "#d9a520";
+    c.fillStyle = dark; c.fillRect(58, 28, 44, 70);
+    c.fillStyle = mid; c.fillRect(61, 31, 38, 64);
+    c.fillStyle = hi; c.fillRect(61, 31, 2, 64); c.fillRect(97, 31, 2, 64);
+    for (let i = 0; i < 5; i++) {   // spikes along the top
+      const sx = 59 + i * 9;
+      for (let h = 0; h < 10; h++) {
+        const half = Math.max(0, 4 - (h >> 1));
+        c.fillStyle = h < 2 ? gold : dark;
+        c.fillRect(sx + 4 - half, 28 - h, half * 2 + 1, 1);
+      }
+    }
+    for (let i = 0; i < 12; i++) {   // horns
+      c.fillStyle = i > 8 ? "#e9e2c8" : "#bfb89c";
+      c.fillRect(55 - (i >> 1), 34 - i, 3, 2);
+      c.fillRect(103 + (i >> 1), 34 - i, 3, 2);
+    }
+    c.fillStyle = gold; c.fillRect(58, 28, 44, 2);
+    c.fillStyle = "#ff3b3b"; c.fillRect(78, 36, 4, 4);
+    c.fillStyle = "#ffb0b0"; c.fillRect(78, 36, 1, 1);
+    c.fillStyle = dark; c.fillRect(50, 72, 14, 10); c.fillRect(96, 72, 14, 10);
+    c.fillStyle = hi; c.fillRect(50, 72, 14, 2); c.fillRect(96, 72, 14, 2);
+    drawSprite(c, SKULL, 52, 66, { B: "#e9e2c8", K: "#120808" });
+    drawSprite(c, SKULL, 103, 66, { B: "#e9e2c8", K: "#120808" });
+    c.fillStyle = dark; c.fillRect(54, 92, 52, 8);
+    c.fillStyle = hi; c.fillRect(54, 92, 52, 2);
+    c.fillStyle = dark; c.fillRect(56, 100, 6, 12); c.fillRect(98, 100, 6, 12);
+    c.fillStyle = gold; c.fillRect(56, 110, 6, 2); c.fillRect(98, 110, 6, 2);
+  }
+  // returns draw(ctx, t): t is a frame counter; the cat breathes and blinks now and then
+  function makeHell() {
+    let parts = [];
+    return (c, t) => {
+      for (let y = 0; y < 120; y++) {
+        const k = y / 120;
+        c.fillStyle = `rgb(${Math.round(10 + 90 * k * k)}, ${Math.round(2 + 6 * k)}, ${Math.round(4 + 4 * k)})`;
+        c.fillRect(0, y, 160, 1);
+      }
+      for (let i = 0; i < 6; i++) parts.push({ x: Math.random() * 160, y: 112 + Math.random() * 4, vy: 0.5 + Math.random() * 0.9, life: 0, max: 40 + Math.random() * 60, w: 2 + (Math.random() * 3 | 0) });
+      parts = parts.filter(q => q.life < q.max);
+      for (const q of parts) {
+        q.life++; q.y -= q.vy; q.x += Math.sin((q.life + q.x) * 0.15) * 0.3;
+        c.fillStyle = HELL_FIRE[Math.min(HELL_FIRE.length - 1, Math.floor((q.life / q.max) * HELL_FIRE.length))];
+        c.fillRect(Math.round(q.x), Math.round(q.y), q.w, q.w);
+      }
+      drawThroneShape(c);
+      const bob = (t >> 4) % 2;
+      drawSprite(c, CAT, 68, 69 + bob, CAT_PAL);
+      if (t % 180 < 6) { c.fillStyle = CAT_PAL.O; c.fillRect(72, 77 + bob, 4, 2); c.fillRect(84, 77 + bob, 4, 2); }
+      for (let x = 0; x < 160; x++) {
+        const h = 6 + Math.round(Math.sin((x + t * 0.6) * 0.18) * 2);
+        c.fillStyle = "#ff5a1f"; c.fillRect(x, 120 - h, 1, h);
+        c.fillStyle = "#ffd23a"; c.fillRect(x, 120 - h, 1, 1);
+      }
+    };
+  }
+  const THRONE_SRC = (() => {
+    const cv = document.createElement("canvas");
+    cv.width = 160; cv.height = 120;
+    const c = cv.getContext("2d"), draw = makeHell();
+    for (let i = 1; i <= 90; i++) draw(c, i);   // let the flames build up
+    try { return cv.toDataURL(); } catch (e) { return ""; }
+  })();
   const throneImg = new Image();
   throneImg.src = THRONE_SRC;
 
   const canvas = document.getElementById("throne");
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
-
-  // embers rising along the sides so the cat stays visible
-  const FIRE = ["#fff6a0", "#ffd23a", "#ff8a1c", "#e8361a", "#8f1010"];
-  let particles = [];
-  function spawn() {
-    const side = Math.random() < 0.5;
-    const x = side ? Math.random() * 50 : W - Math.random() * 50;
-    particles.push({ x, y: H + 2, vy: 0.4 + Math.random() * 0.8, life: 0, max: 50 + Math.random() * 90, w: 1 + (Math.random() * 2 | 0) });
-  }
-
+  const drawCatScene = makeHell();
   let t = 0;
   function frame() {
     t++;
-    if (throneImg.complete) ctx.drawImage(throneImg, 0, 0, W, H);
-    // hellish glow pulse
-    ctx.fillStyle = `rgba(255, 60, 20, ${0.06 + 0.05 * Math.sin(t * 0.05)})`;
-    ctx.fillRect(0, 0, W, H);
-    if (t % 2 === 0) spawn();
-    particles = particles.filter(p => p.life < p.max);
-    for (const p of particles) {
-      p.life++; p.y -= p.vy; p.x += Math.sin((p.life + p.x) * 0.15) * 0.3;
-      const idx = Math.min(FIRE.length - 1, Math.floor((p.life / p.max) * FIRE.length));
-      ctx.fillStyle = FIRE[idx];
-      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.w, p.w);
-    }
+    drawCatScene(ctx, t);
     if (current === 1) requestAnimationFrame(frame);
   }
 
@@ -1114,8 +1184,8 @@
   }
   const LIG_COLORS = ["#ff3b3b", "#4aa8ff", "#3ddc84", "#ff7ad9", "#ffd23a", "#a46bff"];
   const PRAISE = ["Спасибо.", "Отлично.", "Да, это оно.", "Быстро. Хвалю."];
-  const BASE_RATE = 150, PER_PATIENT_HOURS = 1.5, PATIENTS_PER_SHIFT = 3, MAX_MISTAKES = 3;
-  // Pay per correct action. From day 2 the boss "reviews" it: ten times less.
+  const BASE_RATE = 1500, PER_PATIENT_HOURS = 1.5, PATIENTS_PER_SHIFT = 3, MAX_MISTAKES = 3;
+  // Pay per correct action (and per right answer in the master's scrolls). Always generous.
   let day = 1, payPerStep = BASE_RATE;
 
   const $ = id => document.getElementById(id);
@@ -1252,6 +1322,7 @@
         intro = { t0: performance.now(), img: p.afterImg, from: teethRect(p.am, p.as), to: faceRect(p.as), hold: 300, keep: true };
         patientLine.textContent = "Пациент уходит довольный.";
         later(() => {
+          if (game.mini) return show(3);      // practice between scrolls: one patient, then the cat
           game.idx++;
           if (game.idx === 1) show(4);        // MPD loops with the pliers
           else if (game.idx === 2) show(5);   // condylography: you're sent out
@@ -1270,7 +1341,7 @@
   }
 
   function updateHud() {
-    $("hudPatient").textContent = `${Math.min(game.idx + 1, PATIENTS_PER_SHIFT)}/${PATIENTS_PER_SHIFT}${isExam() ? " ЭКЗАМЕН" : ""}`;
+    $("hudPatient").textContent = game.mini ? `1/1${isExam() ? " ЭКЗАМЕН" : ""}` : `${Math.min(game.idx + 1, PATIENTS_PER_SHIFT)}/${PATIENTS_PER_SHIFT}${isExam() ? " ЭКЗАМЕН" : ""}`;
     $("hudDay").textContent = day;
     $("hudHours").textContent = game.hours.toFixed(1).replace(".", ",");
     $("hudMoney").textContent = rub(game.money);
@@ -1604,8 +1675,8 @@
         tools.task++;
         if (tools.task < TOOL_TASKS.length) askTool();
         else {
-          toolBotText.textContent = "Петли для МПД готовы. Возвращаемся к пациентам.";
-          later(() => show(2, true), 1800);
+          toolBotText.textContent = game.mini ? "Петли для МПД готовы. Спасибо. Иди учись дальше." : "Петли для МПД готовы. Возвращаемся к пациентам.";
+          later(() => (game.mini ? miniDone() : show(2, true)), 1800);
         }
       }, 1400);
     } else {
@@ -1698,13 +1769,11 @@
     "..FTTTTTTTTTTF..", "..FTTTTTTTTTTF..", "...TTTT..TTTT...", "...KKK....KKK...",
   ];
   drawSprite($("aa").getContext("2d"), AA, 0, 0, { ...TOOL_PAL, T: "#2bb3a3", F: "#f2c49b" });
-  const MAX_MISTAKES_FOR_QUIZ = 8;
   // Diagnosis questions (Persin's classification first). Filled in once the photos and answers arrive:
   // { img: "data:image/...", q: "Какой диагноз?", options: ["…", "…"], answer: 0, explain: "…" }
   const DIAG = [];
   let aa = null; // { stage: "hello" | "thanked" | "quiz" | "done", q, right }
-  // While we build chapter 2, the game opens straight on the first diagnosis case.
-  // Set to false to play from the title screen again.
+  // Dev build: shows the "★ НОВОЕ" button that jumps to whatever was added last.
   const SKIP_TO_DIAGNOSTICS = true;
 
   function startAssistant() {
@@ -1713,31 +1782,17 @@
     $("causes").hidden = true;
     if (cz) clearInterval(cz.timer);
     $("aaAgainBtn").hidden = true;
-    $("aaBossBtn").hidden = true;
     $("aaBtn").hidden = false;
     $("aaBtn").textContent = "СКАЗАТЬ СПАСИБО";
     $("aaText").textContent = "…А? Ты ко мне? Обычно сюда заходят только за перчатками.";
-    if (SKIP_TO_DIAGNOSTICS && !game) {
-      aa.stage = "causes";
-      $("aaBtn").hidden = true;
-      startCauses(CASES[0]);
-    }
   }
   $("aaBtn").addEventListener("click", () => {
     if (aa.stage === "hello") {
       aa.stage = "thanked";
-      const m = game ? game.mistakesTotal : 0;
-      if (m < MAX_MISTAKES_FOR_QUIZ) {
-        $("aaText").textContent =
-          `…Пожалуйста. Мне впервые кто-то сказал спасибо. И смена у тебя приличная, ошибок всего ${m}. ` +
-          "Так что давай проверим, как у тебя с диагностикой. Начнём с классификации Персина.";
-        $("aaBtn").textContent = "ДАВАЙ";
-      } else {
-        $("aaText").textContent =
-          `…Пожалуйста. Но с ${m} ошибками за смену тебе к диагностике рано. ` +
-          `Отработай смену почище, меньше ${MAX_MISTAKES_FOR_QUIZ} ошибок, и приходи.`;
-        endAssistant();
-      }
+      $("aaText").textContent =
+        "…Пожалуйста. Мне впервые кто-то сказал спасибо. Слушай, раз ты у мастера учишься — " +
+        "давай проверим, как у тебя с диагностикой.";
+      $("aaBtn").textContent = "ДАВАЙ";
       return;
     }
     if (aa.stage === "thanked") {
@@ -1884,24 +1939,11 @@
     aa.stage = "done";
     $("aaBtn").hidden = true;
     $("aaAgainBtn").hidden = false;
-    $("aaBossBtn").hidden = !SKIP_TO_DIAGNOSTICS;   // while chapter 2 is in progress, a way to see the boss scene
   }
-  $("aaBossBtn").addEventListener("click", () => show(8));
-  $("aaAgainBtn").addEventListener("click", nextDay);
-  $("nextBtn").addEventListener("click", () => show(8));
+  $("aaAgainBtn").addEventListener("click", () => miniDone());
+  $("nextBtn").addEventListener("click", () => miniDone());
 
-  // ---------- Day 2: the pay "review" and a photo nobody explains ----------
-  function nextDay() {
-    // the end of the day: recap, the cat's pay, the ride home; then day 2 opens with the pay "review"
-    endDay({ onDone: () => { if (day === 2) show(9); else show(2); } });
-  }
-  const PHONE = [
-    "KKKKKKKK", "KGGGGGGK", "KGKKGGGK", "KGKKGGGK", "KGGGGGGK", "KGGGGGGK", "KGGGGGGK",
-    "KGGGGGGK", "KGGGGGGK", "KGGGGGGK", "KGGGGGGK", "KGGGGGGK", "KGGGGGGK", "KKKKKKKK",
-  ];
-  const PHONE_PAL = { K: "#14161c", G: "#2a2f3a" };
-  const payCanvas = $("payScene"), pyctx = payCanvas.getContext("2d");
-  let pay = null; // { phase, t0, phone: {y, flash} }
+  // ---------- The cat's lesson screen (a morning on day 2) ----------
   function payButtons(list) {
     $("payBtns").replaceChildren(...list.map(([text, fn]) => {
       const b = document.createElement("button");
@@ -1909,38 +1951,6 @@
       b.addEventListener("click", fn);
       return b;
     }));
-  }
-  function startPayScene() {
-    dayLog("story", "Пересмотр зарплаты");
-    pay = { phase: "talk", t0: 0, phoneY: 130, flash: 0 };
-    lesson = null;
-    payCanvas.hidden = false; lessonCanvas.hidden = true;
-    $("payDay").textContent = `ДЕНЬ ${day}`;
-    const was = DAYS.lastPay || (game && game.money) || 5800;   // what the cat paid for yesterday
-    payPerStep = Math.round(BASE_RATE / 10);
-    $("payLine").textContent =
-      `Новый день! Хорошие новости: ты у нас уже свой. Поэтому ставка теперь не ${BASE_RATE} ₽ за действие, а ${payPerStep}. ` +
-      `Вчера ты заработал ${rub(was)} ₽, а сегодня за то же самое будет ${rub(Math.round(was / 10))} ₽. Это мотивирует.`;
-    payButtons([["…", payStrange]]);
-    requestAnimationFrame(payLoop);
-  }
-  function payStrange() {
-    $("payLine").textContent = "Что такое? Ты как-то странно выглядишь.";
-    // there is nothing to say back
-    payButtons([["…", paySnap]]);
-  }
-  function paySnap() {
-    // the "secret" photo: phone up fast, hold, flash, hold, phone away fast. No comment.
-    $("payWho").textContent = "";
-    $("payLine").textContent = "";
-    $("payBtns").replaceChildren();
-    pay.phase = "snap"; pay.t0 = performance.now();
-    setTimeout(shutter, 2300);
-    later(() => {
-      $("payWho").textContent = "КОТ:";
-      $("payLine").textContent = "Мяу. А теперь кое-что хорошее.";
-      payButtons([["СЛУШАЮ", () => startLesson(0)]]);
-    }, 4600);
   }
   // ---------- The boss explains the stages of braces treatment, kindly ----------
   const LESSON = [
@@ -1957,13 +1967,12 @@
   function startLesson(i) {
     if (i === 0) dayLog("story", "Урок кота: этапы лечения на брекетах");
     lesson = { i, t0: performance.now() };
-    payCanvas.hidden = true; lessonCanvas.hidden = false;
     const st = LESSON[i];
     $("payDay").textContent = st.title;
     $("payWho").textContent = "КОТ:";
     $("payLine").textContent = st.line;
     const last = i === LESSON.length - 1;
-    payButtons([[last ? "ДАЛЬШЕ ▶" : "ДАЛЬШЕ ▶", () => last ? show(10) : startLesson(i + 1)]]);
+    payButtons([[last ? "К МАСТЕРУ ▶" : "ДАЛЬШЕ ▶", () => last ? show(11) : startLesson(i + 1)]]);
     requestAnimationFrame(lessonLoop);
   }
   function lessonLoop(now) {
@@ -2031,45 +2040,6 @@
     }
   }
 
-  function payLoop(now) {
-    if (current !== 9) return;
-    pyctx.imageSmoothingEnabled = false;
-    if (throneImg.complete) pyctx.drawImage(throneImg, 0, 0, 160, 120);
-    if (pay.phase === "snap") {
-      const t = now - pay.t0;
-      // 0-250ms up, hold until 3600 (flash at 2300), small drift, 3600-3850 down
-      let y;
-      if (t < 250) y = 130 - (130 - 66) * (t / 250);
-      else if (t < 3600) y = 66 + (t > 2400 ? Math.sin((t - 2400) / 120) * 1.5 : 0);
-      else if (t < 3850) y = 66 + (130 - 66) * ((t - 3600) / 250);
-      else y = 130;
-      if (y < 125) drawScaled(pyctx, PHONE, 94, Math.round(y), PHONE_PAL, 2);
-      if (t > 2300 && t < 2700) {
-        pyctx.fillStyle = `rgba(255, 255, 255, ${1 - (t - 2300) / 400})`;
-        pyctx.fillRect(0, 0, 160, 120);
-      }
-    }
-    requestAnimationFrame(payLoop);
-  }
-  function shutter() {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    let ac;
-    try { ac = new AC(); } catch (e) { return; }
-    const len = Math.floor(ac.sampleRate * 0.12);
-    const buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) {
-      const env = i < len * 0.3 ? 1 : i < len * 0.45 ? 0.1 : (1 - i / len);
-      d[i] = (Math.random() * 2 - 1) * env;
-    }
-    const src = ac.createBufferSource(); src.buffer = buf;
-    const f = ac.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 1500;
-    const g = ac.createGain(); g.gain.value = 0.4;
-    src.connect(f); f.connect(g); g.connect(ac.destination);
-    src.start();
-    setTimeout(() => ac.close().catch(() => {}), 500);
-  }
-
   // ---------- Days: the end of a shift, the cat's pay and the ride home ----------
   // A day ends after two of the master's scrolls, after four scored tasks, or when you ask for
   // another shift. Then: a quick recap, the cat names the pay, the ride home (how it goes depends on
@@ -2086,7 +2056,7 @@
     }
   } catch (e) { /* no storage: days start over */ }
   day = DAYS.day;
-  if (day >= 2) payPerStep = Math.round(BASE_RATE / 10);   // the pay "review" happened on day 2
+  const DAY_BASE = 10000;   // the cat pays for the day itself, on top of every right answer and action
   function dayStore() {
     try { localStorage.setItem(DAY_KEY, JSON.stringify({ day: DAYS.day, wallet: DAYS.wallet, lastPay: DAYS.lastPay, today: DAYS.today })); } catch (e) { /* ignore */ }
   }
@@ -2101,7 +2071,7 @@
   }
   function dayStats(items) {
     const right = items.reduce((a, x) => a + x.right, 0), total = items.reduce((a, x) => a + x.total, 0);
-    const pay = items.reduce((a, x) => a + x.pay, 0), pct = total ? right / total : null;
+    const pay = DAY_BASE + items.reduce((a, x) => a + x.pay, 0), pct = total ? right / total : null;
     return { right, total, pay, pct, mood: pct === null ? "normal" : pct >= 0.8 ? "good" : pct < 0.5 ? "bad" : "normal" };
   }
 
@@ -2396,9 +2366,11 @@
     drawHero(c, 66, 50, { pose: "stand", eyes: yawn ? "closed" : "half", mouth: yawn ? "yawn" : "flat" });
     if (yawn) pxText(c, "ааа…", 88, 46, "#5a4a3a", 5);
   }
+  const drawPayHell = makeHell();
+  let payHellT = 0;
   function drawCatPay(c, t, pay) {
     c.imageSmoothingEnabled = false;
-    if (throneImg.complete) c.drawImage(throneImg, 0, 0, 160, 120);
+    drawPayHell(c, ++payHellT);
     const coins = Math.max(1, Math.min(24, Math.round(Math.log10(pay + 1) * 6)));
     for (let i = 0; i < coins; i++) {
       const t0 = i * 0.12, k = Math.min(1, Math.max(0, (t - t0) / 0.5));
@@ -2433,11 +2405,10 @@
   // ----- the end-of-day sequence -----
   let de = null;   // { steps, i, t0, start, onDone, demo, stats, items, pay, mood }
   function catPayLine(stats, left) {
-    if (!stats.pay) return "Мяу. Зарплата за сегодня — 0 ₽. Зато опыт бесценен. Мур.";
     const sum = `Зарплата за день — ${rub(stats.pay)} ₽. До миллиарда осталось ${rub(left)} ₽.`;
-    if (stats.mood === "good") return `Мяу! Верных ответов — ${stats.right} из ${stats.total}. ${sum} Почти.`;
-    if (stats.mood === "bad") return `Мяу. ${sum} И то — за то, что пришёл. Иди выспись, на тебе лица нет.`;
-    return `Мяу. ${sum} Нормально. Не трать всё на брекеты.`;
+    if (stats.mood === "good") return `Мяу! Верных ответов — ${stats.right} из ${stats.total}. ${sum} Почти. Мур!`;
+    if (stats.mood === "bad") return `Мяу. День тяжёлый, но я плачу, как обещал. ${sum} Иди выспись.`;
+    return `Мяу. Хорошо поработал. ${sum} Не трать всё на брекеты.`;
   }
   function rideSteps(mood) {
     const S = [];
@@ -2486,7 +2457,7 @@
   }
   // opts: { onDone, demo }
   function endDay(opts) {
-    de = { onDone: opts.onDone || (() => show(2)), demo: !!opts.demo, i: 0, steps: [] };
+    de = { onDone: opts.onDone || goMorning, demo: !!opts.demo, i: 0, steps: [] };
     if (de.demo) {
       de.steps = [{ scene: "leave", title: "КОНЕЦ ДНЯ · ПРЕВЬЮ", alt: "Герой зевает у выхода", line: "Тестовая версия: выбери, как прошёл день, — от этого зависит дорога домой.",
         buttons: [["ХОРОШО", () => dayDemo("good")], ["НОРМАЛЬНО", () => dayDemo("normal")], ["ПЛОХО", () => dayDemo("bad")]] }];
@@ -2576,6 +2547,57 @@
     drawDayScene(dayCtx, st, (now - de.t0) / 1000, (now - de.start) / 1000);
     requestAnimationFrame(dayLoop);
   }
+  // A new day can open with a short scene before the master: the cat's lesson on braces (day 2),
+  // the office (day 3), the throne room (day 4). Each of them ends in the temple.
+  function goMorning() {
+    mMorning = true;
+    const scene = { 2: 9, 3: 10, 4: 8 }[day];
+    show(scene === undefined ? 11 : scene);
+  }
+
+  // ---------- Practice between the master's scrolls ----------
+  // After each scroll: one short task in the clinic, then back to the master. Learning comes first;
+  // these are the mini-games. Practice pays like everything else.
+  const MINIS = [
+    { kind: "assist", level: 0, title: "один пациент, бот подсказывает" },
+    { kind: "pliers", title: "щипцы для дуги" },
+    { kind: "causes", title: "причины открытого прикуса" },
+    { kind: "assist", level: 1, title: "пациент, бот подсказывает реже" },
+    { kind: "pliers", title: "щипцы для дуги" },
+    { kind: "assist", level: 2, title: "пациент, экзамен: бот молчит" },
+    { kind: "causes", title: "причины открытого прикуса" },
+    { kind: "assist", level: 2, title: "пациент, экзамен: бот молчит" },
+  ];
+  let mini = null;   // { k, kind, level, title, dev }
+  function newPracticeGame(level) {
+    const pool = PATIENTS.map((_, i) => i).sort(() => Math.random() - 0.5);
+    game = { idx: level || 0, next: 0, pool, hours: 0, money: 0, mistakesTotal: 0, mini: true };
+  }
+  function startMini(k, opts = {}) {
+    mini = Object.assign({ k }, MINIS[Math.min(k, MINIS.length - 1)], opts);
+    if (mini.kind === "assist") return k === 0 || mini.dev ? show(1) : startAssist();   // the cat opens the very first one
+    if (mini.kind === "pliers") { newPracticeGame(0); return show(4); }
+    newPracticeGame(0);
+    show(6);   // the cat asks who you should thank → the assistant's assistant → the causes
+  }
+  function startAssist() {
+    newPracticeGame(mini ? mini.level : 0);
+    show(2, true);
+  }
+  function miniDone() {
+    const m = mini;
+    mini = null;
+    if (m && !m.dev && game) {
+      if (m.kind === "assist") {
+        const acts = Math.round(game.money / payPerStep);
+        dayLog("shift", "Практика: пациент", acts, acts + game.mistakesTotal, game.money);
+      } else if (m.kind === "pliers") {
+        dayLog("shift", "Практика: щипцы для дуги", TOOL_TASKS.length, TOOL_TASKS.length + game.mistakesTotal, game.money);
+      }   // the causes log themselves when all groups are found
+      mMiniDone(m.k);
+    }
+    show(11);
+  }
   // ---------- Days end ----------
 
   // ---------- The master's scrolls: lesson content ----------
@@ -2587,9 +2609,10 @@
   // (items are listed in the right order); mt = match pairs. b = chalkboard id, m = mood, e = explanation.
   const MASTER_INTRO = [
     { s: "Ты выходишь во внутренний двор храма. Посреди двора почему-то стоит стоматологическое кресло. Рядом — старик в оранжевых одеждах.", narr: true },
-    { s: "Ученик. Брекеты ты подавать научился. Но ортодонт без понимания окклюзии — как монах без медитации.", m: "calm" },
-    { s: "У меня четыре свитка. Проходи их по порядку. Где ошибёшься — повторим в конце свитка.", m: "calm" },
-    { s: "Пройдёшь все — сдашь экзамен и получишь свиток ученика.", m: "happy" },
+    { s: "Ученик. Хочешь стать ортодонтом? Тогда начнём не с брекетов, а с окклюзии. Ортодонт без понимания окклюзии — как монах без медитации.", m: "calm" },
+    { s: "У меня восемь свитков. После каждого — практика в клинике: руки тоже должны учиться.", m: "calm" },
+    { s: "Где ошибёшься — повторим в конце свитка. Пройдёшь все — сдашь экзамен и получишь свиток ученика.", m: "happy" },
+    { s: "Начнём с первого.", m: "calm" },
   ];
 
   const MASTER_CHAPTERS = [
@@ -3677,7 +3700,7 @@
   // ----- progress, saved between visits -----
   function mFresh() {
     const n = MASTER_CHAPTERS.length;
-    return { stars: Array(n).fill(0), done: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, dayEnd: false, sound: true };
+    return { stars: Array(n).fill(0), done: Array(n).fill(false), minis: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, dayEnd: false, sound: true };
   }
   function mLoad() {
     const d = mFresh();
@@ -3685,13 +3708,20 @@
       const s = JSON.parse(localStorage.getItem(M_KEY) || "null");
       if (s && typeof s === "object") {
         for (const k of ["exam", "passed", "name", "date", "met", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
-        for (const k of ["stars", "done"]) if (Array.isArray(s[k])) d[k] = d[k].map((v, i) => (typeof s[k][i] === typeof v ? s[k][i] : v));
+        for (const k of ["stars", "done", "minis"]) if (Array.isArray(s[k])) d[k] = d[k].map((v, i) => (typeof s[k][i] === typeof v ? s[k][i] : v));
       }
     } catch (e) { /* no storage: play without saving */ }
     return d;
   }
   const mSave = mLoad();
   function mStore() { try { localStorage.setItem(M_KEY, JSON.stringify(mSave)); } catch (e) { /* ignore */ } }
+  // practice after scroll k is done: the master picks up from there
+  let mBack = false;
+  function mMiniDone(k) {
+    if (k >= 0 && k < mSave.minis.length) mSave.minis[k] = true;
+    mStore();
+    mBack = true;
+  }
 
   // ----- small helpers -----
   function mShuffle(a) {
@@ -4130,12 +4160,13 @@
     mStore();
     // the day ends after two scrolls (or four scored tasks): the master sends you home
     dayLog("scroll", `Свиток ${k + 1}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
-    const over = dayFull();
+    const over = dayFull(), practice = !mSave.minis[k];
     const words = ["Не спеши. Пройди свиток ещё раз.", "Ты ступил на путь. Перечитай свиток.", "Хорошо. Но путь ещё не окончен.", "Безупречно. Ты понял суть."];
     mResults({
       title: `Свиток ${k + 1} пройден`, stars, score: `С первого раза: ${ms.right} из ${ms.total}`,
-      line: over ? `${words[stars]} А на сегодня — хватит.` : words[stars],
-      buttons: over ? [["Закончить день", mGoHome, "main"]] : [
+      line: practice ? `${words[stars]} А теперь — практика в клинике.` : over ? `${words[stars]} А на сегодня — хватит.` : words[stars],
+      buttons: practice ? [[`Практика: ${MINIS[Math.min(k, MINIS.length - 1)].title}`, () => startMini(k), "main"]]
+        : over ? [["Закончить день", () => mGoHome(), "main"]] : [
         ...(k + 1 < MASTER_CHAPTERS.length ? [["Следующий свиток", () => mStartChapter(k + 1), "main"]] : []),
         ["Пройти ещё раз", () => mStartChapter(k)],
         ["К свиткам", () => mMenu()],
@@ -4160,7 +4191,7 @@
   }
   // The master sends you home at dusk; then the end of the day: recap, pay, the ride home, morning.
   let mMorning = false;
-  function mGoHome() {
+  function mGoHome(first) {
     ms = null;
     mLeaveLesson();
     mEl.stage.classList.add("dusk");
@@ -4168,10 +4199,11 @@
     const allNow = mSave.done.every(Boolean) && !mSave.dayEnd;
     if (allNow) { mSave.dayEnd = true; mStore(); }
     mLines([
+      first ? { text: first, mood: "happy" } : null,
       { text: "Солнце садится за крышу храма. Во дворе зажигаются фонари.", narr: true },
       { text: pick(["На сегодня хватит, ученик. Иди отдыхай.", "Два свитка за день — достаточно. Голова не бездонная.", "Всё. Остальное — завтра. Иди спать."]), mood: "calm" },
       allNow ? { text: "Все восемь свитков позади. Завтра можешь сдать экзамен.", mood: "happy" } : null,
-    ], () => endDay({ onDone: () => { mMorning = true; show(11); } }));
+    ], () => endDay({ onDone: goMorning }));
   }
 
   // ----- exam, certificate, glossary -----
@@ -4280,7 +4312,6 @@
     list.push(mItem(`Звук: ${mSave.sound ? "вкл" : "выкл"}`, null, null, () => {
       mSave.sound = !mSave.sound; mStore(); mMenu(mSave.sound ? "Пусть звенит." : "Тишина — тоже учитель.");
     }, "small"));
-    list.push(mItem("К пациентам", "вернуться в клинику", null, () => show(2), "leave"));
     mPanel(list, { fig: true });
     setMood("calm");
     mSay(greet || pick(["Какой свиток откроем?", "Выбирай свиток, ученик.", "Знание любит порядок. Но выбор за тобой."]));
@@ -4296,18 +4327,27 @@
     mEl.meme.hidden = true;
     mEl.card.hidden = true;
     if (mSave.met) {
-      const greet = mMorning
-        ? pick([`Утро, ученик. День ${day}. Продолжим.`, `Новый день — новые свитки. День ${day}.`, `День ${day}. Чай остыл, свитки ждут.`])
-        : pick(["С возвращением, ученик.", "Ты вернулся. Хорошо.", "Свитки ждут."]);
-      mMorning = false;
-      return mMenu(greet);
+      const back = mBack, morning = mMorning;
+      mBack = false; mMorning = false;
+      const next = mSave.done.indexOf(false);
+      if (back && dayFull()) return mGoHome(pick(["Руки поработали — молодец.", "Практика засчитана.", "С возвращением. Руки помнят — голова учит."]));
+      if (back || morning) {
+        const greet = morning
+          ? pick([`Утро, ученик. День ${day}.`, `Новый день — новые свитки. День ${day}.`, `День ${day}. Чай остыл, свитки ждут.`])
+          : pick(["Руки поработали — теперь голова.", "С возвращением. Руки помнят — голова учит.", "Практика — хорошо. Теперь теория."]);
+        if (next < 0) return mMenu(`${greet} Все свитки пройдены — экзамен ждёт.`);
+        ms = null;
+        mLeaveLesson();
+        setMood(morning ? "calm" : "happy");
+        return mLines([{ text: `${greet} Свиток ${next + 1}: «${MASTER_CHAPTERS[next].title}».` }], () => mStartChapter(next));
+      }
+      return mMenu(pick(["С возвращением, ученик.", "Ты вернулся. Хорошо.", "Свитки ждут."]));
     }
     mSave.met = true; mStore();
     ms = null;
     mLeaveLesson();
     setMood("calm");
-    mLines(MASTER_INTRO.map((st, i) => ({ text: st.s, narr: st.narr, mood: st.m, fn: i === 1 ? mSpin : null })),
-      () => mMenu("Выбирай свиток. Лучше начать с первого."));
+    mLines(MASTER_INTRO.map((st, i) => ({ text: st.s, narr: st.narr, mood: st.m, fn: i === 1 ? mSpin : null })), () => mStartChapter(0));
   }
 
   // ----- small animations -----
@@ -4405,7 +4445,7 @@
   // Lines: [who, text, master's mood, sound] — who: "n" narration, "m" master, "g" the guest.
   const M_GAGS = {
     cat: { guest: "cat", side: "right", name: "Котик", sfx: "meow", lines: [
-      ["n", "Во двор, тихо ступая, заходит белый котик с розовым бантиком."],
+      ["n", "Во двор, тихо ступая, заходит рыжий котик. Тот самый, с адского трона."],
       ["g", "Мяу. Мастер, разговор есть. Мой стажёр опять всё перепутал."],
       ["g", "Просили Де Ла Роса — подал щипцы Кима. А вчера подарил боту розу. С тысячей!"],
       ["m", "Он учится. Я в молодости путал готическую дугу с аркой собора.", "think"],
@@ -4716,6 +4756,8 @@
   ];
   const sceneCanvas = $("bossScene"), sctx = sceneCanvas.getContext("2d");
   let boss = null; // { step, x, walk, laughT0 }
+  const drawBossHell = makeHell();
+  let bossT = 0;
   function startBossScene() {
     dayLog("story", "Тронный зал: гость в чёрном костюме");
     boss = { step: -1, x: 172, walk: null, laughT0: 0 };
@@ -4724,7 +4766,7 @@
   }
   function nextBossStep() {
     boss.step++;
-    if (boss.step >= BOSS_STEPS.length) return show(6);
+    if (boss.step >= BOSS_STEPS.length) return show(11);
     const st = BOSS_STEPS[boss.step];
     $("bossWho").textContent = st.who;
     $("bossLine").textContent = st.line;
@@ -4747,7 +4789,7 @@
     sctx.save();
     if (laughing) sctx.translate(Math.round(Math.random() * 4 - 2), Math.round(Math.random() * 4 - 2));
     sctx.imageSmoothingEnabled = false;
-    if (throneImg.complete) sctx.drawImage(throneImg, 0, 0, 160, 120);
+    drawBossHell(sctx, ++bossT);
     if (boss.x < 165) drawScaled(sctx, AGENT, Math.round(boss.x), 78, AGENT_PAL, 2);
     if (st.paper && boss.x < 140) {
       // the report in the visitor's hand
@@ -4797,16 +4839,13 @@
 
   function showVerdict() {
     $("catImg").src = THRONE_SRC;
-    const acts = Math.round(game.money / payPerStep);
-    dayLog("shift", `Приём: ${PATIENTS_PER_SHIFT} пациента, щипцы`, acts, acts + game.mistakesTotal, game.money);
-    const clean = game.mistakesTotal === 0;
+    const clean = game.mistakesTotal === 0, rose = !!(tools && tools.roseGiven);
     $("catVerdict").textContent =
-      `Так. ${PATIENTS_PER_SHIFT} пациента, ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, все щипцы поданы, кондилографию переждал в коридоре, ` +
-      `заработано ${rub(game.money)} ₽. До миллиарда осталось совсем чуть-чуть: ${rub(1e9 - game.money)} ₽. ` +
+      `Так. Пациент ушёл довольный, ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, заработано ${rub(game.money)} ₽. ` +
       (clean ? "Ни одной ошибки. Я впечатлён, а я кот на адском троне. " : `Ошибок: ${game.mistakesTotal}. Боты всё записали. `) +
-      "Экзамен сдан, поэтому я допускаю тебя… к следующей смене ассистентом." +
-      (tools.roseGiven ? " Стоп. Я видел, как ты сунул боту розу с тысячей. Это беспредел!" : "");
-    $("verdictBot").hidden = !tools.roseGiven;
+      "Руки поработали — теперь обратно к мастеру: голова тоже должна работать." +
+      (rose ? " Стоп. Я видел, как ты сунул боту розу с тысячей. Это беспредел!" : "");
+    $("verdictBot").hidden = !rose;
   }
 
   // ---------- Screen flow ----------
@@ -4821,7 +4860,7 @@
     if (i === 6) startThanks();
     if (i === 7) startAssistant();
     if (i === 8) startBossScene();
-    if (i === 9) startPayScene();
+    if (i === 9) startLesson(0);
     if (i === 10) startNovel();
     if (i === 11) startMaster();
     if (i === 12) startDayEnd();
@@ -4829,11 +4868,10 @@
     if (i === 4) startTools();
   }
 
-  screens[0].addEventListener("click", () => show(1));
-  screens[0].addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(1); } });
+  screens[0].addEventListener("click", () => show(11));
+  screens[0].addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(11); } });
   screens[1].addEventListener("click", () => { if (typer) finishTyping(); });
-  assistBtn.addEventListener("click", e => { e.stopPropagation(); show(2); });
-  $("againBtn").addEventListener("click", nextDay);
+  assistBtn.addEventListener("click", e => { e.stopPropagation(); startAssist(); });
 
   const condBtn = document.getElementById("condBtn");
   condBtn.addEventListener("click", e => {
@@ -4843,7 +4881,7 @@
   });
 
   document.addEventListener("keydown", e => {
-    if (current === 0 && e.target === document.body) show(1);
+    if (current === 0 && e.target === document.body) show(11);
     else if (current === 1 && typer) finishTyping();
   });
 
@@ -4859,15 +4897,21 @@
 
   // ---------- Dev shortcut: jump straight to whatever was added last ----------
   // Update this whenever a new scene goes in.
+  // dev build only: hooks for automated checks of the practice mini-games
+  if (SKIP_TO_DIAGNOSTICS) window.__clinic = {
+    want: () => (game && STEPS[game.step] ? STEPS[game.step].id : null),
+    tool: () => (tools && TOOL_TASKS[tools.task] ? TOOL_TASKS[tools.task].tool : null),
+    select: id => select(id),
+  };
   function goToLatest() {
-    // latest: the end of the day, the ride home and the morning after (a preview with a choice of how the day went)
-    endDay({ demo: true, onDone: () => show(11) });
+    // latest: practice between the master's scrolls, opened by the original pixel cat
+    startMini(0, { dev: true });
   }
   $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS;
   $("latestBtn").addEventListener("click", e => { e.stopPropagation(); goToLatest(); });
 
-  window.claude?.hot?.snapshot?.(() => ({ screen: current >= 3 ? 2 : current }));
-  const start = (data) => show(SKIP_TO_DIAGNOSTICS ? 7 : data?.screen ?? 0);
+  window.claude?.hot?.snapshot?.(() => ({ screen: current === 0 ? 0 : 11 }));
+  const start = (data) => show(data?.screen ?? 0);
   window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
 </script>
