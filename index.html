@@ -4312,6 +4312,13 @@
     list.push(mItem(`Звук: ${mSave.sound ? "вкл" : "выкл"}`, null, null, () => {
       mSave.sound = !mSave.sound; mStore(); mMenu(mSave.sound ? "Пусть звенит." : "Тишина — тоже учитель.");
     }, "small"));
+    // start over: two taps, then the saved stars, days and pay are wiped and the game reloads
+    const reset = mItem("Начать игру заново", "сотрёт звёзды, дни и зарплату", null, () => {
+      if (!reset.dataset.sure) { reset.dataset.sure = "1"; reset.querySelector(".m-item-t").textContent = "Точно? Нажми ещё раз"; return; }
+      try { localStorage.removeItem(M_KEY); localStorage.removeItem(DAY_KEY); } catch (e) { /* ignore */ }
+      location.reload();
+    }, "small");
+    list.push(reset);
     mPanel(list, { fig: true });
     setMood("calm");
     mSay(greet || pick(["Какой свиток откроем?", "Выбирай свиток, ученик.", "Знание любит порядок. Но выбор за тобой."]));
