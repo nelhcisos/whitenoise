@@ -108,13 +108,13 @@
   .tooth { width: 48px; height: 48px; image-rendering: pixelated; }
 
   /* Screen 2 */
-  #throne {
+  #barinScene {
     width: min(100%, 480px);
     aspect-ratio: 4 / 3;
     max-width: 100%;
     image-rendering: pixelated;
     border: 4px solid var(--fg);
-    box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood);
+    box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--gold);
   }
   .bubble {
     position: relative;
@@ -202,7 +202,7 @@
   .tool.bad { border-color: var(--blood); animation: shake .3s; }
   @keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
 
-  /* Screen 4: cat's verdict */
+  /* Screen 4: the barin's verdict */
   #door { width: min(60vw, 256px); aspect-ratio: 1; image-rendering: pixelated; border: 4px solid var(--fg); }
   .btn-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
   .btn-ghost { background: var(--panel); color: var(--fg); box-shadow: 4px 4px 0 var(--line); border: 2px solid var(--line); }
@@ -222,7 +222,7 @@
   @keyframes hop { 40% { transform: translateY(-14px) rotate(-3deg); } 70% { transform: translateY(2px); } }
   .found { margin: 0; padding-left: 24px; width: min(100%, 640px); text-align: left; font-size: clamp(8px, 1.5vw, 10px); line-height: 2; color: var(--ok); }
   .found:empty { display: none; }
-  #bossScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
+  #bossScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--gold); }
   #s9, #s10, #s11 { cursor: default; }
   /* Visual novel, mobile romance-story look: full-bleed art, big sprite, rounded speech bubble */
   .novel { padding-block: 12px; }
@@ -671,7 +671,7 @@
   @media (max-width: 380px) { .vn-text { font-size: 15px; } .vn-choices button { font-size: 14px; } }
   #lessonCanvas { width: min(100%, 480px); aspect-ratio: 16 / 9; image-rendering: pixelated; border: 4px solid var(--fg); }
   #payScene { width: min(100%, 480px); aspect-ratio: 4 / 3; image-rendering: pixelated; border: 4px solid var(--fg); box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--blood); }
-  .cat-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
+  .barin-small { width: min(100%, 320px); image-rendering: pixelated; border: 4px solid var(--fg); }
   #s4 { cursor: default; }
 
   .dev-latest {
@@ -716,8 +716,8 @@
 
 <section class="screen" id="s2" hidden>
   <div class="wrap">
-    <canvas id="throne" width="160" height="120" aria-label="Пиксельный рыжий котик на адском троне"></canvas>
-    <div class="bubble" aria-live="polite"><span class="speaker">КОТ:</span> <span id="speech"></span><span class="cursor" id="cursor">█</span></div>
+    <canvas id="barinScene" width="160" height="120" aria-label="Пиксельный барин в бордовом халате сидит в кресле, за окном Арарат"></canvas>
+    <div class="bubble" aria-live="polite"><span class="speaker">БАРИН:</span> <span id="speech"></span><span class="cursor" id="cursor">█</span></div>
     <button class="btn" id="assistBtn" type="button" hidden>СТАТЬ АССИСТЕНТОМ</button>
   </div>
 </section>
@@ -778,10 +778,10 @@
 
 <section class="screen" id="s7" hidden>
   <div class="wrap">
-    <img id="catImg2" class="cat-small" alt="Пиксельный рыжий котик на адском троне">
-    <div class="bubble"><span class="speaker">КОТ:</span> <span id="thanksText"></span></div>
+    <img id="barinImg2" class="barin-small" alt="Пиксельный барин в бордовом халате сидит в кресле, за окном Арарат">
+    <div class="bubble"><span class="speaker">БАРИН:</span> <span id="thanksText"></span></div>
     <div class="choices" id="thanksChoices">
-      <button class="btn btn-ghost" type="button">ТЕБЕ, БОСС</button>
+      <button class="btn btn-ghost" type="button">ВАМ, БАРИН</button>
       <button class="btn btn-ghost" type="button">БОТУ-ОРТОДОНТУ</button>
       <button class="btn btn-ghost" type="button">СЕБЕ</button>
     </div>
@@ -817,7 +817,7 @@
 
 <section class="screen" id="s9" hidden>
   <div class="wrap">
-    <canvas id="bossScene" width="160" height="120" aria-label="Тронный зал: кот на адском троне и посетитель в чёрном костюме"></canvas>
+    <canvas id="bossScene" width="160" height="120" aria-label="Гостиная барина: барин в кресле и посетитель в чёрном костюме"></canvas>
     <div class="bubble"><span class="speaker" id="bossWho"></span> <span id="bossLine"></span></div>
     <button class="btn" id="bossNext" type="button">ДАЛЬШЕ ▶</button>
   </div>
@@ -825,9 +825,9 @@
 
 <section class="screen" id="s10" hidden>
   <div class="wrap">
-    <p class="tagline" id="payDay">УРОК КОТА</p>
+    <p class="tagline" id="payDay">УРОК БАРИНА</p>
     <canvas id="lessonCanvas" width="160" height="90" aria-label="Схема зубов на текущем этапе лечения"></canvas>
-    <div class="bubble"><span class="speaker" id="payWho">КОТ:</span> <span id="payLine"></span></div>
+    <div class="bubble"><span class="speaker" id="payWho">БАРИН:</span> <span id="payLine"></span></div>
     <div class="btn-row" id="payBtns"></div>
   </div>
 </section>
@@ -906,8 +906,8 @@
 
 <section class="screen" id="s4" hidden>
   <div class="wrap">
-    <img id="catImg" class="cat-small" alt="Пиксельный рыжий котик на адском троне">
-    <div class="bubble"><span class="speaker">КОТ:</span> <span id="catVerdict"></span></div>
+    <img id="barinImg" class="barin-small" alt="Пиксельный барин в бордовом халате сидит в кресле, за окном Арарат">
+    <div class="bubble"><span class="speaker">БАРИН:</span> <span id="barinVerdict"></span></div>
     <div class="botrow" id="verdictBot" hidden>
       <canvas id="bot3" class="botface" width="16" height="16" aria-hidden="true"></canvas>
       <canvas id="botRose2" class="botrose" width="12" height="12" aria-hidden="true"></canvas>
@@ -921,9 +921,11 @@
 
 <script>
 (() => {
-  const SPEECH = "Так, ну смотри. Симулятор ортодонта — это серьёзная игра. " +
-    "Теорию тебе даёт мастер, а практику — я. Сначала поассистируешь ботам, которые играют " +
-    "в симулятор ортодонта, и посмотришь, как они это делают. Один пациент — и обратно к мастеру.";
+  // The barin meets you before the first practice. «будешь как моя…» breaks off on purpose: he stops himself.
+  const SPEECH = "Барев, джан! Проходи, садись. Я хозяин этой клиники, все зовут меня просто барин. " +
+    "Ты не думай, что я тебя к боту в ассистенты отправляю, потому что ты сам ничего не умеешь. Нет, дорогой! " +
+    "Чтобы понять врача, надо поработать с ним рядом. Попробуй, поассистируй ему пару-тройку пациентов — между уроками мастера. " +
+    "А то будешь только головой хорошо работать, будешь как моя… Ладно, не будем о родственниках. Иди, доктор ждёт.";
 
   const screens = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "s12", "s13"].map(id => document.getElementById(id));
   let current = 0;
@@ -954,113 +956,235 @@
     });
   }
 
-  // ---------- Cat on the throne of hell (pixel art) ----------
-  // The ginger cat from the very first version: a 24x24 sprite on a spiked throne, flames behind,
-  // a lava floor. One scene per canvas (each keeps its own flames); THRONE_SRC is a still for <img>.
-  const CAT = [
-    "....K..............K....",
-    "...KOK............KOK...",
-    "...KOPK..........KPOK...",
-    "..KOOPOK........KOPOOK..",
-    "..KOOOOOKKKKKKKKOOOOOK..",
-    "..KOOoOOOOOOOOOOOOoOOK..",
-    ".KOOOOOOOoOOOOoOOOOOOOK.",
-    ".KOOOKKKOOOOOOOOKKKOOOK.",
-    ".KOOKYYKKOOOOOOKKYYKOOK.",
-    ".KOOKYKYKOOOOOOKYKYKOOK.",
-    ".KOOOKKKOOOOOOOOKKKOOOK.",
-    ".KWWOOOOOOOKPKOOOOOOWWK.",
-    ".KWWWOOOOOOOKOOOOOOWWWK.",
-    "..KWWWOOOOKOKOKOOOWWWK..",
-    "...KKWWWWWWWWWWWWWWKK...",
-    "....KOOOWWWWWWWWOOOK....",
-    "...KOOOOWWWWWWWWOOOOK...",
-    "..KOOoOOWWWWWWWWOOoOOK..",
-    "..KOOOoOWWWWWWWWOoOOOK..",
-    ".KOOOOOOOWWWWWWOOOOOOOK.",
-    ".KOoOOOOOOWWWWOOOOOOoOK.",
-    ".KOOoOOOOOOOOOOOOOOoOOK.",
-    ".KOOOOKWWKOOOOKWWKOOOOK.",
-    ".KKKKKKKKKKKKKKKKKKKKKK.",
+  // ---------- The barin: a kind Armenian gentleman who owns the clinic (pixel art) ----------
+  // A 32x50 sprite in a carved armchair. The room: pink tuff stone, a carpet on the wall, Ararat in
+  // the window, coffee and pomegranates on the table. One scene per canvas (each keeps its own
+  // steam); BARIN_SRC is a still for <img>.
+  const BARIN = [
+    "...........KKKKKKKKKK...........",
+    ".........KKhhhhhhhhhhKK.........",
+    "........KhhhhHHhhHHhhhhK........",
+    "........KhhHhhhhhhhhHhhK........",
+    "........KhHSSSSSSSSSSHhK........",
+    "........KhSSSSSSSSSSSShK........",
+    "........KhSBBBSSSSBBBShK........",
+    ".......KSSSSESSSSSSESSSSK.......",
+    ".......KsSSSESSssSSESSSsK.......",
+    "........KSCCSSsSSsSSCCSK........",
+    "........KSSSMMMMMMMMSSSK........",
+    "........KSSMMMMMMMMMMSSK........",
+    "........KSSSLSSSSSSLSSSK........",
+    "........KSSSSLLLLLLSSSSK........",
+    ".........KsSSSSSSSSSSsK.........",
+    "..........KKSSSSSSSSKK..........",
+    "...........KssssssssK...........",
+    "......KKKRRRGWssssWGRRRKKK......",
+    "....KKRRRRRRGWWssWWGRRRRRRKK....",
+    "...KRRRRRRRRGWWWWWWGRRRRRRRRK...",
+    "..KRRrRRRRRRRGWWWWGRRRRRRRQRRK..",
+    "..KRRrRRRRRRRGWwwWGRRRRRRRQRRK..",
+    "..KRRrRRRRRRRRGWWGRRRRRRRRQRRK..",
+    "..KRRrRRRRRRRRGWWGRRRRRRRRQRRK..",
+    "..KRRrKRRRRRRRRGGRRRRRRRRKQRRK..",
+    "..KRRrKRRRRRRRRRRRRRRRRRRKQRRK..",
+    "..KRRrKRRRgGGGGGGGGGGGGgRKQRRK..",
+    "..KRRrKRRRgGGGGGGGGGGGGgRKQRRK..",
+    "..KRRrKRRRRRRRRRRRRRRRRRRKQRRK..",
+    "..KRRRRKKRRRRRRRRRRRRRRKKRRRRK..",
+    "..KKRRRRRRKKRRRRRRRRRKKRRRRRKK..",
+    "...KSSSRRRRRKKRRRRRKKRRRRRSSSK..",
+    "...KSSSSKRRRRRKKKKKRRRRRKSSSSK..",
+    "...KSSSSKPPPPPPPPPPPPPPPKSSSSK..",
+    "....KKKKPPPPPPPPPPPPPPPPPKKKK...",
+    "......KPPPPPPPPPpPPPPPPPPPPK....",
+    "......KPPPPPPPPPpPPPPPPPPPPK....",
+    "......KRRPPPPPPPpPPPPPPPPRRK....",
+    "......KRRRPPPPPPpPPPPPPPRRRK....",
+    "......KRRRKPPPPKpKPPPPKRRRRK....",
+    "......KRRRKPPPPK.KPPPPKRRRRK....",
+    ".......KRRKPPPPK.KPPPPKRRRK.....",
+    ".......KRRKPPPPK.KPPPPKRRRK.....",
+    "........KKKPPPPK.KPPPPKKKK......",
+    "..........KPPPPK.KPPPPK.........",
+    "..........KPPPPK.KPPPPK.........",
+    "..........KPPPPK.KPPPPK.........",
+    ".........KNNNNNK.KNNNNNK........",
+    "........KNnNNNNK.KNNNNnNK.......",
+    "........KKKKKKKK.KKKKKKKK.......",
   ];
-  const CAT_PAL = { K: "#120808", O: "#f28c28", o: "#b85a12", W: "#fff4e0", Y: "#ffe94d", P: "#ff8fa8" };
-  const SKULL = [".BBB.", "BKBKB", "BBBBB", ".BKB."];
-  const HELL_FIRE = ["#fff6a0", "#ffd23a", "#ff8a1c", "#e8361a", "#8f1010", "#3d0606"];
-  function drawThroneShape(c) {
-    const dark = "#2a0508", mid = "#5c0d14", hi = "#9e1b26", gold = "#d9a520";
-    c.fillStyle = dark; c.fillRect(58, 28, 44, 70);
-    c.fillStyle = mid; c.fillRect(61, 31, 38, 64);
-    c.fillStyle = hi; c.fillRect(61, 31, 2, 64); c.fillRect(97, 31, 2, 64);
-    for (let i = 0; i < 5; i++) {   // spikes along the top
-      const sx = 59 + i * 9;
-      for (let h = 0; h < 10; h++) {
-        const half = Math.max(0, 4 - (h >> 1));
-        c.fillStyle = h < 2 ? gold : dark;
-        c.fillRect(sx + 4 - half, 28 - h, half * 2 + 1, 1);
-      }
+  const BARIN_PAL = {
+    K: "#2a1610", H: "#4a403a", h: "#a9a39b", S: "#e8b48c", s: "#c98f66", B: "#2b211d", E: "#2a1610", C: "#ec9a86",
+    M: "#3a312c", L: "#a8463c", T: "#fff8ee", O: "#5a1a18", W: "#f4efe4", w: "#cfc8bb",
+    R: "#8a2232", r: "#5e1622", Q: "#b23c4a", G: "#e6b84a", g: "#a87c24", P: "#33303e", p: "#22202a", N: "#5a3420", n: "#8a5a3a",
+  };
+  // Faces drawn over the head ("." keeps the pixel underneath): [row, patch]
+  const BARIN_FACES = {
+    blink: [[7, "............S......S............"], [8, "...........EE......EE..........."]],
+    talk: [[12, "............LTTTTTTL............"], [13, ".............LOOOOL............."]],
+    laugh: [[8, "...........ESE....ESE..........."], [12, "...........LTTTTTTTTL..........."],
+      [13, "............LOOOOOOL............"], [14, ".............LLLLLL............."]],
+  };
+  const BARIN_HEAD = 17;   // rows 0-16: head and neck, they nod a pixel while he breathes
+  const barinParts = (() => {
+    const cv = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+    const head = face => {
+      const c = cv(32, BARIN_HEAD), x = c.getContext("2d");
+      drawSprite(x, BARIN.slice(0, BARIN_HEAD), 0, 0, BARIN_PAL);
+      for (const [row, patch] of BARIN_FACES[face] || []) drawSprite(x, [patch], 0, row, BARIN_PAL);
+      return c;
+    };
+    const body = cv(32, BARIN.length - BARIN_HEAD);
+    drawSprite(body.getContext("2d"), BARIN.slice(BARIN_HEAD), 0, 0, BARIN_PAL);
+    return { body, head: { base: head(), blink: head("blink"), talk: head("talk"), laugh: head("laugh") } };
+  })();
+  // x, y: top-left of the sprite. o: { face: "talk" | "laugh" | "blink", nod: 0 | 1, beads: swing }
+  function drawBarin(c, x, y, o = {}) {
+    c.drawImage(barinParts.head[o.face] || barinParts.head.base, x, y + (o.nod || 0));
+    c.drawImage(barinParts.body, x, y + BARIN_HEAD);
+    // amber prayer beads hanging from his right hand, with a red tassel
+    const sw = o.beads || 0;
+    for (let i = 0; i < 8; i++) {
+      c.fillStyle = i % 2 ? "#b86a10" : "#f0a030";
+      c.fillRect(x + 5 + Math.round(sw * i / 7), y + 34 + i, 1, 1);
     }
-    for (let i = 0; i < 12; i++) {   // horns
-      c.fillStyle = i > 8 ? "#e9e2c8" : "#bfb89c";
-      c.fillRect(55 - (i >> 1), 34 - i, 3, 2);
-      c.fillRect(103 + (i >> 1), 34 - i, 3, 2);
-    }
-    c.fillStyle = gold; c.fillRect(58, 28, 44, 2);
-    c.fillStyle = "#ff3b3b"; c.fillRect(78, 36, 4, 4);
-    c.fillStyle = "#ffb0b0"; c.fillRect(78, 36, 1, 1);
-    c.fillStyle = dark; c.fillRect(50, 72, 14, 10); c.fillRect(96, 72, 14, 10);
-    c.fillStyle = hi; c.fillRect(50, 72, 14, 2); c.fillRect(96, 72, 14, 2);
-    drawSprite(c, SKULL, 52, 66, { B: "#e9e2c8", K: "#120808" });
-    drawSprite(c, SKULL, 103, 66, { B: "#e9e2c8", K: "#120808" });
-    c.fillStyle = dark; c.fillRect(54, 92, 52, 8);
-    c.fillStyle = hi; c.fillRect(54, 92, 52, 2);
-    c.fillStyle = dark; c.fillRect(56, 100, 6, 12); c.fillRect(98, 100, 6, 12);
-    c.fillStyle = gold; c.fillRect(56, 110, 6, 2); c.fillRect(98, 110, 6, 2);
+    const tx = x + 5 + Math.round(sw);
+    c.fillStyle = "#e6b84a"; c.fillRect(tx, y + 42, 1, 1);
+    c.fillStyle = "#c0282c"; c.fillRect(tx - 1, y + 43, 3, 2);
+    c.fillStyle = "#8a1418"; c.fillRect(tx - 1, y + 45, 1, 1); c.fillRect(tx + 1, y + 45, 1, 1);
   }
-  // returns draw(ctx, t): t is a frame counter; the cat breathes and blinks now and then
-  function makeHell() {
-    let parts = [];
-    return (c, t) => {
-      for (let y = 0; y < 120; y++) {
-        const k = y / 120;
-        c.fillStyle = `rgb(${Math.round(10 + 90 * k * k)}, ${Math.round(2 + 6 * k)}, ${Math.round(4 + 4 * k)})`;
-        c.fillRect(0, y, 160, 1);
-      }
-      for (let i = 0; i < 6; i++) parts.push({ x: Math.random() * 160, y: 112 + Math.random() * 4, vy: 0.5 + Math.random() * 0.9, life: 0, max: 40 + Math.random() * 60, w: 2 + (Math.random() * 3 | 0) });
-      parts = parts.filter(q => q.life < q.max);
-      for (const q of parts) {
-        q.life++; q.y -= q.vy; q.x += Math.sin((q.life + q.x) * 0.15) * 0.3;
-        c.fillStyle = HELL_FIRE[Math.min(HELL_FIRE.length - 1, Math.floor((q.life / q.max) * HELL_FIRE.length))];
-        c.fillRect(Math.round(q.x), Math.round(q.y), q.w, q.w);
-      }
-      drawThroneShape(c);
-      const bob = (t >> 4) % 2;
-      drawSprite(c, CAT, 68, 69 + bob, CAT_PAL);
-      if (t % 180 < 6) { c.fillStyle = CAT_PAL.O; c.fillRect(72, 77 + bob, 4, 2); c.fillRect(84, 77 + bob, 4, 2); }
-      for (let x = 0; x < 160; x++) {
-        const h = 6 + Math.round(Math.sin((x + t * 0.6) * 0.18) * 2);
-        c.fillStyle = "#ff5a1f"; c.fillRect(x, 120 - h, 1, h);
-        c.fillStyle = "#ffd23a"; c.fillRect(x, 120 - h, 1, 1);
+  // The room is drawn once; the scene only adds the steam, the beads and the barin himself.
+  function drawBarinRoom(c) {
+    const r = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+    const arch = (cx, top, rad, bottom, fill) => {   // an arched opening, filled row by row
+      for (let y = top; y < bottom; y++) {
+        const dy = y - (top + rad), hw = dy < 0 ? Math.floor(Math.sqrt(rad * rad - dy * dy)) : rad;
+        fill(y, cx - hw, cx + hw);
       }
     };
+    const diamond = (cx, cy, h, col) => { for (let dy = -h; dy <= h; dy++) { const w = h - Math.abs(dy); r(col, cx - w, cy + dy, w * 2 + 1, 1); } };
+    // walls of pink tuff, the stone Yerevan is built of
+    r("#d49c86", 0, 0, 160, 100);
+    for (let row = 0; row < 13; row++) {
+      const y = row * 8, off = row % 2 ? 9 : 0;
+      r("#b8806a", 0, y + 7, 160, 1);
+      for (let x = off - 18; x < 160; x += 18) {
+        if ((row * 5 + x * 3) % 7 === 0) r("#c98f78", x + 1, y + 1, 17, 6);
+        r("#b8806a", x, y, 1, 7);
+        r("#e3b29c", x + 1, y, 17, 1);
+      }
+    }
+    // floor and baseboard
+    r("#6b3f22", 0, 100, 160, 20);
+    for (let y = 104; y < 120; y += 5) r("#5a3319", 0, y, 160, 1);
+    r("#4a2a14", 0, 99, 160, 2); r("#8a5a36", 0, 98, 160, 1);
+    // the window: an arch with Ararat in it, big Masis and little Sis
+    arch(133, 12, 19, 62, (y, a, b) => r("#5a341c", a, y, b - a + 1, 1));
+    const sky = ["#7fbfe9", "#8cc7ec", "#9ad0ef", "#a9d8f2", "#b9e0f4", "#cae8f6", "#d9eff8"];
+    arch(133, 15, 16, 59, (y, a, b) => {
+      r(sky[Math.min(sky.length - 1, Math.floor((y - 15) / 6))], a, y, b - a + 1, 1);
+      const span = (px, py, sl, sr) => y < py ? null : [Math.max(a, Math.round(px - (y - py) * sl)), Math.min(b, Math.round(px + (y - py) * sr))];
+      const masis = span(127, 26, 1.7, 1.45), sis = span(143, 39, 1.3, 1.4);
+      for (const [m, py, snow] of [[masis, 26, 11], [sis, 39, 4]]) {
+        if (!m || m[0] > m[1]) continue;
+        const mid = Math.round((m[0] + m[1]) / 2) + 1, jag = (y * 7) % 3;
+        const snowy = y - py < snow + jag;
+        r(snowy ? "#ffffff" : "#8a86b4", m[0], y, m[1] - m[0] + 1, 1);
+        r(snowy ? "#d3dbef" : "#6e6a9c", mid, y, m[1] - mid + 1, 1);
+      }
+      if (y >= 52) {   // the valley: orchards, a few ripe apricots
+        r(y < 54 ? "#7aa65a" : "#5f8f45", a, y, b - a + 1, 1);
+        for (let x = a + ((y * 5) % 4); x <= b; x += 5) r(y % 2 ? "#e8962e" : "#4a7a36", x, y, 1, 1);
+      }
+    });
+    r("#7a4a2a", 111, 59, 45, 3); r("#9a6a40", 111, 59, 45, 1);   // window sill
+    // a grapevine over the window, with two bunches
+    for (let x = 108; x < 158; x += 6) { r("#4f8f3e", x, 9 + (x % 4 === 0 ? 1 : 0), 5, 3); r("#3a7030", x + 1, 11, 3, 2); r("#6aae52", x + 1, 9, 2, 1); }
+    r("#5a3a1c", 106, 12, 52, 1);
+    const grapes = (gx, gy, n) => {
+      for (let i = 0; i < n; i++) {
+        const w = Math.max(1, n - i - 1);
+        for (let j = 0; j < w; j++) r((i + j) % 2 ? "#5b2a6e" : "#7c3f92", gx - (w >> 1) + j, gy + i, 1, 1);
+      }
+    };
+    grapes(150, 13, 6); grapes(113, 13, 5);
+    // the carpet: red field, blue border, a medallion of diamonds, fringe at the bottom
+    r("#1f2a5c", 8, 8, 43, 61);
+    r("#e0a040", 10, 10, 39, 57);
+    r("#9a1c26", 11, 11, 37, 55);
+    for (let x = 10; x < 50; x += 4) { r("#e0a040", x, 8, 1, 1); r("#e0a040", x + 2, 67, 1, 1); }
+    for (let y = 12; y < 66; y += 4) { r("#e0a040", 8, y, 1, 1); r("#e0a040", 50, y + 2, 1, 1); }
+    diamond(29, 38, 13, "#e8a848"); diamond(29, 38, 10, "#1f2a5c"); diamond(29, 38, 7, "#9a1c26");
+    diamond(29, 38, 4, "#f2e2c0"); diamond(29, 38, 1, "#1f2a5c");
+    for (const y of [17, 59]) { diamond(29, y, 4, "#e8a848"); diamond(29, y, 1, "#1f2a5c"); }
+    for (const [x, y] of [[16, 17], [42, 17], [16, 59], [42, 59], [16, 38], [42, 38]]) { diamond(x, y, 2, "#f2e2c0"); r("#9a1c26", x, y, 1, 1); }
+    for (let x = 9; x < 51; x += 2) r("#efe3c8", x, 69, 1, 3);
+    // the table: coffee in a small cup, a copper bowl of pomegranates and apricots
+    r("#9a6236", 13, 84, 36, 3); r("#b77a44", 15, 84, 32, 1); r("#6a3c20", 13, 87, 36, 2);
+    r("#5a3319", 29, 89, 4, 14); r("#6a3c20", 23, 102, 16, 2); r("#5a3319", 21, 104, 20, 2);
+    r("#f4efe4", 16, 83, 11, 1);
+    r("#f4efe4", 18, 78, 7, 5); r("#e6b84a", 18, 78, 7, 1); r("#3a2214", 19, 78, 5, 1);
+    r("#2b6cb0", 18, 80, 7, 1); r("#d9d2c4", 18, 82, 7, 1); r("#f4efe4", 25, 79, 2, 1); r("#f4efe4", 26, 80, 1, 2);
+    const fruit = (x, y, body, light, crown) => {
+      r(body, x + 1, y, 3, 1); r(body, x, y + 1, 5, 3); r(body, x + 1, y + 4, 3, 1); r(light, x + 1, y + 1, 1, 1);
+      if (crown) { r(crown, x + 2, y - 1, 1, 1); r(crown, x + 1, y - 2, 1, 1); r(crown, x + 3, y - 2, 1, 1); }
+    };
+    fruit(37, 74, "#b4202a", "#e85a5a", "#6a1018");
+    fruit(32, 76, "#b4202a", "#e85a5a", "#6a1018");
+    fruit(41, 77, "#f09a32", "#ffd07a");
+    r("#b5652e", 30, 80, 17, 4); r("#d98a46", 30, 80, 17, 1); r("#8a4a20", 32, 84, 13, 1);
+    // the carved armchair: green velvet, buttons, gold knobs
+    const wood = "#6a3a1c", woodL = "#9a5a2c", woodD = "#45230f", vel = "#2f6b4b", velL = "#3f8a5f", velD = "#1f4a34", gold = "#e6b84a";
+    arch(80, 34, 22, 99, (y, a, b) => { r(woodD, a, y, b - a + 1, 1); r(wood, a + 1, y, b - a - 1, 1); });
+    arch(80, 38, 18, 96, (y, a, b) => { r(vel, a, y, b - a + 1, 1); r(velL, a, y, 2, 1); r(velD, b - 1, y, 2, 1); });
+    for (let y = 46; y < 94; y += 8) for (let x = 66 + ((y >> 3) % 2) * 4; x < 96; x += 8) { r(velD, x, y, 1, 1); r(gold, x, y - 1, 1, 1); }
+    r(gold, 77, 35, 7, 3); r("#b08420", 78, 37, 5, 1); r("#c0282c", 79, 36, 3, 1);
+    for (const px of [55, 101]) {
+      r(woodD, px, 44, 5, 60); r(wood, px + 1, 44, 3, 60); r(woodL, px + 1, 44, 1, 60);
+      r(gold, px, 39, 5, 5); r("#fff2b0", px + 1, 40, 1, 1); r("#b08420", px, 43, 5, 1);
+    }
+    r(velD, 59, 95, 43, 4); r(vel, 59, 95, 43, 1);
+    r(woodD, 57, 99, 47, 4); r(woodL, 58, 99, 45, 1);
+    r(woodD, 59, 103, 4, 4); r(woodD, 98, 103, 4, 4); r(woodD, 58, 106, 3, 2); r(woodD, 100, 106, 3, 2);
+    // a rug on the floor
+    r("#1f2a5c", 34, 109, 92, 11); r("#9a1c26", 37, 111, 86, 9);
+    for (let x = 39; x < 118; x += 6) { r("#e0a040", x, 113, 2, 1); r("#e0a040", x + 3, 116, 2, 1); }
   }
-  const THRONE_SRC = (() => {
+  // returns draw(ctx, t, o): t is a frame counter; o: { talk, laugh }. He breathes, blinks, his beads sway.
+  function makeBarinScene() {
+    const bg = document.createElement("canvas");
+    bg.width = 160; bg.height = 120;
+    drawBarinRoom(bg.getContext("2d"));
+    let steam = [];
+    return (c, t, o = {}) => {
+      c.drawImage(bg, 0, 0);
+      if (t % 9 === 0) steam.push({ x: 21 + Math.random() * 2, y: 77, life: 0 });
+      steam = steam.filter(s => s.life < 34);
+      for (const s of steam) {
+        s.life++; s.y -= 0.35; s.x += Math.sin((s.life + s.x * 3) * 0.2) * 0.25;
+        c.fillStyle = s.life < 18 ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.4)";
+        c.fillRect(Math.round(s.x), Math.round(s.y), 1, 1);
+      }
+      const face = o.laugh ? "laugh" : o.talk && (t >> 3) % 2 ? "talk" : t % 210 < 7 ? "blink" : null;
+      const shake = o.laugh ? (t >> 1) % 2 : 0;
+      drawBarin(c, 64 + shake, 57, { face, nod: o.laugh ? (t >> 2) % 2 : (t >> 5) % 2, beads: Math.sin(t / 24) * (o.laugh ? 2 : 1.2) });
+    };
+  }
+  const BARIN_SRC = (() => {
     const cv = document.createElement("canvas");
     cv.width = 160; cv.height = 120;
-    const c = cv.getContext("2d"), draw = makeHell();
-    for (let i = 1; i <= 90; i++) draw(c, i);   // let the flames build up
+    const c = cv.getContext("2d"), draw = makeBarinScene();
+    for (let i = 1; i <= 90; i++) draw(c, i);   // let the steam rise
     try { return cv.toDataURL(); } catch (e) { return ""; }
   })();
-  const throneImg = new Image();
-  throneImg.src = THRONE_SRC;
 
-  const canvas = document.getElementById("throne");
+  const canvas = document.getElementById("barinScene");
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
-  const drawCatScene = makeHell();
+  const drawIntroScene = makeBarinScene();
   let t = 0;
   function frame() {
     t++;
-    drawCatScene(ctx, t);
+    drawIntroScene(ctx, t, { talk: !!typer });   // his moustache moves while the text types
     if (current === 1) requestAnimationFrame(frame);
   }
 
@@ -1322,7 +1446,7 @@
         intro = { t0: performance.now(), img: p.afterImg, from: teethRect(p.am, p.as), to: faceRect(p.as), hold: 300, keep: true };
         patientLine.textContent = "Пациент уходит довольный.";
         later(() => {
-          if (game.mini) return show(3);      // practice between scrolls: one patient, then the cat
+          if (game.mini) return show(3);      // practice between scrolls: one patient, then the barin
           game.idx++;
           if (game.idx === 1) show(4);        // MPD loops with the pliers
           else if (game.idx === 2) show(5);   // condylography: you're sent out
@@ -1745,8 +1869,8 @@
   // ---------- Who should you thank? ----------
   function startThanks() {
     dayLog("story", "Кому сказать спасибо");
-    $("catImg2").src = THRONE_SRC;
-    $("thanksText").textContent = "Слушай. А ты вообще знаешь, кому ты должен быть благодарен больше всего?";
+    $("barinImg2").src = BARIN_SRC;
+    $("thanksText").textContent = "Слушай, джан. А ты знаешь, кому ты должен быть благодарен больше всего?";
     $("thanksChoices").hidden = false;
     $("meetBtn").hidden = true;
   }
@@ -1754,9 +1878,9 @@
     // there is no right option: the answer is someone you never noticed
     $("thanksChoices").hidden = true;
     $("thanksText").textContent =
-      "Нет. Своему ассистенту. Да-да, у тебя тоже есть ассистент — ассистент ассистента. " +
+      "Ай, нет, дорогой. Своему ассистенту. Да-да, у тебя тоже есть ассистент — ассистент ассистента. " +
       "Это он подавал тебе нужные дуги, хотя ты даже не спрашивал, какие именно. Считал расходники. " +
-      "Выносил за тебя мусор. Делал всю грязную работу. А ты ему даже спасибо не сказал.";
+      "Выносил за тебя мусор. Делал всю незаметную работу. Пойди скажи ему спасибо — ему будет приятно.";
     $("meetBtn").hidden = false;
   });
   $("meetBtn").addEventListener("click", () => show(7));
@@ -1943,7 +2067,7 @@
   $("aaAgainBtn").addEventListener("click", () => miniDone());
   $("nextBtn").addEventListener("click", () => miniDone());
 
-  // ---------- The cat's lesson screen (a morning on day 2) ----------
+  // ---------- The barin's lesson screen (a morning on day 2) ----------
   function payButtons(list) {
     $("payBtns").replaceChildren(...list.map(([text, fn]) => {
       const b = document.createElement("button");
@@ -1952,24 +2076,24 @@
       return b;
     }));
   }
-  // ---------- The boss explains the stages of braces treatment, kindly ----------
+  // ---------- The barin explains the stages of braces treatment, over coffee ----------
   const LESSON = [
-    { title: "ВСЁ ЛЕЧЕНИЕ НА БРЕКЕТАХ", line: "Мяу-мяу! Раз ты у нас уже свой, расскажу, как вообще лечат на брекетах. Всего пять этапов. Слушай внимательно — потом спрошу." },
-    { title: "ЭТАП 1. ВЫРАВНИВАНИЕ", line: "Мяу! Клеим брекеты и трубки на все зубы и вставляем тонкую круглую проволочку — 0,014 дюйма. Она мягкая и, как резиночка, тянет кривые зубки в ровный рядок." },
-    { title: "ЭТАП 2. УБИРАЕМ ОККЛЮЗИОННЫЕ ПРЕПЯТСТВИЯ", line: "Это когда зубы мешают друг другу нормально сомкнуться, чаще всего жевательные. Ставим многопетлевые дуги — те самые МПД, для которых ты подавал щипцы Кима! Подгибаем кончик от премоляров до моляров, а мешающие моляры выравниваем и немножко погружаем — это интрузия. Мур." },
-    { title: "ЭТАП 3. СТАВИМ НА МЕСТО НИЖНЮЮ ЧЕЛЮСТЬ", line: "Изгиб кончика на молярах выпрямляем, на премолярах убираем, а ступенчатым изгибом чуть выдвигаем зуб. Нижняя челюсть находит своё удобное место и перестаёт гулять. Мяу." },
+    { title: "ВСЁ ЛЕЧЕНИЕ НА БРЕКЕТАХ", line: "Садись, джан, кофе будешь? Раз ты у нас уже свой, расскажу, как вообще лечат на брекетах. Всего пять этапов. Слушай внимательно — потом спрошу." },
+    { title: "ЭТАП 1. ВЫРАВНИВАНИЕ", line: "Клеим брекеты и трубки на все зубы и вставляем тонкую круглую проволочку — 0,014 дюйма. Она мягкая и, как резиночка, тянет кривые зубки в ровный рядок. Как лозу у меня в саду: подвязал — и растёт ровно." },
+    { title: "ЭТАП 2. УБИРАЕМ ОККЛЮЗИОННЫЕ ПРЕПЯТСТВИЯ", line: "Это когда зубы мешают друг другу нормально сомкнуться, чаще всего жевательные. Ставим многопетлевые дуги — те самые МПД, для которых ты подавал щипцы Кима! Подгибаем кончик от премоляров до моляров, а мешающие моляры выравниваем и немножко погружаем — это интрузия. Запомнил, дорогой?" },
+    { title: "ЭТАП 3. СТАВИМ НА МЕСТО НИЖНЮЮ ЧЕЛЮСТЬ", line: "Изгиб кончика на молярах выпрямляем, на премолярах убираем, а ступенчатым изгибом чуть выдвигаем зуб. Нижняя челюсть находит своё удобное место и перестаёт гулять. Как гость, которому наконец показали его место за столом." },
     { title: "ЭТАП 4. НАЛАЖИВАЕМ ОККЛЮЗИОННУЮ ПЛОСКОСТЬ", line: "Представь линию, по которой встречаются верхние и нижние зубы. Убираем изгиб кончика по всей МПД и делаем ступеньку у нижних моляров — плоскость становится круче и правильнее. Если надо, ступенька вниз будет и у передних верхних зубов." },
-    { title: "ЭТАП 5. ДЕТАЛИЗАЦИЯ", line: "Её ещё называют формированием физиологичной окклюзии. Тут ювелирка: проверяем наклон каждого зуба, настраиваем, как зубы скользят друг по другу при движениях челюсти, и добиваемся идеального смыкания. Щёлк — и зубки встают как пазл. Мур-мур!" },
-    { title: "ВОТ И ВСЁ", line: "Выровняли, убрали препятствия, поставили челюсть, наладили плоскость, довели детали. Никакой магии — только терпение. Мяу. Ну что, за работу!" },
+    { title: "ЭТАП 5. ДЕТАЛИЗАЦИЯ", line: "Её ещё называют формированием физиологичной окклюзии. Тут ювелирка: проверяем наклон каждого зуба, настраиваем, как зубы скользят друг по другу при движениях челюсти, и добиваемся идеального смыкания. Щёлк — и зубки встают как пазл. Красота, джан!" },
+    { title: "ВОТ И ВСЁ", line: "Выровняли, убрали препятствия, поставили челюсть, наладили плоскость, довели детали. Никакой магии — только терпение. Как с абрикосом: зелёный не сорвёшь — подождёшь, будет сладкий. Ну, иди к мастеру!" },
   ];
   const lessonCanvas = $("lessonCanvas"), lctx = lessonCanvas.getContext("2d");
   let lesson = null; // { i, t0 }
   function startLesson(i) {
-    if (i === 0) dayLog("story", "Урок кота: этапы лечения на брекетах");
+    if (i === 0) dayLog("story", "Урок барина: этапы лечения на брекетах");
     lesson = { i, t0: performance.now() };
     const st = LESSON[i];
     $("payDay").textContent = st.title;
-    $("payWho").textContent = "КОТ:";
+    $("payWho").textContent = "БАРИН:";
     $("payLine").textContent = st.line;
     const last = i === LESSON.length - 1;
     payButtons([[last ? "К МАСТЕРУ ▶" : "ДАЛЬШЕ ▶", () => last ? show(11) : startLesson(i + 1)]]);
@@ -2040,9 +2164,9 @@
     }
   }
 
-  // ---------- Days: the end of a shift, the cat's pay and the ride home ----------
+  // ---------- Days: the end of a shift, the barin's pay and the ride home ----------
   // A day ends after two of the master's scrolls, after four scored tasks, or when you ask for
-  // another shift. Then: a quick recap, the cat names the pay, the ride home (how it goes depends on
+  // another shift. Then: a quick recap, the barin names the pay, the ride home (how it goes depends on
   // how well you answered today) and a new day. A bad day leaves you sleepy the next morning.
   const DAY_KEY = "ortho-days-v1";
   const DAYS = { day: 1, wallet: 0, lastPay: 0, today: [] };
@@ -2056,7 +2180,7 @@
     }
   } catch (e) { /* no storage: days start over */ }
   day = DAYS.day;
-  const DAY_BASE = 10000;   // the cat pays for the day itself, on top of every right answer and action
+  const DAY_BASE = 10000;   // the barin pays for the day itself, on top of every right answer and action
   function dayStore() {
     try { localStorage.setItem(DAY_KEY, JSON.stringify({ day: DAYS.day, wallet: DAYS.wallet, lastPay: DAYS.lastPay, today: DAYS.today })); } catch (e) { /* ignore */ }
   }
@@ -2366,20 +2490,27 @@
     drawHero(c, 66, 50, { pose: "stand", eyes: yawn ? "closed" : "half", mouth: yawn ? "yawn" : "flat" });
     if (yawn) pxText(c, "ааа…", 88, 46, "#5a4a3a", 5);
   }
-  const drawPayHell = makeHell();
-  let payHellT = 0;
-  function drawCatPay(c, t, pay) {
+  // the barin in his armchair; coins pile up on the floor to the right, the sum floats up top
+  const drawPayRoom = makeBarinScene();
+  let payRoomT = 0;
+  function drawBarinPay(c, t, pay) {
     c.imageSmoothingEnabled = false;
-    drawPayHell(c, ++payHellT);
+    drawPayRoom(c, ++payRoomT, { talk: t < 2.5 });
     const coins = Math.max(1, Math.min(24, Math.round(Math.log10(pay + 1) * 6)));
     for (let i = 0; i < coins; i++) {
       const t0 = i * 0.12, k = Math.min(1, Math.max(0, (t - t0) / 0.5));
       if (t < t0) continue;
-      const px = 12 + (i % 6) * 5, py = 112 - Math.floor(i / 6) * 3;
+      const px = 112 + (i % 6) * 6, py = 113 - Math.floor(i / 6) * 3;
       const y = -6 + (py + 6) * k * k;
       R(c, "#ffcc33", px, y, 4, 3); R(c, "#b8860b", px, y + 2, 4, 1);
     }
-    if (t > 0.4) pxText(c, `+${rub(pay)} ₽`, 8, 88 - Math.min(10, t * 6), "#ffe27a", 6);
+    if (t > 0.4) {
+      const s = `+${rub(pay)} ₽`, y = Math.round(16 - Math.min(8, t * 5));
+      c.font = '6px "Press Start 2P", monospace';
+      const w = Math.ceil(c.measureText(s).width);
+      R(c, "rgba(42, 22, 16, 0.85)", 80 - (w >> 1) - 3, y - 2, w + 6, 10);
+      pxText(c, s, 80, y, "#ffe27a", 6, "center");
+    }
   }
   function drawDayCard(c, t, n) {
     R(c, "#000", 0, 0, 160, 120);
@@ -2393,7 +2524,7 @@
     c.save();
     c.imageSmoothingEnabled = false;
     if (st.scene === "leave") drawLeave(c, t);
-    else if (st.scene === "cat") drawCatPay(c, t, st.pay || 0);
+    else if (st.scene === "barin") drawBarinPay(c, t, st.pay || 0);
     else if (st.scene === "car") drawCar(c, t, T, st.out, st.hero);
     else if (st.scene === "coast") drawCoast(c, t, T);
     else if (st.scene === "home") drawHome(c, t, st.mode);
@@ -2404,11 +2535,11 @@
 
   // ----- the end-of-day sequence -----
   let de = null;   // { steps, i, t0, start, onDone, demo, stats, items, pay, mood }
-  function catPayLine(stats, left) {
+  function barinPayLine(stats, left) {
     const sum = `Зарплата за день — ${rub(stats.pay)} ₽. До миллиарда осталось ${rub(left)} ₽.`;
-    if (stats.mood === "good") return `Мяу! Верных ответов — ${stats.right} из ${stats.total}. ${sum} Почти. Мур!`;
-    if (stats.mood === "bad") return `Мяу. День тяжёлый, но я плачу, как обещал. ${sum} Иди выспись.`;
-    return `Мяу. Хорошо поработал. ${sum} Не трать всё на брекеты.`;
+    if (stats.mood === "good") return `Ай, молодец, какой день! Верных ответов — ${stats.right} из ${stats.total}. ${sum} Иди отдыхай, джан.`;
+    if (stats.mood === "bad") return `Тяжёлый день, джан, бывает. Плачу, как обещал. ${sum} Иди выспись, завтра будет легче.`;
+    return `Хорошо поработал, дорогой. ${sum} Не трать всё на брекеты!`;
   }
   function rideSteps(mood) {
     const S = [];
@@ -2449,7 +2580,7 @@
     return [
       { scene: "leave", recap: true, who: "ТЫ:", title: `КОНЕЦ СМЕНЫ · ДЕНЬ ${n}`,
         line: pick(["Ладно. Смена окончена, я пошёл спать.", "Всё. На сегодня хватит. Я домой.", "Смена закончилась. Ноги гудят. Домой, спать."]), alt: "Герой зевает у выхода" },
-      { scene: "cat", who: "КОТ:", title: "ЗАРПЛАТА", pay: stats.pay, line: catPayLine(stats, left), alt: "Кот на троне, падают монетки", sfx: "coin" },
+      { scene: "barin", who: "БАРИН:", title: "ЗАРПЛАТА", pay: stats.pay, line: barinPayLine(stats, left), alt: "Барин в кресле, на пол падают монетки", sfx: "coin" },
       ...rideSteps(stats.mood).map(s => Object.assign({ title: "ДОРОГА ДОМОЙ" }, s)),
       { scene: "day", n: n + 1, title: `ДЕНЬ ${n + 1}`, alt: `Календарь: день ${n + 1}`,
         line: stats.mood === "good" ? "Бодрый и отдохнувший. Вперёд!" : stats.mood === "bad" ? "Ладно… Как-нибудь доживу до вечера." : "Новый день — новые зубы." },
@@ -2474,7 +2605,7 @@
       normal: [["Свиток 1. Как всё начиналось", 8, 11], ["Свиток 2. Гнатология: взлёт и падение", 9, 13]],
       bad: [["Свиток 1. Как всё начиналось", 4, 11], ["Свиток 2. Гнатология: взлёт и падение", 5, 13]],
     }[mood];
-    de.items = [{ kind: "story", title: "Урок кота: этапы лечения на брекетах", right: 0, total: 0, pay: 0 },
+    de.items = [{ kind: "story", title: "Урок барина: этапы лечения на брекетах", right: 0, total: 0, pay: 0 },
       ...sample.map(([title, right, total]) => ({ kind: "scroll", title, right, total, pay: right * payPerStep }))];
     de.stats = dayStats(de.items);
     de.steps = daySteps(de.items, de.stats, DAYS.day);
@@ -2547,8 +2678,8 @@
     drawDayScene(dayCtx, st, (now - de.t0) / 1000, (now - de.start) / 1000);
     requestAnimationFrame(dayLoop);
   }
-  // A new day can open with a short scene before the master: the cat's lesson on braces (day 2),
-  // the office (day 3), the throne room (day 4). Each of them ends in the temple.
+  // A new day can open with a short scene before the master: the barin's lesson on braces (day 2),
+  // the office (day 3), the visitor in black (day 4). Each of them ends in the temple.
   function goMorning() {
     mMorning = true;
     const scene = { 2: 9, 3: 10, 4: 8 }[day];
@@ -2575,10 +2706,10 @@
   }
   function startMini(k, opts = {}) {
     mini = Object.assign({ k }, MINIS[Math.min(k, MINIS.length - 1)], opts);
-    if (mini.kind === "assist") return k === 0 || mini.dev ? show(1) : startAssist();   // the cat opens the very first one
+    if (mini.kind === "assist") return k === 0 || mini.dev ? show(1) : startAssist();   // the barin opens the very first one
     if (mini.kind === "pliers") { newPracticeGame(0); return show(4); }
     newPracticeGame(0);
-    show(6);   // the cat asks who you should thank → the assistant's assistant → the causes
+    show(6);   // the barin asks who you should thank → the assistant's assistant → the causes
   }
   function startAssist() {
     newPracticeGame(mini ? mini.level : 0);
@@ -3509,7 +3640,8 @@
     if (!im.complete || !im.naturalWidth) { bd.text(c, "…", 320, 200, CHALK.dim, 28); return; }
     const W = im.naturalWidth, H = im.naturalHeight;
     let fr = [0, 0, 1, 1], k = -1;
-    if (f.frames) { k = Math.floor(t / 2.6) % f.frames.length; fr = f.frames[k]; }
+    // t can dip below zero: the frame's timestamp may come a moment before the board was set
+    if (f.frames) { k = Math.floor(Math.max(0, t) / 2.6) % f.frames.length; fr = f.frames[k]; }
     const sw = fr[2] * W, sh = fr[3] * H, boxH = f.frames ? 262 : 284;
     const sc = Math.min(616 / sw, boxH / sh);
     const w = Math.round(sw * sc), h = Math.round(sh * sc), x = Math.round(320 - w / 2), y = Math.round(46 + (boxH - h) / 2);
@@ -3772,7 +3904,7 @@
     no: ac => mTone(ac, 200, 130, 0, 0.28, "square", 0.045),
     drop: ac => mTone(ac, 900, 110, 0, 0.7, "sine", 0.07),
     star: ac => [784, 988, 1175, 1568].forEach((f, i) => mTone(ac, f, 0, i * 0.11, 0.22)),
-    meow: ac => { mTone(ac, 520, 900, 0, 0.18, "sawtooth", 0.025); mTone(ac, 900, 430, 0.18, 0.32, "sawtooth", 0.025); },
+    beads: ac => [0, 0.1, 0.18, 0.31, 0.39].forEach(t0 => mTone(ac, 2100, 1500, t0, 0.04, "triangle", 0.045)),
     knock: ac => [0, 0.17, 0.34].forEach(t0 => mTone(ac, 150, 60, t0, 0.09, "square", 0.07)),
     ding: ac => { mTone(ac, 1320, 0, 0, 0.35, "sine", 0.06); mTone(ac, 990, 0, 0.18, 0.45, "sine", 0.05); },
     ring: ac => { for (let i = 0; i < 8; i++) mTone(ac, i % 2 ? 480 : 440, 0, i * 0.1 + (i > 3 ? 0.4 : 0), 0.09, "square", 0.03); },
@@ -3798,7 +3930,7 @@
 
   // ----- the master's sprite: moods and blinking -----
   ["calm", "happy", "stern", "think", "blink", "shock", "walk"].forEach(m => { new Image().src = `${M_IMG}master_${m}.png`; });
-  ["cat", "patient", "courier"].forEach(g => { new Image().src = `${M_IMG}guest_${g}.png`; });
+  ["barin", "patient", "courier"].forEach(g => { new Image().src = `${M_IMG}guest_${g}.png`; });
   let mMood = "calm";
   function setMood(m) {
     mMood = m || "calm";
@@ -4421,7 +4553,7 @@
   }
 
   // ----- interruptions: guests, a phone call, an ad -----
-  const M_GUEST = { cat: { img: "guest_cat.png", cls: "small" }, patient: { img: "guest_patient.png" }, courier: { img: "guest_courier.png" }, bot: { cls: "small" } };
+  const M_GUEST = { barin: { img: "guest_barin.png" }, patient: { img: "guest_patient.png" }, courier: { img: "guest_courier.png" }, bot: { cls: "small" } };
   let mBotUrl = "";
   function mBotPic() {
     if (!mBotUrl) {
@@ -4451,14 +4583,15 @@
   }
   // Lines: [who, text, master's mood, sound] — who: "n" narration, "m" master, "g" the guest.
   const M_GAGS = {
-    cat: { guest: "cat", side: "right", name: "Котик", sfx: "meow", lines: [
-      ["n", "Во двор, тихо ступая, заходит рыжий котик. Тот самый, с адского трона."],
-      ["g", "Мяу. Мастер, разговор есть. Мой стажёр опять всё перепутал."],
-      ["g", "Просили Де Ла Роса — подал щипцы Кима. А вчера подарил боту розу. С тысячей!"],
-      ["m", "Он учится. Я в молодости путал готическую дугу с аркой собора.", "think"],
-      ["g", "И ещё. У меня трон по ночам скрипит. Это бруксизм?"],
-      ["m", "Это трон. Бруксизм — это когда скрипишь ты.", "stern"],
-      ["g", "…Мяу. Тогда это тоже я. Ладно, учитесь."],
+    barin: { guest: "barin", side: "right", name: "Барин", sfx: "beads", lines: [
+      ["n", "Во двор неспешно входит барин в бордовом халате. В одной руке — корзина абрикосов, в другой — чётки."],
+      ["g", "Мастер-джан, барев! Абрикосы из моего сада. Сладкие, как правильная окклюзия."],
+      ["m", "Спасибо. Только сахар — враг эмали.", "stern"],
+      ["g", "Ай, один абрикос — это не сахар, это витамин! Как там наш ученик? Голова работает?"],
+      ["m", "Голова работает. Руки догоняют.", "happy"],
+      ["g", "Вот! Я ему так и сказал. Ещё вопрос: жена говорит, я ночью зубами скриплю. Это бруксизм?"],
+      ["m", "Бруксизм. Так организм сбрасывает стресс.", "think"],
+      ["g", "Стресс? У меня? Я самый спокойный человек в Ереване! …Ладно, учитесь, дорогие. Не мешаю."],
     ] },
     patient: { guest: "patient", side: "left", name: "Пациент", sfx: "knock", lines: [
       ["n", "Дверь приоткрывается. Заглядывает парень с перевязанной щекой."],
@@ -4742,8 +4875,8 @@
   $("vnBox").addEventListener("click", nextNovel);
   $("vnBox").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nextNovel(); } });
 
-  // ---------- The boss's visitor: a cutscene in the throne room ----------
-  // A bald man in a black suit and sunglasses asks the cat to "add a zero" to the report.
+  // ---------- The boss's visitor: a cutscene in the barin's living room ----------
+  // A bald man in a black suit and sunglasses asks the barin to "add a zero" to the report.
   const AGENT = [
     "....FFFF....", "...FFFFFF...", "...FFFFFF...", "...KKFFKK...", "...FFFFFF...",
     "....FFFF....", ".....FF.....", "..KKKWWKKK..", ".KKKKWRWKKK.", ".KKKKKRKKKK.",
@@ -4753,21 +4886,22 @@
   const AGENT_PAL = { F: "#e8b48f", K: "#14161c", W: "#f2f2f2", R: "#d0141e" };
   const CENSORED = "████ ██████";
   const BOSS_STEPS = [
-    { who: "", line: "*в тронный зал без стука заходит кто-то в чёрном костюме и тёмных очках*", walk: "in" },
-    { who: "ПОСЕТИТЕЛЬ:", line: "Мяу-мяу. У нас проблемы." },
+    { who: "", line: "*в гостиную без стука заходит кто-то в чёрном костюме и тёмных очках*", walk: "in" },
+    { who: "ПОСЕТИТЕЛЬ:", line: "Барин. У нас проблемы." },
     { who: "ПОСЕТИТЕЛЬ:", line: "Недочёт сотрудников. Недочёт пациентов. За последний месяц на целевые места поступило всего 5 человек. А в отчётности должно быть больше.", paper: "5" },
     { who: "ПОСЕТИТЕЛЬ:", line: "Давайте добавим нолик. Чтобы по бумагам было не 5, а 50.", paper: "50" },
-    { who: "КОТ:", line: `Да, конечно, ${CENSORED}.`, paper: "50" },
+    { who: "БАРИН:", line: `Да, конечно, ${CENSORED}.`, paper: "50", talk: true },
     { who: "", line: "*посетитель молча кивает и уходит*", walk: "out" },
-    { who: "КОТ:", line: "МУА-ХА-ХА-ХА-ХА-ХА!!!", laugh: true },
+    { who: "БАРИН:", line: "ХА-ХА-ХА-ХА! Ай, хорошо!", laugh: true },
+    { who: "БАРИН:", line: "Пусть пишут пятьдесят, джан. А мы этих пятерых так научим, что каждый за десятерых работать будет. Вот и сойдётся.", talk: true },
   ];
   const sceneCanvas = $("bossScene"), sctx = sceneCanvas.getContext("2d");
-  let boss = null; // { step, x, walk, laughT0 }
-  const drawBossHell = makeHell();
+  let boss = null; // { step, x, walk, t0, laughT0 }
+  const drawBossRoom = makeBarinScene();
   let bossT = 0;
   function startBossScene() {
-    dayLog("story", "Тронный зал: гость в чёрном костюме");
-    boss = { step: -1, x: 172, walk: null, laughT0: 0 };
+    dayLog("story", "Гостиная барина: гость в чёрном костюме");
+    boss = { step: -1, x: 172, walk: null, t0: 0, laughT0: 0 };
     nextBossStep();
     requestAnimationFrame(bossLoop);
   }
@@ -4778,7 +4912,8 @@
     $("bossWho").textContent = st.who;
     $("bossLine").textContent = st.line;
     boss.walk = st.walk || null;
-    if (st.laugh) { boss.laughT0 = performance.now(); devilLaugh(); }
+    boss.t0 = performance.now();
+    if (st.laugh) { boss.laughT0 = boss.t0; heartyLaugh(); }
     $("bossNext").textContent = boss.step === BOSS_STEPS.length - 1 ? "ДАЛЬШЕ" : "ДАЛЬШЕ ▶";
   }
   $("bossNext").addEventListener("click", nextBossStep);
@@ -4794,9 +4929,8 @@
     if (boss.walk === "out" && boss.x < 172) boss.x += 1.2;
     const laughing = st.laugh && now - boss.laughT0 < 4000;
     sctx.save();
-    if (laughing) sctx.translate(Math.round(Math.random() * 4 - 2), Math.round(Math.random() * 4 - 2));
     sctx.imageSmoothingEnabled = false;
-    drawBossHell(sctx, ++bossT);
+    drawBossRoom(sctx, ++bossT, { laugh: laughing, talk: st.talk && now - boss.t0 < 2600 });
     if (boss.x < 165) drawScaled(sctx, AGENT, Math.round(boss.x), 78, AGENT_PAL, 2);
     if (st.paper && boss.x < 140) {
       // the report in the visitor's hand
@@ -4806,52 +4940,55 @@
       sctx.fillStyle = st.paper === "50" ? "#d0141e" : "#20242c";
       sctx.fillText(st.paper, boss.x - 21, 106);
     }
-    if (laughing) {
-      const pulse = 0.25 + 0.2 * Math.sin((now - boss.laughT0) / 90);
-      sctx.fillStyle = `rgba(255, 0, 0, ${pulse})`; sctx.fillRect(-4, -4, 168, 128);
+    if (laughing) {   // "ХА" floats up from the armchair
+      const k = (now - boss.laughT0) / 1000;
+      sctx.font = "6px 'Press Start 2P', monospace"; sctx.textAlign = "center";
+      for (let i = 0; i < 3; i++) {
+        const p = (k * 0.8 + i / 3) % 1, x = 80 + (i - 1) * 20 + Math.round(Math.sin(k * 4 + i) * 2), y = 54 - Math.round(p * 34);
+        sctx.globalAlpha = 1 - p;
+        sctx.fillStyle = "#3a1a10"; sctx.fillText("ХА", x + 1, y + 1);
+        sctx.fillStyle = "#fff4c8"; sctx.fillText("ХА", x, y);
+      }
+      sctx.globalAlpha = 1; sctx.textAlign = "left";
     }
     sctx.restore();
     requestAnimationFrame(bossLoop);
   }
-  // A synthesized evil laugh: "ha" bursts through a vocal-ish filter, slowing and dropping in pitch.
-  function devilLaugh() {
+  // A warm, rolling laugh: short "ha" syllables through a vowel filter, no distortion.
+  function heartyLaugh() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     let ac;
     try { ac = new AC(); } catch (e) { return; }
-    const out = ac.createGain(); out.gain.value = 0.5; out.connect(ac.destination);
-    const shaper = ac.createWaveShaper();
-    const curve = new Float32Array(256);
-    for (let i = 0; i < 256; i++) { const x = i / 128 - 1; curve[i] = Math.tanh(3 * x); }
-    shaper.curve = curve; shaper.connect(out);
+    const out = ac.createGain(); out.gain.value = 0.45; out.connect(ac.destination);
+    const vowel = ac.createBiquadFilter(); vowel.type = "bandpass"; vowel.frequency.value = 900; vowel.Q.value = 1.6;
+    const soft = ac.createBiquadFilter(); soft.type = "lowpass"; soft.frequency.value = 2600;
+    vowel.connect(soft); soft.connect(out);
     const t0 = ac.currentTime + 0.05;
-    for (let i = 0; i < 7; i++) {
-      const t = t0 + i * 0.26 + i * i * 0.012, len = 0.17 + i * 0.01;
-      const f = 150 - i * 9;
+    for (let i = 0; i < 8; i++) {
+      const t = t0 + i * 0.19 + (i > 3 ? 0.08 : 0), len = 0.13;
+      const f = 205 - i * 5 + (i % 2 ? 14 : 0);
       const g = ac.createGain();
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.9, t + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.01, t + len);
-      const formant = ac.createBiquadFilter(); formant.type = "bandpass"; formant.frequency.value = 750; formant.Q.value = 1.4;
-      g.connect(formant); formant.connect(shaper);
-      for (const [mult, type] of [[1, "sawtooth"], [0.5, "square"]]) {
-        const o = ac.createOscillator(); o.type = type;
-        o.frequency.setValueAtTime(f * mult * 1.15, t);
-        o.frequency.exponentialRampToValueAtTime(f * mult * 0.85, t + len);
-        o.connect(g); o.start(t); o.stop(t + len + 0.02);
-      }
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.8, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      g.connect(vowel);
+      const o = ac.createOscillator(); o.type = "sawtooth";
+      o.frequency.setValueAtTime(f * 1.08, t);
+      o.frequency.exponentialRampToValueAtTime(f * 0.9, t + len);
+      o.connect(g); o.start(t); o.stop(t + len + 0.02);
     }
-    setTimeout(() => ac.close().catch(() => {}), 3500);
+    setTimeout(() => ac.close().catch(() => {}), 2600);
   }
 
   function showVerdict() {
-    $("catImg").src = THRONE_SRC;
+    $("barinImg").src = BARIN_SRC;
     const clean = game.mistakesTotal === 0, rose = !!(tools && tools.roseGiven);
-    $("catVerdict").textContent =
-      `Так. Пациент ушёл довольный, ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, заработано ${rub(game.money)} ₽. ` +
-      (clean ? "Ни одной ошибки. Я впечатлён, а я кот на адском троне. " : `Ошибок: ${game.mistakesTotal}. Боты всё записали. `) +
-      "Руки поработали — теперь обратно к мастеру: голова тоже должна работать." +
-      (rose ? " Стоп. Я видел, как ты сунул боту розу с тысячей. Это беспредел!" : "");
+    $("barinVerdict").textContent =
+      `Ай, молодец! Пациент ушёл довольный: ${game.hours.toFixed(1).replace(".", ",")} часа ассистирования, заработано ${rub(game.money)} ₽. ` +
+      (clean ? "Ни одной ошибки — золотые руки! " : `Ошибок: ${game.mistakesTotal}. Ничего, джан, руки учатся на ошибках. `) +
+      "Теперь ты видел, как врач думает руками. Иди к мастеру — пусть и голова поработает." +
+      (rose ? " И розу с тысячей для бота я видел. Красиво! Только бот тебя и без тысячи любит." : "");
     $("verdictBot").hidden = !rose;
   }
 
@@ -4893,14 +5030,14 @@
   });
 
   // ---------- Music ----------
-  // Off by default. Easter egg: clicking the cat on its throne toggles it (nothing on screen says so).
+  // Off by default. Easter egg: clicking the barin toggles it (nothing on screen says so).
   const music = $("music");
   music.volume = 0.5;
   function toggleMusic() {
     if (music.paused) music.play().catch(() => {}); else music.pause();
   }
-  $("throne").addEventListener("click", toggleMusic);
-  $("catImg").addEventListener("click", toggleMusic);
+  $("barinScene").addEventListener("click", toggleMusic);
+  $("barinImg").addEventListener("click", toggleMusic);
 
   // ---------- Dev shortcut: jump straight to whatever was added last ----------
   // Update this whenever a new scene goes in.
@@ -4911,7 +5048,7 @@
     select: id => select(id),
   };
   function goToLatest() {
-    // latest: practice between the master's scrolls, opened by the original pixel cat
+    // latest: practice between the master's scrolls, opened by the barin
     startMini(0, { dev: true });
   }
   $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS;
