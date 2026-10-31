@@ -688,23 +688,28 @@
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: #fff; background: #100c28;
     -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+    --tile: min(160px, calc((100vw - 64px) / 2));
   }
   .home[hidden] { display: none; }
   .home-wall { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
   .home-status {
     position: relative; display: flex; justify-content: space-between; align-items: center;
     width: min(100%, 440px); margin: 0 auto; box-sizing: border-box;
-    padding: calc(env(safe-area-inset-top, 0px) + 12px) 26px 0 34px;
-    font-size: 15px; font-weight: 600; letter-spacing: -0.2px;
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 28px 0 40px;
+    font-size: 17px; font-weight: 600; letter-spacing: -0.3px;
   }
   .home-sys { display: flex; align-items: center; gap: 6px; }
   .home-sys svg { display: block; fill: #fff; }
-  .home-batt { position: relative; width: 23px; height: 11px; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 3px; box-sizing: border-box; }
-  .home-batt::after { content: ""; position: absolute; right: -3px; top: 3px; width: 2px; height: 4px; border-radius: 0 1px 1px 0; background: rgba(255, 255, 255, 0.45); }
-  .home-batt i { position: absolute; inset: 1px; right: 4px; border-radius: 1px; background: #fff; }
+  .home-batt {
+    position: relative; min-width: 25px; height: 13px; padding: 0 3px; box-sizing: border-box; border-radius: 4px; overflow: visible;
+    background: rgba(255, 255, 255, 0.38); color: #000; font-size: 11px; font-weight: 700; line-height: 13px; text-align: center; letter-spacing: -0.4px;
+  }
+  .home-batt::after { content: ""; position: absolute; right: -3px; top: 4px; width: 2px; height: 5px; border-radius: 0 1px 1px 0; background: rgba(255, 255, 255, 0.4); }
+  .home-batt i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--lvl, 100%); border-radius: 4px; background: #fff; }
+  .home-batt b { position: relative; }
   .home-grid {
-    position: relative; display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 22px;
-    width: min(100%, 420px); margin: 22px auto 0; padding: 0 12px; box-sizing: border-box;
+    position: relative; display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 22px; column-gap: 12px;
+    width: min(100%, 420px); margin: 30px auto 0; padding: 0 24px; box-sizing: border-box;
   }
   .home-app {
     appearance: none; background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit;
@@ -726,21 +731,73 @@
     max-width: calc(100% + 14px); font-size: 12px; line-height: 1.25; letter-spacing: -0.2px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   }
-  .home-dots { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); display: flex; justify-content: center; gap: 8px; }
-  .home-dots i { width: 7px; height: 7px; border-radius: 50%; background: #fff; }
-  .home-dock {
-    position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-    width: min(calc(100% - 20px), 400px); height: 90px; margin: 0 auto; border-radius: 32px;
-    background: rgba(255, 255, 255, 0.18); -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4);
+  /* a book with a cover: a big 2x2 tile, like a widget */
+  .home-app.big { grid-column: 1 / span 2; grid-row: 1 / span 2; justify-self: start; gap: 8px; }
+  .home-app.big .home-icon { width: var(--tile); height: var(--tile); border-radius: 26px; image-rendering: auto; background-color: #fff; }
+  .home-app.big .home-name { font-size: 13px; }
+  .home-app.big .home-badge {
+    top: 10px; right: 10px; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 15px;
+    background: #f6b93b; color: #1c1c1e; font-size: 17px; line-height: 30px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   }
+  .home-find {
+    position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); transform: translateX(-50%);
+    display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 15px 0 12px; box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 16px; background: rgba(60, 60, 67, 0.55);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    color: rgba(255, 255, 255, 0.92); font: inherit; font-size: 15px; font-weight: 500; cursor: pointer;
+  }
+  .home-find svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+  .home-find:active { background: rgba(90, 90, 96, 0.65); }
+  .home-find:focus { outline: none; }
+  .home-find:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .home-dock {
+    position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    width: min(calc(100% - 20px), 400px); height: 92px; margin: 0 auto; border-radius: 34px; box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(28, 28, 32, 0.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3);
+  }
+  /* «Поиск»: like Spotlight, over the books' scrolls and terms */
+  .home-spot {
+    position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column;
+    background: rgba(14, 12, 24, 0.66); -webkit-backdrop-filter: blur(26px) saturate(1.2); backdrop-filter: blur(26px) saturate(1.2);
+    -webkit-user-select: text; user-select: text;
+  }
+  .home-spot[hidden] { display: none; }
+  .home-spot-bar { display: flex; align-items: center; gap: 12px; width: min(100%, 460px); margin: 0 auto; box-sizing: border-box; padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px 8px; }
+  .home-spot-field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 10px; border-radius: 11px; background: rgba(118, 118, 128, 0.32); }
+  .home-spot-field svg { flex: none; width: 16px; height: 16px; fill: none; stroke: rgba(235, 235, 245, 0.6); stroke-width: 2.2; stroke-linecap: round; }
+  .home-spot-field input { flex: 1; min-width: 0; width: 100%; border: 0; outline: none; background: none; color: #fff; font: inherit; font-size: 17px; }
+  .home-spot-field input::placeholder { color: rgba(235, 235, 245, 0.6); }
+  .home-spot-field input::-webkit-search-cancel-button { filter: invert(1); }
+  .home-spot-cancel { flex: none; border: 0; background: none; padding: 6px 0; color: #fff; font: inherit; font-size: 17px; cursor: pointer; }
+  .home-spot-list { flex: 1; overflow-y: auto; width: min(100%, 460px); margin: 0 auto; box-sizing: border-box; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 24px); -webkit-overflow-scrolling: touch; }
+  .home-spot-h { margin: 18px 4px 8px; font-size: 13px; font-weight: 600; color: rgba(235, 235, 245, 0.62); text-transform: uppercase; letter-spacing: 0.2px; }
+  .home-spot-group { border-radius: 14px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+  .home-spot-row {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px; box-sizing: border-box;
+    border: 0; background: none; color: #fff; font: inherit; text-align: left; cursor: pointer;
+  }
+  .home-spot-row + .home-spot-row { border-top: 1px solid rgba(255, 255, 255, 0.08); }
+  .home-spot-row:active { background: rgba(255, 255, 255, 0.08); }
+  .home-spot-row img { flex: none; width: 46px; height: 46px; border-radius: 11px; background: #fff; }
+  .home-spot-num { flex: none; width: 34px; height: 34px; border-radius: 9px; background: #c8501e; color: #fff; font-weight: 700; font-size: 16px; line-height: 34px; text-align: center; }
+  .home-spot-num.done { background: #2f9e57; }
+  .home-spot-txt { min-width: 0; flex: 1; }
+  .home-spot-t { display: block; font-size: 16px; font-weight: 600; line-height: 1.3; }
+  .home-spot-d { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; font-size: 14px; line-height: 1.35; color: rgba(235, 235, 245, 0.72); }
+  .home-spot-row.open .home-spot-d { display: block; -webkit-line-clamp: unset; }
+  .home-spot-row mark { background: none; color: #ffd60a; }
+  .home-spot-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .home-spot-chips button { border: 0; border-radius: 16px; padding: 7px 13px; background: rgba(255, 255, 255, 0.14); color: #fff; font: inherit; font-size: 15px; cursor: pointer; }
+  .home-spot-empty { margin: 48px 0; text-align: center; color: rgba(235, 235, 245, 0.62); font-size: 16px; }
   .app-splash {
     position: fixed; z-index: 101; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden;
     display: flex; align-items: center; justify-content: center; background: #000;
   }
   .app-splash[hidden] { display: none; }
-  .app-splash img { width: min(100%, 128px); aspect-ratio: 1; border-radius: 22%; image-rendering: pixelated; }
+  .app-splash img { width: min(100%, 220px); aspect-ratio: 1; border-radius: 26px; background: #fff; }
   .app-splash-name {
-    position: absolute; left: 0; right: 0; top: calc(50% + 82px); margin: 0; text-align: center;
+    position: absolute; left: 0; right: 0; top: calc(50% + 128px); margin: 0; text-align: center;
     font-family: var(--pixel); font-size: 11px; color: var(--gold); opacity: 0; transition: opacity 0.2s;
   }
   .app-splash.full .app-splash-name { opacity: 1; }
@@ -773,12 +830,19 @@
     <span class="home-sys">
       <svg viewBox="0 0 17 11" width="17" height="11"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.6" y="5" width="3" height="6" rx="1"/><rect x="9.2" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.8" y="0" width="3" height="11" rx="1"/></svg>
       <svg viewBox="0 0 16 12" width="16" height="12"><path d="M8 11.6 5.7 9.2a3.3 3.3 0 0 1 4.6 0z"/><path d="M8 5.7c1.9 0 3.6.7 4.9 1.9l-1.4 1.5A5.1 5.1 0 0 0 8 7.7a5.1 5.1 0 0 0-3.5 1.4L3.1 7.6A7.1 7.1 0 0 1 8 5.7z"/><path d="M8 1c3.1 0 6 1.2 8 3.2l-1.4 1.5A9.3 9.3 0 0 0 8 3a9.3 9.3 0 0 0-6.6 2.7L0 4.2C2 2.2 4.9 1 8 1z"/></svg>
-      <span class="home-batt"><i></i></span>
+      <span class="home-batt" id="homeBatt"><i></i></span>
     </span>
   </div>
   <div class="home-grid" id="homeGrid"></div>
-  <div class="home-dots" aria-hidden="true"><i></i></div>
+  <button class="home-find" id="homeFind" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.8" cy="6.8" r="5"/><path d="m10.6 10.6 3.8 3.8"/></svg>Поиск</button>
   <div class="home-dock" aria-hidden="true"></div>
+  <div class="home-spot" id="homeSpot" role="dialog" aria-label="Поиск по книгам" hidden>
+    <div class="home-spot-bar">
+      <label class="home-spot-field"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.8" cy="6.8" r="5"/><path d="m10.6 10.6 3.8 3.8"/></svg><input id="homeSpotInput" type="search" placeholder="Поиск" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Поиск по книгам"></label>
+      <button class="home-spot-cancel" id="homeSpotCancel" type="button">Отменить</button>
+    </div>
+    <div class="home-spot-list" id="homeSpotList"></div>
+  </div>
 </div>
 <div class="app-splash" id="appSplash" aria-hidden="true" hidden><img id="appSplashImg" alt=""><p class="app-splash-name" id="appSplashName"></p></div>
 <button class="home-bar" id="homeBar" type="button" aria-label="На главный экран" hidden></button>
@@ -5156,7 +5220,7 @@
   // material; for now there is one. Tapping it opens the game; the bar at the bottom brings you back,
   // and the game keeps its place, like an app left in the background.
   const BOOKS = [
-    { id: "condylography", title: "Кондилография", icon: "assets/books/condylography.png" },
+    { id: "condylography", title: "Кондилография", icon: "assets/books/condylography.webp", big: true },
   ];
   const home = $("home"), splash = $("appSplash"), homeBar = $("homeBar");
   let homeOpen = false, homeBusy = false, homeAnim = null, musicWasOn = false;
@@ -5171,7 +5235,7 @@
     const left = unreadScrolls();
     $("homeGrid").replaceChildren(...BOOKS.map(b => {
       const btn = document.createElement("button");
-      btn.type = "button"; btn.className = "home-app"; btn.dataset.book = b.id;
+      btn.type = "button"; btn.className = b.big ? "home-app big" : "home-app"; btn.dataset.book = b.id;
       btn.setAttribute("aria-label", left ? `${b.title}. Непрочитанных свитков: ${left}` : b.title);
       const icon = document.createElement("span");
       icon.className = "home-icon";
@@ -5191,6 +5255,7 @@
   function openBook(b, icon) {
     if (!homeOpen || homeBusy) return;
     homeBusy = true;
+    spot.hidden = true;
     $("appSplashImg").src = b.icon;
     $("appSplashName").textContent = b.title.toUpperCase();
     splash.classList.remove("full");
@@ -5204,10 +5269,10 @@
     };
     if (homeCalm()) { splash.hidden = true; return done(); }
     // the icon grows into the book's launch screen, then the launch screen fades into the game
-    const r = icon.getBoundingClientRect();
+    const r = icon.getBoundingClientRect(), rad = getComputedStyle(icon).borderTopLeftRadius;
     splash.hidden = false;
     splash.animate([
-      { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: "15px" },
+      { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: rad },
       { left: "0px", top: "0px", width: `${innerWidth}px`, height: `${innerHeight}px`, borderRadius: "0px" },
     ], { duration: 420, easing: "cubic-bezier(.2, .8, .2, 1)" }).onfinish = () => (splash.classList.add("full"), setTimeout(() => {
       done();
@@ -5232,13 +5297,13 @@
     };
     if (homeCalm()) return finish();
     // the book shrinks back into its icon while the home screen settles
-    const r = home.querySelector(".home-icon").getBoundingClientRect();
+    const tile = home.querySelector(".home-icon"), r = tile.getBoundingClientRect(), rad = getComputedStyle(tile).borderTopLeftRadius;
     splash.classList.remove("full");
     splash.hidden = false;
     splash.animate([
       { left: "0px", top: "0px", width: `${innerWidth}px`, height: `${innerHeight}px`, borderRadius: "0px", opacity: 1 },
-      { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: "15px", opacity: 1, offset: 0.85 },
-      { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: "15px", opacity: 0 },
+      { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: rad, opacity: 1, offset: 0.85 },
+      { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: rad, opacity: 0 },
     ], { duration: 420, easing: "cubic-bezier(.3, .7, .2, 1)" }).onfinish = finish;
     home.animate([{ transform: "scale(1.08)", filter: "brightness(0.55)" }, { transform: "scale(1)", filter: "brightness(1)" }], { duration: 400, easing: "ease-out" });
   }
@@ -5325,6 +5390,109 @@
     }
     c.globalAlpha = 1;
   }
+  // ----- «Поиск»: like Spotlight, through the books, their scrolls and their terms -----
+  const spot = $("homeSpot"), spotInput = $("homeSpotInput"), spotList = $("homeSpotList");
+  const spotNorm = t => t.toLowerCase().replace(/ё/g, "е");
+  const SPOT_HINTS = ["бруксизм", "Беннетт", "фенсинг", "шарнирная ось", "артикулятор"];
+  function spotOpen() {
+    if (!homeOpen || homeBusy) return;
+    spot.hidden = false;
+    spotInput.value = "";
+    spotRender();
+    spotInput.focus({ preventScroll: true });
+  }
+  function spotClose() {
+    if (spot.hidden) return;
+    spot.hidden = true;
+    $("homeFind").focus({ preventScroll: true });
+  }
+  // text with the query highlighted
+  function spotMark(text, q) {
+    const span = document.createElement("span");
+    const i = q ? spotNorm(text).indexOf(q) : -1;
+    if (i < 0) { span.textContent = text; return span; }
+    const m = document.createElement("mark");
+    m.textContent = text.slice(i, i + q.length);
+    span.append(text.slice(0, i), m, text.slice(i + q.length));
+    return span;
+  }
+  function spotRow(lead, title, desc, q, onClick) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "home-spot-row";
+    const txt = document.createElement("span"); txt.className = "home-spot-txt";
+    const t = spotMark(title, q); t.className = "home-spot-t";
+    txt.append(t);
+    if (desc) { const d = spotMark(desc, q); d.className = "home-spot-d"; txt.append(d); }
+    if (lead) b.append(lead);
+    b.append(txt);
+    b.addEventListener("click", () => onClick(b));
+    return b;
+  }
+  function spotGroup(title, rows) {
+    const h = document.createElement("p"); h.className = "home-spot-h"; h.textContent = title;
+    const g = document.createElement("div"); g.className = "home-spot-group"; g.append(...rows);
+    return [h, g];
+  }
+  function spotOpenBook(b) {
+    spot.hidden = true;
+    const tile = home.querySelector(`.home-app[data-book="${b.id}"] .home-icon`);
+    if (tile) openBook(b, tile);
+  }
+  function spotRender() {
+    const q = spotNorm(spotInput.value.trim());
+    const out = [];
+    const books = BOOKS.filter(b => !q || spotNorm(b.title).includes(q));
+    if (books.length) out.push(...spotGroup(q ? "Книги" : "Предложения", books.map(b => {
+      const img = document.createElement("img"); img.src = b.icon; img.alt = "";
+      return spotRow(img, b.title, `Книга · свитков: ${MASTER_CHAPTERS.length}, не прочитано: ${unreadScrolls()}`, q, () => spotOpenBook(b));
+    })));
+    if (!q) {
+      const h = document.createElement("p"); h.className = "home-spot-h"; h.textContent = "Попробуй найти";
+      const chips = document.createElement("div"); chips.className = "home-spot-chips";
+      for (const w of SPOT_HINTS) {
+        const c = document.createElement("button"); c.type = "button"; c.textContent = w;
+        c.addEventListener("click", () => { spotInput.value = w; spotRender(); spotInput.focus({ preventScroll: true }); });
+        chips.append(c);
+      }
+      out.push(h, chips);
+    } else {
+      const scrolls = MASTER_CHAPTERS.map((ch, k) => ({ ch, k })).filter(({ ch }) => spotNorm(ch.title).includes(q) || spotNorm(ch.sub || "").includes(q));
+      if (scrolls.length) out.push(...spotGroup("Свитки · Кондилография", scrolls.map(({ ch, k }) => {
+        const n = document.createElement("span"); n.className = "home-spot-num" + (mSave.done[k] ? " done" : ""); n.textContent = k + 1;
+        return spotRow(n, ch.title, `${ch.sub ? ch.sub + " · " : ""}${mSave.done[k] ? "пройден" : "ещё не пройден"}`, q, () => spotOpenBook(BOOKS[0]));
+      })));
+      const terms = MASTER_GLOSSARY.map(([t, d]) => {
+        const nt = spotNorm(t);
+        return { t, d, rank: nt.startsWith(q) ? 0 : nt.includes(q) ? 1 : spotNorm(d).includes(q) ? 2 : 9 };
+      }).filter(x => x.rank < 9).sort((a, b) => a.rank - b.rank).slice(0, 30);
+      if (terms.length) out.push(...spotGroup("Термины · Кондилография", terms.map(x => spotRow(null, x.t, x.d, q, row => row.classList.toggle("open")))));
+      if (!books.length && !scrolls.length && !terms.length) {
+        const e = document.createElement("p"); e.className = "home-spot-empty"; e.textContent = `Ничего не нашлось: «${spotInput.value.trim()}»`;
+        out.push(e);
+      }
+    }
+    spotList.replaceChildren(...out);
+    spotList.scrollTop = 0;
+  }
+  $("homeFind").addEventListener("click", spotOpen);
+  $("homeSpotCancel").addEventListener("click", spotClose);
+  spotInput.addEventListener("input", spotRender);
+  spot.addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); spotClose(); } });
+  // the battery shows its level where the browser tells it (iPhones don't)
+  try {
+    const gb = navigator.getBattery && navigator.getBattery();
+    if (gb && gb.then) gb.then(bt => {
+      const set = () => {
+        const v = Math.round(bt.level * 100), el = $("homeBatt");
+        el.style.setProperty("--lvl", `${v}%`);
+        let n = el.querySelector("b");
+        if (!n) { n = document.createElement("b"); el.append(n); }
+        n.textContent = v;
+      };
+      set();
+      bt.addEventListener("levelchange", set);
+    }).catch(() => {});
+  } catch (e) { /* no battery info */ }
   function tickClock() {
     const d = new Date();
     $("homeClock").textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
