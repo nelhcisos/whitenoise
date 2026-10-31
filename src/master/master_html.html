@@ -1,0 +1,49 @@
+<section class="screen novel" id="s12" hidden>
+  <div class="vn-stage master-stage" id="mStage">
+    <img class="vn-bg pixel" src="assets/master/temple.png" alt="">
+    <div class="m-petals" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="m-fx" id="mFx" aria-hidden="true"></div>
+    <div class="m-col">
+      <div class="m-top" id="mTop" hidden>
+        <button class="m-x" id="mExit" type="button" aria-label="К свиткам">✕</button>
+        <p class="m-chapter" id="mChapter"></p>
+        <div class="m-prog" id="mProg"><span id="mProgFill"></span></div>
+      </div>
+      <canvas class="m-board" id="mBoard" width="640" height="400" hidden aria-label="Доска мастера"></canvas>
+      <div class="m-fig" id="mFig">
+        <div class="m-walker" id="mWalker"><div class="m-sprite" id="mSprite" role="img" aria-label="Мастер"><div class="m-vox" id="mVox"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+        <div class="m-guest" id="mGuest" hidden></div>
+      </div>
+      <div class="m-panel" id="mPanel" hidden></div>
+      <div class="vn-box m-box" id="mBox" role="button" tabindex="0" aria-label="Дальше">
+        <span class="vn-name" id="mName">Мастер</span>
+        <p class="vn-text" id="mText" aria-live="polite"></p>
+        <span class="m-more" id="mMore" aria-hidden="true" hidden>▼</span>
+      </div>
+      <div class="m-choices" id="mChoices" hidden></div>
+    </div>
+    <div class="m-card" id="mCard" hidden></div>
+    <div class="m-zoom" id="mZoom" hidden>
+      <div class="m-zoom-top"><b id="mZoomH"></b><button class="m-zoom-x" id="mZoomX" type="button" aria-label="Закрыть">✕</button></div>
+      <div class="m-zoom-img" id="mZoomBox"><img id="mZoomImg" alt=""></div>
+      <div class="m-zoom-bar"><button class="m-zoom-btn" id="mZoomBig" type="button">Крупнее</button><span>рисунок из книги, перевод подписи — ниже</span></div>
+      <p class="m-zoom-cap" id="mZoomCap"></p>
+    </div>
+    <div class="m-combo" id="mCombo" aria-hidden="true" hidden></div>
+    <div class="m-meme" id="mMeme" hidden>
+      <span class="m-ad-tag">МЕМ-ПАУЗА</span>
+      <div class="m-meme-frame"><img id="mMemeImg" alt=""></div>
+      <p class="m-meme-cap" id="mMemeCap"></p>
+      <p class="m-meme-src" id="mMemeSrc"></p>
+      <button class="m-meme-ok" id="mMemeOk" type="button">Ха. Дальше</button>
+    </div>
+    <div class="m-ad" id="mAd" hidden>
+      <span class="m-ad-tag">РЕКЛАМА</span>
+      <div class="m-ad-plane" aria-hidden="true"><svg viewBox="0 0 32 14" shape-rendering="crispEdges"><path fill="#fff" d="M2 6h22v1h3v1h2v2h-2v1h-3v1H8v-1H5v-1H3V9H2z"/><path fill="#e0234e" d="M4 9h22v1H4zM10 2h4v4h-2V4h-2zM11 11h4v3h-4z"/><path fill="#3a9adf" d="M24 7h2v1h1v1h-3zM8 7h2v1H8zM12 7h2v1h-2zM16 7h2v1h-2zM20 7h2v1h-2z"/><path fill="#0f2a4a" d="M1 6h1v4H1zM2 5h22v1H2zM2 11h25v1H2zM27 8h1v2h1v1h-2z"/></svg></div>
+      <p class="m-ad-h" id="mAdH"></p>
+      <p class="m-ad-p" id="mAdP"></p>
+      <p class="m-ad-fine" id="mAdFine"></p>
+      <button class="m-ad-skip" id="mAdSkip" type="button" disabled>Пропустить через 5</button>
+    </div>
+  </div>
+</section>
