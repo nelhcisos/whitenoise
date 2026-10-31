@@ -682,12 +682,106 @@
   }
   .dev-latest:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
 
+  /* ---------- Home screen: every book is an app ---------- */
+  .home {
+    position: fixed; inset: 0; z-index: 100; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #fff; background: #100c28;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .home[hidden] { display: none; }
+  .home-wall { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+  .home-status {
+    position: relative; display: flex; justify-content: space-between; align-items: center;
+    width: min(100%, 440px); margin: 0 auto; box-sizing: border-box;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 26px 0 34px;
+    font-size: 15px; font-weight: 600; letter-spacing: -0.2px;
+  }
+  .home-sys { display: flex; align-items: center; gap: 6px; }
+  .home-sys svg { display: block; fill: #fff; }
+  .home-batt { position: relative; width: 23px; height: 11px; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 3px; box-sizing: border-box; }
+  .home-batt::after { content: ""; position: absolute; right: -3px; top: 3px; width: 2px; height: 4px; border-radius: 0 1px 1px 0; background: rgba(255, 255, 255, 0.45); }
+  .home-batt i { position: absolute; inset: 1px; right: 4px; border-radius: 1px; background: #fff; }
+  .home-grid {
+    position: relative; display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 22px;
+    width: min(100%, 420px); margin: 22px auto 0; padding: 0 12px; box-sizing: border-box;
+  }
+  .home-app {
+    appearance: none; background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; cursor: pointer;
+  }
+  .home-app:focus { outline: none; }
+  .home-app:focus-visible .home-icon { outline: 3px solid rgba(255, 255, 255, 0.9); outline-offset: 3px; }
+  .home-icon {
+    position: relative; width: 64px; height: 64px; border-radius: 15px;
+    background: #1d2b4f center / cover no-repeat; image-rendering: pixelated;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35); transition: filter 0.12s, transform 0.12s;
+  }
+  .home-app:active .home-icon { filter: brightness(0.7); transform: scale(0.96); }
+  .home-badge {
+    position: absolute; top: -7px; right: -7px; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box;
+    border-radius: 11px; background: #ff3b30; color: #fff; font-size: 13px; font-weight: 600; line-height: 22px; text-align: center;
+  }
+  .home-name {
+    max-width: calc(100% + 14px); font-size: 12px; line-height: 1.25; letter-spacing: -0.2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  }
+  .home-dots { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); display: flex; justify-content: center; gap: 8px; }
+  .home-dots i { width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+  .home-dock {
+    position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    width: min(calc(100% - 20px), 400px); height: 90px; margin: 0 auto; border-radius: 32px;
+    background: rgba(255, 255, 255, 0.18); -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4);
+  }
+  .app-splash {
+    position: fixed; z-index: 101; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; background: #000;
+  }
+  .app-splash[hidden] { display: none; }
+  .app-splash img { width: min(100%, 128px); aspect-ratio: 1; border-radius: 22%; image-rendering: pixelated; }
+  .app-splash-name {
+    position: absolute; left: 0; right: 0; top: calc(50% + 82px); margin: 0; text-align: center;
+    font-family: var(--pixel); font-size: 11px; color: var(--gold); opacity: 0; transition: opacity 0.2s;
+  }
+  .app-splash.full .app-splash-name { opacity: 1; }
+  /* the bar at the bottom of an open book: tap it or swipe up to go home */
+  .home-bar {
+    position: fixed; z-index: 99; left: 50%; bottom: 0; width: 180px; height: calc(env(safe-area-inset-bottom, 0px) + 22px);
+    transform: translateX(-50%); padding: 0; border: 0; background: none; cursor: pointer; touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .home-bar[hidden] { display: none; }
+  .home-bar::before {
+    content: ""; position: absolute; left: 23px; right: 23px; bottom: calc(env(safe-area-inset-bottom, 0px) + 7px); height: 5px;
+    border-radius: 3px; background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); transition: background 0.15s;
+  }
+  .home-bar:hover::before, .home-bar:focus-visible::before { background: #fff; }
+  .home-bar:focus { outline: none; }
+  @media (prefers-reduced-motion: reduce) { .home-icon { transition: none; } }
+
   @media (prefers-reduced-motion: reduce) {
     .blink, .cursor, .tool.bad, .juggle.hop .btn { animation: none; }
   }
 </style>
 </head>
 <body>
+
+<div class="home" id="home" role="region" aria-label="Главный экран">
+  <canvas class="home-wall" id="homeWall" width="98" height="211" aria-hidden="true"></canvas>
+  <div class="home-status" aria-hidden="true">
+    <span id="homeClock">9:41</span>
+    <span class="home-sys">
+      <svg viewBox="0 0 17 11" width="17" height="11"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.6" y="5" width="3" height="6" rx="1"/><rect x="9.2" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.8" y="0" width="3" height="11" rx="1"/></svg>
+      <svg viewBox="0 0 16 12" width="16" height="12"><path d="M8 11.6 5.7 9.2a3.3 3.3 0 0 1 4.6 0z"/><path d="M8 5.7c1.9 0 3.6.7 4.9 1.9l-1.4 1.5A5.1 5.1 0 0 0 8 7.7a5.1 5.1 0 0 0-3.5 1.4L3.1 7.6A7.1 7.1 0 0 1 8 5.7z"/><path d="M8 1c3.1 0 6 1.2 8 3.2l-1.4 1.5A9.3 9.3 0 0 0 8 3a9.3 9.3 0 0 0-6.6 2.7L0 4.2C2 2.2 4.9 1 8 1z"/></svg>
+      <span class="home-batt"><i></i></span>
+    </span>
+  </div>
+  <div class="home-grid" id="homeGrid"></div>
+  <div class="home-dots" aria-hidden="true"><i></i></div>
+  <div class="home-dock" aria-hidden="true"></div>
+</div>
+<div class="app-splash" id="appSplash" aria-hidden="true" hidden><img id="appSplashImg" alt=""><p class="app-splash-name" id="appSplashName"></p></div>
+<button class="home-bar" id="homeBar" type="button" aria-label="На главный экран" hidden></button>
 
 <audio id="music" src="music.mp3" loop preload="auto"></audio>
 
@@ -3979,12 +4073,13 @@
     if (id && !mRaf) mRaf = requestAnimationFrame(mBoardLoop);
   }
   function mRedrawBoard() {
-    if (current === 11 && mBoardId) drawBoardFrame(mEl.board, mBoardId, mCalm ? 60 : (performance.now() - mBoardT0) / 1000);
+    if (current === 11 && mBoardId) drawBoardFrame(mEl.board, mBoardId, mCalm ? 60 : Math.max(0, (performance.now() - mBoardT0) / 1000));
   }
   function mBoardLoop(now) {
     mRaf = 0;
     if (current !== 11 || !mBoardId) return;
-    drawBoardFrame(mEl.board, mBoardId, mCalm ? 60 : (now - mBoardT0) / 1000);
+    // a frame's timestamp can be a moment older than the board itself: never hand the boards a negative time
+    drawBoardFrame(mEl.board, mBoardId, mCalm ? 60 : Math.max(0, (now - mBoardT0) / 1000));
     if (!mCalm) mRaf = requestAnimationFrame(mBoardLoop);
   }
 
@@ -4444,10 +4539,12 @@
     list.push(mItem(`Звук: ${mSave.sound ? "вкл" : "выкл"}`, null, null, () => {
       mSave.sound = !mSave.sound; mStore(); mMenu(mSave.sound ? "Пусть звенит." : "Тишина — тоже учитель.");
     }, "small"));
+    list.push(mItem("Главный экран", "книга запомнит, где ты остановился", null, () => goHome(), "small"));
     // start over: two taps, then the saved stars, days and pay are wiped and the game reloads
     const reset = mItem("Начать игру заново", "сотрёт звёзды, дни и зарплату", null, () => {
       if (!reset.dataset.sure) { reset.dataset.sure = "1"; reset.querySelector(".m-item-t").textContent = "Точно? Нажми ещё раз"; return; }
       try { localStorage.removeItem(M_KEY); localStorage.removeItem(DAY_KEY); } catch (e) { /* ignore */ }
+      try { sessionStorage.setItem("ortho-reopen", "1"); } catch (e) { /* ignore */ }   // come back straight into the book
       location.reload();
     }, "small");
     list.push(reset);
@@ -5054,8 +5151,216 @@
   $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS;
   $("latestBtn").addEventListener("click", e => { e.stopPropagation(); goToLatest(); });
 
-  window.claude?.hot?.snapshot?.(() => ({ screen: current === 0 ? 0 : 11 }));
-  const start = (data) => show(data?.screen ?? 0);
+  // ---------- Home screen: every book is an app ----------
+  // The game opens on a phone-like home screen. Each book is an app with its own teacher and its own
+  // material; for now there is one. Tapping it opens the game; the bar at the bottom brings you back,
+  // and the game keeps its place, like an app left in the background.
+  const BOOKS = [
+    { id: "condylography", title: "Кондилография", icon: "assets/books/condylography.png" },
+  ];
+  const home = $("home"), splash = $("appSplash"), homeBar = $("homeBar");
+  let homeOpen = false, homeBusy = false, homeAnim = null, musicWasOn = false;
+  const homeCalm = () => !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) || !splash.animate;
+  // while the home screen is up, the game underneath hears no keys and takes no focus
+  window.addEventListener("keydown", e => { if ((homeOpen || homeBusy) && !home.contains(e.target)) e.stopImmediatePropagation(); }, true);
+  function gameInert(on) {
+    for (const el of document.querySelectorAll("section.screen, #latestBtn")) el.inert = on;
+  }
+  const unreadScrolls = () => (mSave && Array.isArray(mSave.done) ? mSave.done.filter(d => !d).length : 0);
+  function renderHome() {
+    const left = unreadScrolls();
+    $("homeGrid").replaceChildren(...BOOKS.map(b => {
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "home-app"; btn.dataset.book = b.id;
+      btn.setAttribute("aria-label", left ? `${b.title}. Непрочитанных свитков: ${left}` : b.title);
+      const icon = document.createElement("span");
+      icon.className = "home-icon";
+      icon.style.backgroundImage = `url("${b.icon}")`;
+      if (left) {   // like unread notifications: scrolls still to read
+        const badge = document.createElement("span");
+        badge.className = "home-badge"; badge.textContent = left;
+        icon.append(badge);
+      }
+      const name = document.createElement("span");
+      name.className = "home-name"; name.textContent = b.title;
+      btn.append(icon, name);
+      btn.addEventListener("click", () => openBook(b, icon));
+      return btn;
+    }));
+  }
+  function openBook(b, icon) {
+    if (!homeOpen || homeBusy) return;
+    homeBusy = true;
+    $("appSplashImg").src = b.icon;
+    $("appSplashName").textContent = b.title.toUpperCase();
+    splash.classList.remove("full");
+    const done = () => {
+      homeAnim?.cancel(); homeAnim = null;
+      home.hidden = true; homeOpen = false; homeBusy = false;
+      gameInert(false);
+      homeBar.hidden = false;
+      if (musicWasOn) music.play().catch(() => {});
+      if (current === 0) screens[0].focus({ preventScroll: true });
+    };
+    if (homeCalm()) { splash.hidden = true; return done(); }
+    // the icon grows into the book's launch screen, then the launch screen fades into the game
+    const r = icon.getBoundingClientRect();
+    splash.hidden = false;
+    splash.animate([
+      { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: "15px" },
+      { left: "0px", top: "0px", width: `${innerWidth}px`, height: `${innerHeight}px`, borderRadius: "0px" },
+    ], { duration: 420, easing: "cubic-bezier(.2, .8, .2, 1)" }).onfinish = () => (splash.classList.add("full"), setTimeout(() => {
+      done();
+      splash.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, easing: "ease-out" }).onfinish = () => { splash.hidden = true; };
+    }, 420));
+    homeAnim = home.animate([{ transform: "scale(1)", filter: "brightness(1)" }, { transform: "scale(1.08)", filter: "brightness(0.55)" }], { duration: 420, easing: "ease-in", fill: "forwards" });
+  }
+  function goHome() {
+    if (homeOpen || homeBusy) return;
+    homeBusy = true;
+    musicWasOn = !music.paused;
+    music.pause();
+    renderHome();   // the badge may have changed
+    homeAnim?.cancel(); homeAnim = null;
+    home.hidden = false;
+    homeBar.hidden = true;
+    gameInert(true);
+    startWall();
+    const finish = () => {
+      splash.hidden = true; homeOpen = true; homeBusy = false;
+      home.querySelector(".home-app")?.focus({ preventScroll: true });
+    };
+    if (homeCalm()) return finish();
+    // the book shrinks back into its icon while the home screen settles
+    const r = home.querySelector(".home-icon").getBoundingClientRect();
+    splash.classList.remove("full");
+    splash.hidden = false;
+    splash.animate([
+      { left: "0px", top: "0px", width: `${innerWidth}px`, height: `${innerHeight}px`, borderRadius: "0px", opacity: 1 },
+      { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: "15px", opacity: 1, offset: 0.85 },
+      { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, borderRadius: "15px", opacity: 0 },
+    ], { duration: 420, easing: "cubic-bezier(.3, .7, .2, 1)" }).onfinish = finish;
+    home.animate([{ transform: "scale(1.08)", filter: "brightness(0.55)" }, { transform: "scale(1)", filter: "brightness(1)" }], { duration: 400, easing: "ease-out" });
+  }
+  homeBar.addEventListener("click", goHome);
+  let swipeY = null;   // a swipe up from the bar works too
+  homeBar.addEventListener("pointerdown", e => { swipeY = e.clientY; try { homeBar.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ } });
+  homeBar.addEventListener("pointermove", e => { if (swipeY !== null && swipeY - e.clientY > 24) { swipeY = null; goHome(); } });
+  homeBar.addEventListener("pointerup", () => { swipeY = null; });
+  homeBar.addEventListener("pointercancel", () => { swipeY = null; });
+
+  // ----- the wallpaper: a pixel dusk, two snowy peaks and the master's temple on the hill -----
+  const wall = $("homeWall"), wallCtx = wall.getContext("2d"), wallBase = document.createElement("canvas");
+  const WALL_SKY = ["#100c28", "#161236", "#1e1745", "#2a1c55", "#3a2264", "#4e2870", "#663078", "#82387c", "#a2437e", "#c4547c", "#e26c78", "#f48c74", "#f8ac7a"];
+  const wallHash = n => { const x = Math.sin(n * 91.7 + 13.1) * 43758.5453; return x - Math.floor(x); };
+  let wallRaf = 0, wallLast = 0, wallStars = [];
+  function paintWallBase(w, h) {
+    wallBase.width = w; wallBase.height = h;
+    const c = wallBase.getContext("2d"), hz = Math.round(h * 0.7);
+    const px = (col, x, y, ww = 1, hh = 1) => { c.fillStyle = col; c.fillRect(x, y, ww, hh); };
+    const bayer = [[0.125, 0.625], [0.875, 0.375]];
+    for (let y = 0; y < h; y++) {   // the sky in bands, dithered where two bands meet
+      const f = Math.min(1, y / hz) * (WALL_SKY.length - 1), i = Math.min(WALL_SKY.length - 2, Math.floor(f)), fr = f - i;
+      for (let x = 0; x < w; x++) px(fr > bayer[y % 2][x % 2] ? WALL_SKY[i + 1] : WALL_SKY[i], x, y);
+    }
+    // a crescent moon
+    const mx = Math.round(w * 0.78), my = Math.round(h * 0.13), mr = Math.max(4, Math.min(9, Math.round(w * 0.055)));
+    for (let y = -mr; y <= mr; y++) for (let x = -mr; x <= mr; x++) {
+      if (x * x + y * y > mr * mr) continue;
+      const cx = x + Math.round(mr * 0.55), cy = y - Math.round(mr * 0.3);
+      if (cx * cx + cy * cy < mr * mr * 0.8) continue;
+      px(x < -mr * 0.4 ? "#fff4cc" : "#ffe9a8", mx + x, my + y);
+    }
+    // two snowy peaks, a big one and a small one
+    const peaks = [[w * 0.3, hz - h * 0.2, w * 0.46], [w * 0.64, hz - h * 0.105, w * 0.24]];
+    for (let x = 0; x < w; x++) {   // lit from the moon's side: the left slopes are lighter
+      let top = hz, snowTo = -1, lit = true;
+      for (const [pxx, py, half] of peaks) {
+        const y = py + Math.abs(x - pxx) * (hz - py) / half;
+        if (y < top) { top = y; snowTo = py + (hz - py) * 0.32 + ((x * 7) % 3); lit = x < pxx; }
+      }
+      for (let y = Math.round(top); y < hz + 2; y++) px(y < snowTo ? (lit ? "#e2d6f0" : "#b7a5d0") : (lit ? "#45295f" : "#2f1c47"), x, y);
+    }
+    // near hills and the ground
+    const hill = x => Math.round(hz + 3 + Math.sin(x * 0.07) * 2 + Math.sin(x * 0.023 + 1) * 3);
+    for (let x = 0; x < w; x++) { const y0 = hill(x); px("#24163a", x, y0, 1, 2); px("#1a1029", x, y0 + 2, 1, h - y0); }
+    // the temple on the right hill: three roofs, one window lit
+    const tx = Math.round(w * 0.8), ty = hill(tx);
+    const roofs = [[15, 0], [11, 6], [7, 11]];
+    for (const [rw, up] of roofs) {
+      const y = ty - 6 - up;
+      px("#120a1c", tx - (rw >> 1), y, rw, 2); px("#120a1c", tx - (rw >> 1) - 1, y - 1, 1, 1); px("#120a1c", tx + (rw >> 1) + 1, y - 1, 1, 1);
+      px("#120a1c", tx - (rw >> 1) + 2, y + 2, rw - 4, 4);
+    }
+    px("#120a1c", tx, ty - 21, 1, 3);
+    px("#ffcf6a", tx - 1, ty - 4, 2, 2); px("#ffcf6a", tx - 1, ty - 9, 2, 1);
+    // stars only above the peaks
+    wallStars = [];
+    const n = Math.round(w * h / 70);
+    for (let i = 0; i < n; i++) {
+      const x = Math.floor(wallHash(i) * w), y = Math.floor(wallHash(i + 500) * hz * 0.62);
+      if (Math.abs(x - mx) <= mr + 1 && Math.abs(y - my) <= mr + 1) continue;
+      wallStars.push({ x, y, ph: wallHash(i + 900) * 6.28, sp: 0.6 + wallHash(i + 1300) * 1.8, big: wallHash(i + 1700) > 0.93,
+        col: ["#ffffff", "#cfd8ff", "#ffe6b0"][Math.floor(wallHash(i + 2100) * 3)] });
+    }
+  }
+  function drawWall(t) {
+    const w = Math.max(64, Math.ceil(innerWidth / 4)), h = Math.max(96, Math.ceil(innerHeight / 4));
+    if (wall.width !== w || wall.height !== h || wallBase.width !== w || wallBase.height !== h) { wall.width = w; wall.height = h; paintWallBase(w, h); }
+    const c = wallCtx;
+    c.drawImage(wallBase, 0, 0);
+    for (const s of wallStars) {
+      const k = Math.sin(t * s.sp + s.ph);
+      if (k < -0.35) continue;
+      c.fillStyle = s.col;
+      c.globalAlpha = k > 0.4 ? 1 : 0.55;
+      c.fillRect(s.x, s.y, 1, 1);
+      if (s.big && k > 0.6) { c.globalAlpha = 0.5; c.fillRect(s.x - 1, s.y, 3, 1); c.fillRect(s.x, s.y - 1, 1, 3); }
+    }
+    // now and then a shooting star
+    const cyc = t % 9;
+    if (cyc < 0.9) {
+      const k = cyc / 0.9, sx = Math.round(w * (0.15 + 0.5 * k)), sy = Math.round(h * (0.06 + 0.12 * k));
+      for (let i = 0; i < 5; i++) { c.globalAlpha = (1 - i / 5) * (1 - k * 0.6); c.fillStyle = "#ffffff"; c.fillRect(sx - i, sy - (i >> 1), 1, 1); }
+    }
+    c.globalAlpha = 1;
+  }
+  function tickClock() {
+    const d = new Date();
+    $("homeClock").textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+  function wallLoop(now) {
+    wallRaf = 0;
+    if (!homeOpen && !homeBusy) return;
+    if (now - wallLast > 90) { wallLast = now; drawWall(now / 1000); tickClock(); }
+    wallRaf = requestAnimationFrame(wallLoop);
+  }
+  function startWall() {
+    drawWall(performance.now() / 1000); tickClock();
+    if (!wallRaf) wallRaf = requestAnimationFrame(wallLoop);
+  }
+  function showHomeNow() {
+    homeOpen = true; homeBusy = false;
+    home.hidden = false; homeBar.hidden = true; splash.hidden = true;
+    gameInert(true);
+    renderHome();
+    startWall();
+  }
+  function enterGameNow() {
+    homeOpen = false; homeBusy = false;
+    home.hidden = true; splash.hidden = true; homeBar.hidden = false;
+    gameInert(false);
+  }
+  // dev build only: hooks for automated checks of the home screen
+  if (SKIP_TO_DIAGNOSTICS) window.__home = { open: () => homeOpen, busy: () => homeBusy, back: () => goHome() };
+
+  showHomeNow();   // every start opens on the home screen...
+  let reopen = false;   // ...but "start over" in the master's menu comes straight back into the book
+  try { reopen = sessionStorage.getItem("ortho-reopen") === "1"; sessionStorage.removeItem("ortho-reopen"); } catch (e) { /* ignore */ }
+  if (reopen) enterGameNow();
+  window.claude?.hot?.snapshot?.(() => ({ screen: current === 0 ? 0 : 11, home: homeOpen || homeBusy }));
+  // ...except a hot reload from inside the book, which stays in the book
+  const start = (data) => { show(data?.screen ?? 0); if (data?.home === false) enterGameNow(); };
   window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
 </script>
