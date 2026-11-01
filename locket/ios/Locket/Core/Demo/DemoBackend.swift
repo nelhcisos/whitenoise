@@ -1026,7 +1026,7 @@ actor DemoBackend {
         // Wishlists: everyone in the demo wishes for the same two things.
         for (who, title, link, scene, hoursAgo) in ["u-yara", "u-ezh", "u-dobr", "u-barsuk"].flatMap({ who in
             [
-                (who, "Подарочная карта App Store на $100 — на Apple Developer", nil, nil, 2.0),
+                (who, "Apple Developer: карта App Store на $100 или 10\u{00A0}000 ₽, чтобы выпустить приложение", nil, nil, 2.0),
                 (who, "Подарок с Яндекс Маркета", "https://market.yandex.ru/cc/BSbGMq", nil, 1.0),
             ] as [(String, String, String?, DemoArt.Scene?, Double)]
         }) {
