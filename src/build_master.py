@@ -27,8 +27,13 @@ j = s.index("</section>\n", i) + len("</section>\n")
 s = s[:i] + html + s[j:]
 
 # script
-js = rd("master_content.js") + "\n" + rd("boards.js") + "\n"
-for extra in ("boards2.js", "voxel.js"):
+js = rd("master_content.js") + "\n"
+try:
+    js += rd("master_content2.js") + "\n"
+except FileNotFoundError:
+    pass
+js += rd("boards.js") + "\n"
+for extra in ("boards2.js", "book_data2.js", "voxel.js"):
     try:
         js += rd(extra) + "\n"
     except FileNotFoundError:

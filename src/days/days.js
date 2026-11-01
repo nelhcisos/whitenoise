@@ -539,7 +539,8 @@
     game = { idx: level || 0, next: 0, pool, hours: 0, money: 0, mistakesTotal: 0, mini: true };
   }
   function startMini(k, opts = {}) {
-    mini = Object.assign({ k }, MINIS[Math.min(k, MINIS.length - 1)], opts);
+    // past the first eight, the practices cycle through the patient, the pliers and the causes again
+    mini = Object.assign({ k }, MINIS[k < MINIS.length ? k : 3 + (k - MINIS.length) % (MINIS.length - 3)], opts);
     if (mini.kind === "assist") return k === 0 || mini.dev ? show(1) : startAssist();   // the barin opens the very first one
     if (mini.kind === "pliers") { newPracticeGame(0); return show(4); }
     newPracticeGame(0);

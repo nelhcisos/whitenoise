@@ -4,7 +4,7 @@
   // Random interruptions (guests, an ad, a phone call) and small ambient animations keep it light.
   const M_IMG = "assets/master/";
   const M_KEY = "ortho-master-v2";
-  const M_EXAM = 12, M_PASS = 10;
+  const M_EXAM = 15, M_PASS = 12;
   const mCalm = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const mEl = {};
   for (const id of ["Stage", "Top", "Chapter", "Exit", "Prog", "ProgFill", "Board", "Fig", "Walker", "Sprite", "Vox", "Guest",
@@ -281,6 +281,10 @@
   function mRender(st) {
     mClearChoices();
     mEl.stage.classList.remove("asking", "answered", "pacing");
+    if (st.sec && ms) {   // a subchapter of the book's chapter: a card and the name in the top bar
+      mEl.chapter.textContent = `${ms.title} · ${st.sec}`;
+      mTitleCard("Подглава", st.sec, null);
+    }
     if (st.s !== undefined) {
       setBoard(st.b);
       setMood(st.m || "calm");
@@ -522,7 +526,7 @@
 
   // ----- exam, certificate, glossary -----
   function mStartExam() {
-    const pools = MASTER_CHAPTERS.map(ch => mShuffle(ch.steps.filter(st => st.q || st.tf)));
+    const pools = mShuffle(MASTER_CHAPTERS.map(ch => mShuffle(ch.steps.filter(st => st.q || st.tf))));
     const qs = [];
     pools.forEach(p => { if (p.length && qs.length < M_EXAM) qs.push(p.shift()); });
     const rest = mShuffle(pools.filter(p => p.length));
@@ -617,6 +621,7 @@
     const list = [mNode("h2", "m-h", `Свитки мастера · день ${day}`)];
     const nextK = mSave.done.indexOf(false);
     MASTER_CHAPTERS.forEach((ch, k) => {
+      if (ch.part && (k === 0 || MASTER_CHAPTERS[k - 1].part !== ch.part)) list.push(mNode("p", "m-part", ch.part));
       list.push(mItem(`${k + 1}. ${ch.title}`, ch.sub, mStars(mSave.stars[k]), () => mStartChapter(k), k === nextK ? "next" : ""));
     });
     list.push(mItem("Экзамен мастера", mSave.exam ? `лучший результат: ${mSave.exam} из ${M_EXAM}` : `${M_EXAM} вопросов из всех свитков, нужно ${M_PASS}`,

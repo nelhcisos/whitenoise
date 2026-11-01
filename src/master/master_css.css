@@ -111,6 +111,8 @@
   .m-item small { grid-column: 1; color: #7a5a3a; font-weight: 600; font-size: 12.5px; }
   .m-item .m-stars { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
   .m-item:hover, .m-item:focus-visible { border-color: #e07a1f; outline: none; }
+  .m-part { margin: 14px 2px 6px; color: #a8541a; font: 800 12px/1.2 "Nunito", system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+  .m-part:first-of-type { margin-top: 2px; }
   .m-item.next { border-color: #e07a1f; box-shadow: 0 0 0 3px rgba(224, 122, 31, .25); }
   .m-item.exam, .m-item.main { background: linear-gradient(#ffe9b3, #f7c76a); }
   .m-item.cert { background: linear-gradient(#ffe0e0, #f6b9b9); }
