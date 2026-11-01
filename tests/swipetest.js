@@ -7,7 +7,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.addInitScript(() => { try { localStorage.setItem('ortho-master-v2', JSON.stringify({ met: true })); } catch (e) {} });
   await p.goto('file:///home/user/whitenoise/index.html'); await p.waitForTimeout(400);
-  await p.click('.home-app.folder'); await p.waitForTimeout(350); await p.click('#homeFolderBox .home-app >> nth=0'); await p.waitForTimeout(1400);
+  await p.click('.home-app.folder >> nth=0'); await p.waitForTimeout(350); await p.click('#homeFolderBox .home-app >> nth=0'); await p.waitForTimeout(1400);
   await p.click('#s1'); await p.waitForTimeout(1200);
   for (let i = 0; i < 10 && !(await p.isVisible('#mPanel')); i++) { await p.click('#mBox', { force: true }); await p.waitForTimeout(150); }
   await p.click('.m-panel .m-item >> nth=0'); await p.waitForTimeout(2300);

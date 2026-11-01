@@ -653,7 +653,7 @@
     // start over: two taps, then the saved stars, days and pay are wiped and the game reloads
     const reset = mItem("Начать игру заново", "сотрёт звёзды, дни и зарплату", null, () => {
       if (!reset.dataset.sure) { reset.dataset.sure = "1"; reset.querySelector(".m-item-t").textContent = "Точно? Нажми ещё раз"; return; }
-      try { localStorage.removeItem(M_KEY); localStorage.removeItem(DAY_KEY); localStorage.removeItem("ortho-cards-v1"); } catch (e) { /* ignore */ }
+      try { localStorage.removeItem(M_KEY); localStorage.removeItem(DAY_KEY); localStorage.removeItem("ortho-cards-v1"); localStorage.removeItem("ortho-exam-v1"); } catch (e) { /* ignore */ }
       try { sessionStorage.setItem("ortho-reopen", "1"); } catch (e) { /* ignore */ }   // come back straight into the book
       location.reload();
     }, "small");
