@@ -90,6 +90,16 @@ final class AppModel {
     // MARK: - Session
 
     func start() async {
+        if AppConfig.isDemo {
+            // Browser demo: straight into барсук's account (password 1234), and a birthday
+            // push shows up at once. The real app keeps the password screen and first photo.
+            // The demo's data lives in memory, so a token kept from an earlier launch is stale.
+            try? await submitPassword(DemoPush.password)
+            if phase == .ready {
+                await DemoPush.showBirthday()
+                return
+            }
+        }
         guard TokenStore.token != nil else {
             phase = .signedOut
             return
