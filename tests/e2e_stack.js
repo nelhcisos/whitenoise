@@ -11,7 +11,7 @@ const [,, out] = process.argv;
   await p.addInitScript(() => { if (!sessionStorage.getItem('k')) { try { localStorage.clear(); } catch (e) {} sessionStorage.setItem('k', '1'); } });
   await p.addInitScript(() => document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = 'body.woozy .screen { animation: none !important; } .eyelids { display: none !important; }'; document.head.append(st); }));
   await p.goto('file:///home/user/whitenoise/index.html');
-  await p.waitForTimeout(300); if (await p.isVisible('#home')) { await p.click('.home-app'); await p.waitForTimeout(1300); }
+  await p.waitForTimeout(300); if (await p.isVisible('#home')) { await p.click('.home-app.folder').then(() => p.waitForTimeout(350)).then(() => p.click('#homeFolderBox .home-app >> nth=0')); await p.waitForTimeout(1300); }
   await p.waitForTimeout(500);
   const vis = () => p.$$eval('section.screen', ss => ss.filter(s => !s.hidden).map(s => s.id).join(','));
   const visible = sel => p.isVisible(sel);

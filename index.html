@@ -816,6 +816,83 @@
   }
   .home-bar:hover::before, .home-bar:focus-visible::before { background: #fff; }
   .home-bar:focus { outline: none; }
+  /* a book's folder: a big 2x2 tile with its apps, opens like an iOS folder */
+  .home-app.folder .home-icon {
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; gap: 10px; padding: 14px; box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.2); -webkit-backdrop-filter: blur(20px) saturate(1.3); backdrop-filter: blur(20px) saturate(1.3);
+  }
+  .home-app.folder .home-badge { top: -9px; right: -9px; }
+  .home-mini { aspect-ratio: 1; border-radius: 13px; background: #fff center / cover no-repeat; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); }
+  .home-fstat { grid-column: 1 / span 2; align-self: end; font-size: 12px; line-height: 1.35; font-weight: 600; text-align: left; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+  .home-fstat i { font-style: normal; opacity: 0.75; font-weight: 500; }
+  .home-folder {
+    position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+    background: rgba(20, 16, 40, 0.35); -webkit-backdrop-filter: blur(28px); backdrop-filter: blur(28px);
+  }
+  .home-folder[hidden] { display: none; }
+  .home-folder h2 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.4px; }
+  .home-folder-box {
+    display: grid; grid-template-columns: repeat(3, 76px); gap: 26px 24px; padding: 24px 22px; border-radius: 34px;
+    background: rgba(255, 255, 255, 0.22); justify-content: center;
+  }
+  .home-folder-box .home-icon { width: 76px; height: 76px; border-radius: 18px; background-color: #fff; image-rendering: auto; }
+  .home-folder-box .home-name { font-size: 12px; max-width: 92px; }
+  /* «Карта пациента»: an iOS-style records app */
+  .card-app {
+    position: fixed; inset: 0; z-index: 98; display: flex; flex-direction: column; background: #f2f2f7; color: #1c1c1e;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  .card-app[hidden] { display: none; }
+  .ca-nav { flex: none; display: flex; align-items: center; height: 44px; padding: calc(env(safe-area-inset-top, 0px) + 6px) 8px 0; background: rgba(242, 242, 247, 0.92); border-bottom: 1px solid rgba(60, 60, 67, 0.12); }
+  .ca-nav button { border: 0; background: none; color: #007aff; font: inherit; font-size: 17px; padding: 6px 8px; cursor: pointer; }
+  .ca-nav button[hidden] { visibility: hidden; display: inline; }
+  .ca-nav b { flex: 1; text-align: center; font-size: 17px; font-weight: 600; margin-right: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-body { flex: 1; overflow-y: auto; width: 100%; max-width: 560px; margin: 0 auto; box-sizing: border-box; padding: 6px 16px calc(env(safe-area-inset-bottom, 0px) + 48px); -webkit-overflow-scrolling: touch; }
+  .ca-h1 { margin: 8px 4px 6px; font-size: 32px; font-weight: 700; line-height: 1.15; font-family: inherit; color: #1c1c1e; letter-spacing: -0.5px; text-shadow: none; text-transform: none; }
+  .ca-sub { margin: 0 4px 16px; color: #6c6c70; font-size: 15px; line-height: 1.4; }
+  .ca-group { background: #fff; border-radius: 12px; overflow: hidden; }
+  .ca-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+  .ca-row + .ca-row { border-top: 1px solid rgba(60, 60, 67, 0.12); }
+  .ca-row:active { background: #e5e5ea; }
+  .ca-av { flex: none; width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(#8e9cff, #5856d6); color: #fff; font-weight: 700; font-size: 16px; line-height: 42px; text-align: center; }
+  .ca-row-t { flex: 1; min-width: 0; }
+  .ca-row-t b { display: block; font-size: 16px; font-weight: 600; }
+  .ca-row-t span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; color: #6c6c70; line-height: 1.35; }
+  .ca-st { flex: none; padding: 3px 9px; border-radius: 10px; background: #e5e5ea; color: #3a3a3c; font-size: 13px; font-weight: 600; }
+  .ca-st.new { background: #007aff; color: #fff; }
+  .ca-st.ok { background: #34c759; color: #fff; }
+  .ca-sec { margin-top: 18px; }
+  .ca-sec-h { margin: 0 14px 6px; color: #6c6c70; font-size: 13px; text-transform: uppercase; letter-spacing: 0.2px; }
+  .ca-text { margin: 0; padding: 12px 14px; background: #fff; border-radius: 12px; font-size: 16px; line-height: 1.45; }
+  .ca-fig + .ca-text { margin-top: 8px; }
+  .ca-kv { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; font-size: 16px; }
+  .ca-kv + .ca-kv { border-top: 1px solid rgba(60, 60, 67, 0.12); }
+  .ca-kv span { color: #6c6c70; }
+  .ca-fig { margin: 0; padding: 10px; background: #fff; border-radius: 12px; }
+  .ca-fig img { display: block; width: 100%; height: auto; border-radius: 6px; }
+  .ca-fig figcaption { margin-top: 6px; font-size: 13px; color: #6c6c70; }
+  .ca-opt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 0; background: none; text-align: left; font: inherit; font-size: 16px; line-height: 1.35; color: inherit; cursor: pointer; }
+  .ca-opt + .ca-opt { border-top: 1px solid rgba(60, 60, 67, 0.12); }
+  .ca-dot { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #c7c7cc; box-sizing: border-box; }
+  .ca-opt.sel .ca-dot { border: 7px solid #007aff; }
+  .ca-opt.right { background: #e8f8ec; }
+  .ca-opt.right .ca-dot { border: 7px solid #34c759; }
+  .ca-opt.wrong { background: #ffecec; }
+  .ca-opt.wrong .ca-dot { border: 7px solid #ff3b30; }
+  .ca-opt:disabled { cursor: default; color: inherit; }
+  .ca-fb { margin: 8px 4px 0; font-size: 15px; line-height: 1.45; }
+  .ca-fb[hidden] { display: none; }
+  .ca-fb.ok b { color: #248a3d; }
+  .ca-fb.bad b { color: #d70015; }
+  .ca-fb small { display: block; margin-top: 4px; color: #8e8e93; font-size: 13px; }
+  .ca-sign { display: block; width: 100%; margin-top: 22px; padding: 15px; border: 0; border-radius: 14px; background: #007aff; color: #fff; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+  .ca-sign:disabled { background: #b4d4ff; cursor: default; }
+  .ca-link { display: block; margin: 14px auto 0; border: 0; background: none; color: #007aff; font: inherit; font-size: 16px; cursor: pointer; }
+  .ca-concl { margin-top: 18px; }
+  .ca-concl[hidden] { display: none; }
+  .ca-hand { margin: 0; padding: 14px; background: #fffbe6; border-radius: 12px; border-left: 4px solid #f6b93b; font-size: 16px; line-height: 1.5; font-style: italic; }
+  .ca-score { margin: 10px 4px 0; font-weight: 600; font-size: 16px; }
+
   @media (prefers-reduced-motion: reduce) { .home-icon { transition: none; } }
 
   @media (prefers-reduced-motion: reduce) {
@@ -838,6 +915,10 @@
   <div class="home-grid" id="homeGrid"></div>
   <button class="home-find" id="homeFind" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.8" cy="6.8" r="5"/><path d="m10.6 10.6 3.8 3.8"/></svg>Поиск</button>
   <div class="home-dock" aria-hidden="true"></div>
+  <div class="home-folder" id="homeFolder" role="dialog" aria-label="Папка" hidden>
+    <h2 id="homeFolderName"></h2>
+    <div class="home-folder-box" id="homeFolderBox"></div>
+  </div>
   <div class="home-spot" id="homeSpot" role="dialog" aria-label="Поиск по книгам" hidden>
     <div class="home-spot-bar">
       <label class="home-spot-field"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.8" cy="6.8" r="5"/><path d="m10.6 10.6 3.8 3.8"/></svg><input id="homeSpotInput" type="search" placeholder="Поиск" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Поиск по книгам"></label>
@@ -847,6 +928,10 @@
   </div>
 </div>
 <div class="app-splash" id="appSplash" aria-hidden="true" hidden><img id="appSplashImg" alt=""><p class="app-splash-name" id="appSplashName"></p></div>
+<div class="card-app" id="cardApp" role="region" aria-label="Карта пациента" hidden>
+  <div class="ca-nav"><button id="cardBack" type="button">‹ Карты</button><b id="cardNavTitle"></b></div>
+  <div class="card-body" id="cardBody"></div>
+</div>
 <button class="home-bar" id="homeBar" type="button" aria-label="На главный экран" hidden></button>
 
 <audio id="music" src="music.mp3" loop preload="auto"></audio>
@@ -5088,7 +5173,7 @@
     // start over: two taps, then the saved stars, days and pay are wiped and the game reloads
     const reset = mItem("Начать игру заново", "сотрёт звёзды, дни и зарплату", null, () => {
       if (!reset.dataset.sure) { reset.dataset.sure = "1"; reset.querySelector(".m-item-t").textContent = "Точно? Нажми ещё раз"; return; }
-      try { localStorage.removeItem(M_KEY); localStorage.removeItem(DAY_KEY); } catch (e) { /* ignore */ }
+      try { localStorage.removeItem(M_KEY); localStorage.removeItem(DAY_KEY); localStorage.removeItem("ortho-cards-v1"); } catch (e) { /* ignore */ }
       try { sessionStorage.setItem("ortho-reopen", "1"); } catch (e) { /* ignore */ }   // come back straight into the book
       location.reload();
     }, "small");
@@ -5696,6 +5781,229 @@
   $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS;
   $("latestBtn").addEventListener("click", e => { e.stopPropagation(); goToLatest(); });
 
+  // ---------- «Карта пациента»: fill in a patient's record from what the scrolls taught ----------
+  // Each case: who came, the complaint, the condylogram (a figure from the book) and the record's
+  // fields. In every field the first option is the right one; options are shuffled on screen.
+  // k: the scroll (1-based) where the answer is explained.
+  const CARD_CASES = [
+    { id: "c1", name: "Анна К.", age: 24, job: "студентка", fig: "f110_13",
+      complaint: "Иногда тихо щёлкает в суставе при открывании рта. Не болит, рот открывается свободно.",
+      history: "Заметила полгода назад. Других жалоб нет.",
+      trace: "При открывании в первые 1–3 мм кривая выпуклая, потом вогнутая.",
+      fields: [
+        { label: "Находка на кондилограмме", o: ["Changing character", "Чрезмерное вращение (over rotation)", "Восьмёрка реципрокного щелчка", "Мыщелок не уходит от RP"],
+          why: [null, "Over rotation — лишний поворот у максимального открывания, а здесь изгиб в самом начале.", "Восьмёрки здесь нет — щелчок лёгкий, кривая одна.", "Мыщелок уходит нормально."],
+          e: "Выпуклый изгиб в начале открывания — changing character.", k: 12 },
+        { label: "Стадия нарушения", o: ["Стадия 1", "Стадия 3", "Стадия 4", "Стадия 5"],
+          why: [null, "На 3-й стадии уже боль, заклинивание и ограничение.", "На 4-й диск не вправляется и меняются кости.", "5-я — остеоартроз с болью и хрустом."],
+          e: "Лёгкий безболезненный щелчок без ограничения, changing character на записи.", k: 16 },
+        { label: "Где искать лечебное положение (ThP)", o: ["У точки перегиба, на 2–3 мм впереди", "В самом заднем положении", "На максимальном открывании", "Там, где пациенту удобно"],
+          why: [null, "Заднее положение и есть проблема.", "Слишком далеко.", "Удобство — не критерий."],
+          e: "Где выпуклая кривая переходит в вогнутую.", k: 15 },
+      ] },
+    { id: "c2", name: "Игорь М.", age: 31, job: "менеджер", fig: "f113_3",
+      complaint: "Щёлкает и когда открываю рот, и когда закрываю. Иногда больно, бывает, челюсть заклинивает. Голова болит.",
+      history: "Щелчок два года, заклинивать стало в последние месяцы.",
+      trace: "Пути открывания и закрывания перекрещиваются «восьмёркой»; щелчок закрывания ближе к RP.",
+      fields: [
+        { label: "Вид щелчка", o: ["Реципрокный", "Щелчок вращения", "Over-rotational", "ΔY-shift"],
+          why: [null, "Щелчок вращения — при вращении, без восьмёрки.", "Over-rotational — в самом конце открывания разболтанного сустава.", "ΔY-shift — сдвиг по оси Y, сбоку его не видно."],
+          e: "Щелчок при открывании и при закрывании, след — восьмёрка.", k: 16 },
+        { label: "Стадия нарушения", o: ["Стадия 2", "Стадия 1", "Стадия 4", "Стадия 5"],
+          why: [null, "На 1-й щелчок лёгкий и без боли.", "На 4-й диск уже не вправляется.", "5-я — остеоартроз."],
+          e: "Диск ещё вправляется, но временами больно и заклинивает; чёткая восьмёрка.", k: 16 },
+        { label: "Лечебное положение (ThP)", o: ["Сразу перед щелчком закрывания", "Сразу после щелчка открывания", "В RP", "На максимальном открывании"],
+          why: [null, "Ориентир — щелчок закрывания.", "В RP диск смещён.", "Слишком далеко."],
+          e: "Щелчок закрывания ближе к RP — ThP прямо перед ним.", k: 16 },
+      ] },
+    { id: "c3", name: "Марина С.", age: 28, job: "бухгалтер", fig: "f119_11",
+      complaint: "Утром не смогла открыть рот широко. Больно. Раньше щёлкало, а теперь щелчок пропал.",
+      history: "Открывание 27 мм. Вращение есть, дальше не идёт.",
+      trace: "При открывании и движении вперёд мыщелок топчется возле RP.",
+      fields: [
+        { label: "Диагноз", o: ["Острый закрытый замок", "Частичный замок", "Хронический свободный замок", "Норма"],
+          why: [null, "При частичном движение вперёд свободно, а здесь и оно ограничено.", "Хронический — без острой боли и с большим открыванием.", "Открывание 27 мм — не норма."],
+          e: "Диск не вправляется, скольжения нет, открывание только вращением.", k: 16 },
+        { label: "Почему пропал щелчок", o: ["Диск перестал вправляться", "Сустав выздоровел", "Щелчок ушёл в ось Y", "Его заглушили мышцы"],
+          why: [null, "Пропавший щелчок с ограничением — не выздоровление.", "ΔY-shift — другое.", "Мышцы щелчок не глушат."],
+          e: "Смещение диска с вправлением перешло в смещение без вправления — closed lock.", k: 16 },
+        { label: "Чем ограничено открывание", o: ["Только вращением: 25–30 мм", "Ничем", "Скольжением в нижнем отделе", "Наружной связкой при движении вперёд"],
+          why: [null, "Ограничено, и заметно.", "Скольжения как раз нет.", "Вперёд тоже не идёт — дело не только в связке."],
+          e: "При остром тугом замке открывание 25–30 мм.", k: 16 },
+      ] },
+    { id: "c4", name: "Олег П.", age: 35, job: "водитель", fig: "f119_11",
+      complaint: "Рот открывается не полностью. А челюсть вперёд и в стороны двигается нормально.",
+      history: "Давно щёлкало слева, потом щелчок стал реже.",
+      trace: "Открывание ограничено несколькими миллиметрами; движение вперёд и медиотрузия свободны.",
+      fields: [
+        { label: "Диагноз", o: ["Частичный (связочный) замок", "Острый закрытый замок", "Разболтанность без замка", "Норма"],
+          why: [null, "При остром ограничено и движение вперёд.", "Разболтанность даёт больший ход, а не ограничение.", "Открывание ограничено — не норма."],
+          e: "Ограничено только движение с вращением.", k: 16 },
+        { label: "Механизм", o: ["Наружный полюс мыщелка упирается в натянутую латеральную связку, диск смещён вперёд-внутрь", "Диск смещён назад", "Спазм височной мышцы", "Зубы мешают смыканию"],
+          why: [null, "Назад диск уходит при щелчке вращения.", "Мышечное ограничение обычно с болью в мышце, и вперёд тоже трудно.", "Зубы тут ни при чём."],
+          e: "При вращении связка натягивается — скольжение вперёд невозможно.", k: 16 },
+        { label: "Как выглядит запись", o: ["Открывание коротко, движение вперёд и вбок почти норма", "Всё одинаково ограничено", "Ход больше нормы", "Восьмёрка"],
+          why: [null, "Это острый тугой замок.", "Это скорее разболтанность.", "Восьмёрка — реципрокный щелчок."],
+          e: "Движения без вращения связку не натягивают.", k: 16 },
+      ] },
+    { id: "c5", name: "Светлана В.", age: 42, job: "певица", fig: "f116_6",
+      complaint: "Когда широко открываю рот, в конце что-то щёлкает, будто челюсть выскакивает.",
+      history: "Однажды не могла закрыть рот несколько минут.",
+      trace: "Ход мыщелка увеличен. У максимального открывания скольжение почти закончилось, а мыщелок доворачивается примерно на 15°.",
+      fields: [
+        { label: "Вид щелчка", o: ["Over-rotational (щелчок бугорка)", "Реципрокный", "Щелчок вращения в начале открывания", "ΔY-shift"],
+          why: [null, "Реципрокный — при открывании и закрывании, восьмёрка.", "Здесь щелчок в самом конце, а не в начале.", "Сдвиг по Y здесь не главное."],
+          e: "Чрезмерный поворот в конце открывания разболтанного сустава.", k: 16 },
+        { label: "Что это говорит о суставе", o: ["Сустав разболтан", "Сустав в норме", "Острый замок", "Ось найдена неверно"],
+          why: [null, "Лишний поворот — не норма.", "При замке ход меньше, а здесь больше.", "Ось может давать странную кривую, но тут классическая картина."],
+          e: "Over rotation подтверждают анализом Trans/Rot.", k: 12 },
+        { label: "Чем грозит, если не лечить", o: ["Вывихом: рот не закрыть", "Ростом мыщелка", "Кариесом", "Ничем"],
+          why: [null, "Мыщелок не растёт от этого.", "Кариес ни при чём.", "Риск есть."],
+          e: "Книга: дальше — luxation, рот не закрывается.", k: 16 },
+      ] },
+    { id: "c6", name: "Дмитрий Л.", age: 26, job: "программист", fig: "f116_8",
+      complaint: "Почти ничего не беспокоит, иногда неприятно в суставе при открывании.",
+      history: "Сбоку на записи щелчка не видно.",
+      trace: "В сагиттальной проекции кривая чистая, а по оси Y — чёткий сдвиг около 1 мм.",
+      fields: [
+        { label: "Находка", o: ["Поперечный щелчок (ΔY-shift)", "Всё в норме", "Реципрокный щелчок", "Начальный угол Фишера"],
+          why: [null, "Сдвиг 1 мм по Y — находка.", "Восьмёрки нет.", "Угол Фишера ищут наложением движения вперёд и медиотрузии."],
+          e: "Щелчок бывает только по горизонтали.", k: 16 },
+        { label: "Где лечебное положение", o: ["Перед последним сдвигом при закрывании", "В RP", "На середине открывания", "Где пациенту удобно"],
+          why: [null, "RP здесь смещено.", "Ориентир — сдвиг при закрывании.", "Удобство — не критерий."],
+          e: "Как в примере книги (красный кружок).", k: 16 },
+      ] },
+    { id: "c7", name: "Елена Г.", age: 50, job: "преподаватель", fig: "f114_5",
+      complaint: "Сильная боль в суставе, хрустит. Рот открывается плохо. Болят шея и плечи, шумит в ушах.",
+      history: "Проблемы с суставом много лет. На снимках мыщелок за несколько лет сильно уменьшился.",
+      trace: "Хронический замок с ограничением движения.",
+      fields: [
+        { label: "Стадия нарушения", o: ["Стадия 5 — остеоартроз", "Стадия 1", "Стадия 2", "Стадия 3"],
+          why: [null, "На 1-й лёгкий щелчок без боли.", "На 2-й диск ещё вправляется.", "На 3-й кости ещё не меняются."],
+          e: "Дегенерация мыщелка и бугорка, крепитация, вегетативные симптомы.", k: 16 },
+        { label: "Как называется хруст", o: ["Крепитация", "Реципрокный щелчок", "Щелчок бугорка", "Бруксизм"],
+          why: [null, "Реципрокный — щелчок, а не хруст.", "Это over-rotational click.", "Бруксизм — скрежет зубами."],
+          e: "Хруст — признак остеоартроза.", k: 16 },
+        { label: "Что видно на цефалограмме таких пациентов", o: ["Крутая задняя окклюзионная плоскость (POP)", "Пологая POP", "Идеальный I класс", "Ничего особенного"],
+          why: [null, "В примере книги — наоборот, крутая.", "Не обязательно.", "Как раз есть на что обратить внимание."],
+          e: "Книга просит обратить внимание на крутую POP.", k: 16 },
+      ] },
+    { id: "c8", name: "Пациент на записи", age: 33, job: "инженер", fig: "f77_6",
+      complaint: "Жалоб нет. Пришёл на плановую кондилографию.",
+      history: "Запись только что сделал новый ассистент.",
+      trace: "Кривая открывания странная, ни на что не похожая.",
+      fields: [
+        { label: "Первое действие", o: ["Проверить, точно ли найдена шарнирная ось", "Сразу ставить диагноз", "Записать только с компьютерной осью", "Отпустить пациента"],
+          why: [null, "С неверной осью диагноз будет неточным.", "Компьютерная ось — только проверка.", "Сначала разберись с записью."],
+          e: "Сдвиг оси на 10 мм заметно меняет форму кривой.", k: 11 },
+        { label: "Как найти ось правильно", o: ["Методом проб и ошибок: вращение без скольжения, пока штифт не крутится на месте", "Попросить пациента жевать", "Поставить штифт у уха на глаз", "Доверить компьютеру"],
+          why: [null, "При жевании есть скольжение.", "На глаз — неточно.", "Компьютер найдёт центр даже неправильного вращения."],
+          e: "Ось примерно в 3 раза дальше хода штифта.", k: 11 },
+        { label: "Сколько раз повторять каждую запись", o: ["2–3 раза", "Один", "10 раз", "Не важно"],
+          why: [null, "Нужно проверить воспроизводимость.", "Слишком много.", "Важно — по стандарту."],
+          e: "Стандарт записи: каждое движение 2–3 раза.", k: 11 },
+      ] },
+  ];
+  const CARD_KEY = "ortho-cards-v1";
+  const cardSave = (() => { try { const s = JSON.parse(localStorage.getItem(CARD_KEY) || "null"); return s && typeof s.done === "object" && s.done ? s : { done: {} }; } catch (e) { return { done: {} }; } })();
+  const cardStore = () => { try { localStorage.setItem(CARD_KEY, JSON.stringify(cardSave)); } catch (e) { /* ignore */ } };
+  const cardsLeft = () => CARD_CASES.filter(c => !cardSave.done[c.id]).length;
+  const cardApp = $("cardApp"), cardBody = $("cardBody");
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+  function cardList() {
+    $("cardBack").hidden = true;
+    $("cardNavTitle").textContent = "";
+    const done = CARD_CASES.length - cardsLeft();
+    const out = [el("h1", "ca-h1", "Карты пациентов"),
+      el("p", "ca-sub", `Кондилография · заполнено ${done} из ${CARD_CASES.length}. Заполни карту по знаниям из свитков мастера.`)];
+    const g = el("div", "ca-group");
+    for (const c of CARD_CASES) {
+      const r = el("button", "ca-row"); r.type = "button";
+      const av = el("span", "ca-av", c.name.split(" ").map(w => w[0]).join("").slice(0, 2));
+      const t = el("span", "ca-row-t");
+      t.append(el("b", null, `${c.name}, ${c.age}`), el("span", null, c.complaint));
+      const d = cardSave.done[c.id];
+      const st = el("span", d ? (d.right === d.total ? "ca-st ok" : "ca-st") : "ca-st new", d ? `${d.right}/${d.total}` : "новая");
+      r.append(av, t, st);
+      r.addEventListener("click", () => cardOpen(c));
+      g.append(r);
+    }
+    out.push(g);
+    cardBody.replaceChildren(...out);
+    cardBody.scrollTop = 0;
+  }
+  function cardOpen(c) {
+    $("cardBack").hidden = false;
+    $("cardNavTitle").textContent = c.name;
+    const f = BOOK[c.fig];
+    const picks = c.fields.map(() => -1);
+    const orders = c.fields.map(fd => mShuffle(fd.o.map((_, i) => i)));
+    const sec = (title, ...kids) => { const s = el("section", "ca-sec"); s.append(el("p", "ca-sec-h", title), ...kids); return s; };
+    const info = el("div", "ca-group ca-info");
+    for (const [k, v] of [["Пациент", c.name], ["Возраст", `${c.age}`], ["Профессия", c.job]]) { const r = el("div", "ca-kv"); r.append(el("span", null, k), el("b", null, v)); info.append(r); }
+    const fig = el("figure", "ca-fig");
+    const img = el("img"); img.src = `assets/master/fig/${c.fig}_z.webp`; img.alt = f ? `${f.n}: ${f.t}` : "";
+    fig.append(img, el("figcaption", null, f ? `${f.n}, с. ${f.p} · ${f.t}` : ""));
+    const sign = el("button", "ca-sign", "Подписать карту"); sign.type = "button"; sign.disabled = true;
+    const fieldEls = c.fields.map((fd, i) => {
+      const g = el("div", "ca-group ca-opts");
+      orders[i].forEach(j => {
+        const b = el("button", "ca-opt"); b.type = "button"; b.dataset.j = j;
+        b.append(el("span", "ca-dot"), el("span", null, fd.o[j]));
+        b.addEventListener("click", () => {
+          if (sign.dataset.signed) return;
+          picks[i] = j;
+          g.querySelectorAll(".ca-opt").forEach(x => x.classList.toggle("sel", +x.dataset.j === j));
+          sign.disabled = picks.includes(-1);
+        });
+        g.append(b);
+      });
+      const fb = el("div", "ca-fb"); fb.hidden = true;
+      return { g, fb, sec: sec(fd.label, g, fb) };
+    });
+    const concl = el("div", "ca-concl"); concl.hidden = true;
+    sign.addEventListener("click", () => {
+      if (sign.dataset.signed || picks.includes(-1)) return;
+      sign.dataset.signed = "1";
+      let right = 0;
+      c.fields.forEach((fd, i) => {
+        const ok = picks[i] === 0; if (ok) right++;
+        const { g, fb } = fieldEls[i];
+        g.querySelectorAll(".ca-opt").forEach(x => { const j = +x.dataset.j; x.disabled = true; x.classList.toggle("right", j === 0); x.classList.toggle("wrong", j === picks[i] && !ok); });
+        fb.hidden = false;
+        fb.className = "ca-fb " + (ok ? "ok" : "bad");
+        fb.replaceChildren(el("b", null, ok ? "Верно." : `Нет: ${fd.why[picks[i]] || ""}`), el("span", null, ` ${fd.e}`), el("small", null, `Свиток ${fd.k}. ${MASTER_CHAPTERS[fd.k - 1] ? MASTER_CHAPTERS[fd.k - 1].title : ""}`));
+      });
+      const pay = right * payPerStep;
+      const prev = cardSave.done[c.id];
+      if (!prev || right > prev.right) cardSave.done[c.id] = { right, total: c.fields.length };
+      cardStore();
+      if (!prev) dayLog("shift", `Карта пациента: ${c.name}`, right, c.fields.length, pay);
+      concl.hidden = false;
+      concl.replaceChildren(el("p", "ca-sec-h", "Заключение"),
+        el("p", "ca-hand", `${c.name}, ${c.age} л. Жалобы: «${c.complaint}» ` + c.fields.map((fd, i) => `${fd.label}: ${fd.o[picks[i]]}.`).join(" ")),
+        el("p", "ca-score", `Верно ${right} из ${c.fields.length}` + (prev ? "" : ` · +${rub(pay)} ₽ в зарплату дня`)));
+      sign.textContent = right === c.fields.length ? "Карта подписана ✓" : "Карта подписана";
+      const again = el("button", "ca-link", "Заполнить заново"); again.type = "button";
+      again.addEventListener("click", () => cardOpen(c));
+      const next = CARD_CASES[(CARD_CASES.indexOf(c) + 1) % CARD_CASES.length];
+      const nb = el("button", "ca-sign", `Следующий: ${next.name}`); nb.type = "button";
+      nb.addEventListener("click", () => cardOpen(next));
+      concl.append(nb, again);
+      concl.scrollIntoView({ behavior: homeCalm() ? "auto" : "smooth", block: "start" });
+    });
+    cardBody.replaceChildren(
+      el("h1", "ca-h1", c.name),
+      sec("Паспорт", info),
+      sec("Жалобы", el("p", "ca-text", c.complaint)),
+      sec("Анамнез", el("p", "ca-text", c.history)),
+      sec("Кондилограмма", fig, el("p", "ca-text", c.trace)),
+      ...fieldEls.map(x => x.sec),
+      sign, concl);
+    cardBody.scrollTop = 0;
+  }
+  $("cardBack").addEventListener("click", cardList);
+
   // ---------- Home screen: every book is an app ----------
   // The game opens on a phone-like home screen. Each book is an app with its own teacher and its own
   // material; for now there is one. Tapping it opens the game; the bar at the bottom brings you back,
@@ -5703,35 +6011,95 @@
   const BOOKS = [
     { id: "condylography", title: "Кондилография", icon: "assets/books/condylography.webp", big: true },
   ];
+  // every book lives in its own folder: the book itself and its patient cards
+  const CARD_APP = { id: "cards", title: "Карта пациента", icon: "assets/books/patient_card.png" };
+  let cardOpenNow = false;
   const home = $("home"), splash = $("appSplash"), homeBar = $("homeBar");
   let homeOpen = false, homeBusy = false, homeAnim = null, musicWasOn = false;
   const homeCalm = () => !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) || !splash.animate;
   // while the home screen is up, the game underneath hears no keys and takes no focus
-  window.addEventListener("keydown", e => { if ((homeOpen || homeBusy) && !home.contains(e.target)) e.stopImmediatePropagation(); }, true);
+  window.addEventListener("keydown", e => {
+    if ((homeOpen || homeBusy || cardOpenNow) && !home.contains(e.target) && !cardApp.contains(e.target)) e.stopImmediatePropagation();
+    if (homeOpen && !folder.hidden && e.key === "Escape") { e.preventDefault(); folderClose(); }
+  }, true);
   function gameInert(on) {
     for (const el of document.querySelectorAll("section.screen, #latestBtn")) el.inert = on;
   }
   const unreadScrolls = () => (mSave && Array.isArray(mSave.done) ? mSave.done.filter(d => !d).length : 0);
+  const folder = $("homeFolder");
+  function appButton(app, cls, badgeN, onClick) {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = cls; btn.dataset.app = app.id;
+    btn.setAttribute("aria-label", badgeN ? `${app.title}. Новых: ${badgeN}` : app.title);
+    const icon = document.createElement("span");
+    icon.className = "home-icon";
+    icon.style.backgroundImage = `url("${app.icon}")`;
+    if (badgeN) { const badge = document.createElement("span"); badge.className = "home-badge"; badge.textContent = badgeN; icon.append(badge); }
+    const name = document.createElement("span");
+    name.className = "home-name"; name.textContent = app.title;
+    btn.append(icon, name);
+    btn.addEventListener("click", () => onClick(icon));
+    return btn;
+  }
   function renderHome() {
-    const left = unreadScrolls();
+    const left = unreadScrolls(), cards = cardsLeft();
     $("homeGrid").replaceChildren(...BOOKS.map(b => {
       const btn = document.createElement("button");
-      btn.type = "button"; btn.className = b.big ? "home-app big" : "home-app"; btn.dataset.book = b.id;
-      btn.setAttribute("aria-label", left ? `${b.title}. Непрочитанных свитков: ${left}` : b.title);
+      btn.type = "button"; btn.className = "home-app big folder"; btn.dataset.book = b.id;
+      btn.setAttribute("aria-label", `Папка ${b.title}: книга и карты пациентов`);
       const icon = document.createElement("span");
       icon.className = "home-icon";
-      icon.style.backgroundImage = `url("${b.icon}")`;
-      if (left) {   // like unread notifications: scrolls still to read
-        const badge = document.createElement("span");
-        badge.className = "home-badge"; badge.textContent = left;
-        icon.append(badge);
-      }
+      const m1 = document.createElement("span"); m1.className = "home-mini"; m1.style.backgroundImage = `url("${b.icon}")`;
+      const m2 = document.createElement("span"); m2.className = "home-mini"; m2.style.backgroundImage = `url("${CARD_APP.icon}")`;
+      const stat = document.createElement("span"); stat.className = "home-fstat";
+      const done = MASTER_CHAPTERS.length - left, cdone = CARD_CASES.length - cards;
+      stat.innerHTML = `Свитки ${done}/${MASTER_CHAPTERS.length}<br><i>Карты ${cdone}/${CARD_CASES.length}</i>`;
+      icon.append(m1, m2, stat);
+      if (left + cards) { const badge = document.createElement("span"); badge.className = "home-badge"; badge.textContent = left + cards; icon.append(badge); }
       const name = document.createElement("span");
       name.className = "home-name"; name.textContent = b.title;
       btn.append(icon, name);
-      btn.addEventListener("click", () => openBook(b, icon));
+      btn.addEventListener("click", () => folderOpen(b));
       return btn;
     }));
+  }
+  function folderOpen(b) {
+    if (!homeOpen || homeBusy) return;
+    $("homeFolderName").textContent = b.title;
+    $("homeFolderBox").replaceChildren(
+      appButton(b, "home-app", unreadScrolls(), icon => { folder.hidden = true; openBook(b, icon); }),
+      appButton(CARD_APP, "home-app", cardsLeft(), icon => { folder.hidden = true; openCards(icon); }));
+    folder.hidden = false;
+    if (!homeCalm()) folder.animate([{ opacity: 0, transform: "scale(0.9)" }, { opacity: 1, transform: "scale(1)" }], { duration: 220, easing: "ease-out" });
+    folder.querySelector(".home-app")?.focus({ preventScroll: true });
+  }
+  function folderClose() {
+    folder.hidden = true;
+    home.querySelector(".home-app")?.focus({ preventScroll: true });
+  }
+  folder.addEventListener("click", e => { if (e.target === folder || e.target.id === "homeFolderName") folderClose(); });
+  // the card app opens over everything, like the book, and the home bar brings you back
+  function openCards(icon) {
+    if (!homeOpen || homeBusy) return;
+    homeBusy = true;
+    spot.hidden = true;
+    const done = () => {
+      homeAnim?.cancel(); homeAnim = null;
+      home.hidden = true; homeOpen = false; homeBusy = false;
+      cardOpenNow = true;
+      cardApp.hidden = false;
+      homeBar.hidden = false;
+      cardList();
+      $("cardBody").focus?.({ preventScroll: true });
+    };
+    if (homeCalm()) return done();
+    const r = icon.getBoundingClientRect(), rad = getComputedStyle(icon).borderTopLeftRadius;
+    cardApp.hidden = false; cardList();
+    cardApp.animate([
+      { clipPath: `inset(${r.top}px ${innerWidth - r.right}px ${innerHeight - r.bottom}px ${r.left}px round ${rad})`, opacity: 0.6 },
+      { clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1 },
+    ], { duration: 400, easing: "cubic-bezier(.2, .8, .2, 1)" }).onfinish = done;
+    homeAnim = home.animate([{ transform: "scale(1)", filter: "brightness(1)" }, { transform: "scale(1.08)", filter: "brightness(0.55)" }], { duration: 400, easing: "ease-in", fill: "forwards" });
   }
   function openBook(b, icon) {
     if (!homeOpen || homeBusy) return;
@@ -5764,6 +6132,22 @@
   function goHome() {
     if (homeOpen || homeBusy) return;
     homeBusy = true;
+    if (cardOpenNow) {   // back from the card app: the game underneath stays as it was
+      cardOpenNow = false;
+      renderHome();
+      homeAnim?.cancel(); homeAnim = null;
+      home.hidden = false; homeBar.hidden = true;
+      startWall();
+      const fin = () => { cardApp.hidden = true; homeOpen = true; homeBusy = false; home.querySelector(".home-app")?.focus({ preventScroll: true }); };
+      if (homeCalm()) return fin();
+      const tile = home.querySelector(".home-icon"), r = tile.getBoundingClientRect(), rad = getComputedStyle(tile).borderTopLeftRadius;
+      cardApp.animate([
+        { clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1 },
+        { clipPath: `inset(${r.top}px ${innerWidth - r.right}px ${innerHeight - r.bottom}px ${r.left}px round ${rad})`, opacity: 0 },
+      ], { duration: 380, easing: "cubic-bezier(.3, .7, .2, 1)" }).onfinish = fin;
+      home.animate([{ transform: "scale(1.08)", filter: "brightness(0.55)" }, { transform: "scale(1)", filter: "brightness(1)" }], { duration: 380, easing: "ease-out" });
+      return;
+    }
     musicWasOn = !music.paused;
     music.pause();
     renderHome();   // the badge may have changed
@@ -5917,16 +6301,24 @@
   function spotOpenBook(b) {
     spot.hidden = true;
     const tile = home.querySelector(`.home-app[data-book="${b.id}"] .home-icon`);
+    folder.hidden = true;
     if (tile) openBook(b, tile);
   }
   function spotRender() {
     const q = spotNorm(spotInput.value.trim());
     const out = [];
     const books = BOOKS.filter(b => !q || spotNorm(b.title).includes(q));
+    const cardHit = !q || "карта пациента карты пациентов".includes(q) || CARD_CASES.some(c => spotNorm(c.name).includes(q));
     if (books.length) out.push(...spotGroup(q ? "Книги" : "Предложения", books.map(b => {
       const img = document.createElement("img"); img.src = b.icon; img.alt = "";
       return spotRow(img, b.title, `Книга · свитков: ${MASTER_CHAPTERS.length}, не прочитано: ${unreadScrolls()}`, q, () => spotOpenBook(b));
     })));
+    if (cardHit) out.push(...spotGroup("Приложения", [(() => {
+      const img = document.createElement("img"); img.src = CARD_APP.icon; img.alt = "";
+      return spotRow(img, CARD_APP.title, `Кондилография · карт: ${CARD_CASES.length}, не заполнено: ${cardsLeft()}`, q, () => {
+        spot.hidden = true; openCards(home.querySelector(".home-app .home-icon"));
+      });
+    })()]));
     if (!q) {
       const h = document.createElement("p"); h.className = "home-spot-h"; h.textContent = "Попробуй найти";
       const chips = document.createElement("div"); chips.className = "home-spot-chips";
@@ -5947,7 +6339,7 @@
         return { t, d, rank: nt.startsWith(q) ? 0 : nt.includes(q) ? 1 : spotNorm(d).includes(q) ? 2 : 9 };
       }).filter(x => x.rank < 9).sort((a, b) => a.rank - b.rank).slice(0, 30);
       if (terms.length) out.push(...spotGroup("Термины · Кондилография", terms.map(x => spotRow(null, x.t, x.d, q, row => row.classList.toggle("open")))));
-      if (!books.length && !scrolls.length && !terms.length) {
+      if (!books.length && !scrolls.length && !terms.length && !cardHit) {
         const e = document.createElement("p"); e.className = "home-spot-empty"; e.textContent = `Ничего не нашлось: «${spotInput.value.trim()}»`;
         out.push(e);
       }
@@ -5989,19 +6381,19 @@
     if (!wallRaf) wallRaf = requestAnimationFrame(wallLoop);
   }
   function showHomeNow() {
-    homeOpen = true; homeBusy = false;
+    homeOpen = true; homeBusy = false; cardOpenNow = false; cardApp.hidden = true; folder.hidden = true;
     home.hidden = false; homeBar.hidden = true; splash.hidden = true;
     gameInert(true);
     renderHome();
     startWall();
   }
   function enterGameNow() {
-    homeOpen = false; homeBusy = false;
+    homeOpen = false; homeBusy = false; cardOpenNow = false; cardApp.hidden = true; folder.hidden = true;
     home.hidden = true; splash.hidden = true; homeBar.hidden = false;
     gameInert(false);
   }
   // dev build only: hooks for automated checks of the home screen
-  if (SKIP_TO_DIAGNOSTICS) window.__home = { open: () => homeOpen, busy: () => homeBusy, back: () => goHome() };
+  if (SKIP_TO_DIAGNOSTICS) window.__home = { open: () => homeOpen, busy: () => homeBusy, back: () => goHome(), cards: () => cardOpenNow };
 
   showHomeNow();   // every start opens on the home screen...
   let reopen = false;   // ...but "start over" in the master's menu comes straight back into the book

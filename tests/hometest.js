@@ -21,7 +21,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   ok(await p.evaluate(() => window.__home.open()), 'home state is open');
   ok((await p.$eval('.home-name', e => e.textContent)) === 'Кондилография', 'one app: Кондилография');
   ok((await p.$$('.home-app')).length === 1, 'exactly one app');
-  ok((await p.$eval('.home-badge', e => e.textContent)) === '8', 'badge: 8 unread scrolls');
+  ok((await p.$eval('.home-badge', e => e.textContent)) === '25', 'badge: 17 scrolls + 8 cards');
   ok(await p.$eval('#s1', e => e.inert), 'the game is inert under the home screen');
   await p.screenshot({ path: `${out}/home_phone.png` });
   // «Поиск»: Spotlight over the book
@@ -55,7 +55,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   await p.keyboard.press('Enter'); await p.keyboard.press('Space'); await p.waitForTimeout(400);
   ok((await vis(p)) === 's1', 'keys on the home screen leave the game alone (still s1)');
   // launch
-  await p.click('.home-app');
+  await p.click('.home-app.folder').then(() => p.waitForTimeout(350)).then(() => p.click('#homeFolderBox .home-app >> nth=0'));
   await p.waitForTimeout(180);
   await p.screenshot({ path: `${out}/launch_mid.png` });
   await p.waitForTimeout(500);
@@ -78,7 +78,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   await p.waitForTimeout(700);
   ok(await p.isVisible('#home') && await p.evaluate(() => window.__home.open()), 'home bar: back to the home screen');
   ok(!(await p.isVisible('#homeBar')), 'no home bar on the home screen');
-  await p.click('.home-app'); await p.waitForTimeout(1500);
+  await p.click('.home-app.folder').then(() => p.waitForTimeout(350)).then(() => p.click('#homeFolderBox .home-app >> nth=0')); await p.waitForTimeout(1500);
   ok((await vis(p)) === 's12', 'reopened: still at the master');
   // swipe up on the bar
   const bb = await p.$eval('#homeBar', e => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
@@ -86,7 +86,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   await p.waitForTimeout(900);
   ok(await p.evaluate(() => window.__home.open()), 'swipe up: home');
   // the master's menu has a way home, and "start over" comes straight back into the book
-  await p.click('.home-app'); await p.waitForTimeout(1500);
+  await p.click('.home-app.folder').then(() => p.waitForTimeout(350)).then(() => p.click('#homeFolderBox .home-app >> nth=0')); await p.waitForTimeout(1500);
   for (let i = 0; i < 30 && !(await p.isVisible('#mPanel')); i++) { await p.click('#mBox'); await p.waitForTimeout(120); }
   if (await p.isVisible('.m-panel .m-item:has-text("Практика")')) { console.log('note: a practice panel came first'); }
   await p.click('#mExit').catch(() => {});
@@ -94,7 +94,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   ok(await p.isVisible('.m-panel .m-item:has-text("Главный экран")'), "master's menu: Главный экран item");
   await p.click('.m-panel .m-item:has-text("Главный экран")'); await p.waitForTimeout(900);
   ok(await p.evaluate(() => window.__home.open()), "menu item: home");
-  await p.click('.home-app'); await p.waitForTimeout(1500);
+  await p.click('.home-app.folder').then(() => p.waitForTimeout(350)).then(() => p.click('#homeFolderBox .home-app >> nth=0')); await p.waitForTimeout(1500);
   await p.click('.m-panel .m-item:has-text("Начать игру заново")'); await p.click('.m-panel .m-item:has-text("Точно")');
   await p.waitForTimeout(1500);
   ok(!(await p.isVisible('#home')) && (await vis(p)) === 's1', 'start over: back in the book at the title, no home screen');
@@ -108,7 +108,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   await p.close();
   // reduced motion: no animation, instant switch
   p = await page({ reducedMotion: 'reduce' });
-  await p.click('.home-app'); await p.waitForTimeout(60);
+  await p.click('.home-app.folder').then(() => p.waitForTimeout(350)).then(() => p.click('#homeFolderBox .home-app >> nth=0')); await p.waitForTimeout(60);
   ok(!(await p.isVisible('#home')) && !(await p.isVisible('#appSplash')), 'reduced motion: opens at once');
   await p.click('#homeBar'); await p.waitForTimeout(60);
   ok(await p.isVisible('#home'), 'reduced motion: home at once');
@@ -116,7 +116,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   // desktop
   p = await page({ viewport: { width: 1280, height: 800 } });
   await p.screenshot({ path: `${out}/home_desktop.png` });
-  await p.click('.home-app'); await p.waitForTimeout(1300);
+  await p.click('.home-app.folder').then(() => p.waitForTimeout(350)).then(() => p.click('#homeFolderBox .home-app >> nth=0')); await p.waitForTimeout(1300);
   await p.screenshot({ path: `${out}/title_desktop.png` });
   await p.close();
   console.log(errs.length ? errs.join('\n') : 'no errors');
