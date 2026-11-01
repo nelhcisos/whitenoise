@@ -57,6 +57,8 @@ final class AppModel {
     var presentedWeek: WeekResults?
     /// A wishlist in a sheet over any tab: from the Friends tab or a birthday push.
     var presentedWishlist: WishlistOwner?
+    /// Browser demo: a push drawn in the app (no notification permission needed).
+    var demoBanner: DemoBanner?
     private(set) var toast: Toast?
 
     @ObservationIgnored private var deviceToken: String?
@@ -96,7 +98,10 @@ final class AppModel {
             // The demo's data lives in memory, so a token kept from an earlier launch is stale.
             try? await submitPassword(DemoPush.password)
             if phase == .ready {
-                await DemoPush.showBirthday()
+                Task {
+                    try? await Task.sleep(for: .seconds(2))
+                    demoBanner = DemoPush.birthday
+                }
                 return
             }
         }

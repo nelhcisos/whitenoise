@@ -78,6 +78,10 @@ actor DemoBackend {
     private var photos: [Photo] = []
     private var wishes: [WishRecord] = []
     private var birthdays: [String: BirthdayRecord] = [:]
+
+    /// Whose birthday is today in the demo (the banner on launch is about them).
+    static let birthdayUserId = "u-yara"
+    static let birthdayName = "распакованный мазафака"
     private var stars: [Star] = []
     private var reactions: [Reaction] = []
     private var events: [(due: Date, event: Event)] = []
@@ -950,7 +954,7 @@ actor DemoBackend {
         weekStart = weekEnd - Self.week
 
         for (id, name, password) in [
-            ("u-barsuk", "барсук", "1234"), ("u-yara", "ярослава", nil), ("u-ezh", "ёжик", nil), ("u-dobr", "добрыня", nil),
+            ("u-barsuk", "барсук", "1234"), ("u-yara", Self.birthdayName, nil), ("u-ezh", "ёжик", nil), ("u-dobr", "добрыня", nil),
             ("u-kapi", "капибара", nil), ("u-mud", "мудила7", nil), ("u-lub", "любава", nil), ("u-bar7", "барсук7", nil),
         ] as [(String, String, String?)] {
             users[id] = User(id: id, username: name, password: password)
@@ -1011,10 +1015,10 @@ actor DemoBackend {
                 choice: pick, chosenId: pick == "left" ? left : right, weekId: week
             ))
         }
-        // Birthdays: ярослава's is in 5 days, ёжик's in a month, добрыня's later on.
+        // Birthdays: распакованный мазафака's is today, ёжик's in a month, добрыня's later on.
         var moscow = Calendar(identifier: .gregorian)
         moscow.timeZone = TimeZone(secondsFromGMT: 3 * 3600) ?? .current
-        for (who, days) in [("u-yara", 5), ("u-ezh", 30), ("u-dobr", 120)] {
+        for (who, days) in [(Self.birthdayUserId, 0), ("u-ezh", 30), ("u-dobr", 120)] {
             let date = moscow.date(byAdding: .day, value: days, to: Date()) ?? Date()
             let parts = moscow.dateComponents([.month, .day], from: date)
             birthdays[who] = BirthdayRecord(month: parts.month, day: parts.day)

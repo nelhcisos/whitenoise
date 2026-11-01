@@ -151,7 +151,14 @@ struct CameraScreen: View {
                 } else {
                     switch camera.status {
                     case .ready, .unknown:
-                        CameraPreview(session: camera.session)
+                        if let frame = camera.demoFrame {
+                            Image(uiImage: frame)
+                                .resizable()
+                                .scaledToFill()
+                                .accessibilityLabel("Видоискатель")
+                        } else {
+                            CameraPreview(session: camera.session)
+                        }
                     case .denied:
                         cameraMessage("Разреши доступ к камере в Настройках или выбери фото из галереи.", opensSettings: true)
                     case .unavailable:

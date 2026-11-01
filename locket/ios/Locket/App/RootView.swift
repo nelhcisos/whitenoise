@@ -152,6 +152,18 @@ struct MainTabView: View {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active { Task { await model.refreshAll() } }
         }
+        .overlay(alignment: .top) {
+            if let banner = model.demoBanner {
+                DemoBannerView(banner: banner) {
+                    model.demoBanner = nil
+                    model.open(banner.push)
+                } close: {
+                    model.demoBanner = nil
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: model.demoBanner?.id)
         .sheet(item: $model.presentedWishlist, onDismiss: {
             // Wish counts next to friends may have changed meanwhile.
             Task { await model.refreshSocial() }

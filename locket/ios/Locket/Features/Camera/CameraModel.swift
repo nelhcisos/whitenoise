@@ -13,6 +13,8 @@ final class CameraModel: NSObject {
     private(set) var status: Status = .unknown
     private(set) var position: AVCaptureDevice.Position = .back
     private(set) var isCapturing = false
+    /// Browser demo: a drawn picture stands in for the viewfinder (no camera, no permission prompt).
+    private(set) var demoFrame: UIImage?
     var flashOn = false
 
     let session = AVCaptureSession()
@@ -23,6 +25,11 @@ final class CameraModel: NSObject {
     @ObservationIgnored private var completion: ((UIImage?) -> Void)?
 
     func start() {
+        if AppConfig.isDemo {
+            if demoFrame == nil { demoFrame = DemoArt.image(.sunset, seed: 7) }
+            status = .ready
+            return
+        }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             run()
@@ -45,6 +52,11 @@ final class CameraModel: NSObject {
 
     func flip() {
         let newPosition: AVCaptureDevice.Position = position == .back ? .front : .back
+        if AppConfig.isDemo {
+            position = newPosition
+            demoFrame = DemoArt.image(newPosition == .front ? .coffee : .sunset, seed: 7)
+            return
+        }
         queue.async {
             guard let newInput = Self.makeInput(newPosition) else { return }
             self.session.beginConfiguration()
@@ -63,6 +75,11 @@ final class CameraModel: NSObject {
     /// Takes a photo and returns it as a 1080×1080 square, like the preview shows it.
     func capture(_ completion: @escaping (UIImage?) -> Void) {
         guard status == .ready, !isCapturing else { return }
+        if AppConfig.isDemo {
+            let scene = DemoArt.Scene.allCases.randomElement() ?? .sunset
+            completion(DemoArt.image(scene, seed: UInt64.random(in: 1...1_000_000)))
+            return
+        }
         isCapturing = true
         self.completion = completion
         let flash = flashOn
