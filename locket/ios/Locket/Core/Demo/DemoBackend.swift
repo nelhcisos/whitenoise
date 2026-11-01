@@ -1019,16 +1019,13 @@ actor DemoBackend {
             let parts = moscow.dateComponents([.month, .day], from: date)
             birthdays[who] = BirthdayRecord(month: parts.month, day: parts.day)
         }
-        // Wishlists: ярослава and ёжик have a few, барсук two.
-        for (who, title, link, scene, hoursAgo) in [
-            ("u-yara", "Плёночный фотоаппарат", nil, DemoArt.Scene.sunset, 50.0),
-            ("u-yara", "Билеты на концерт", "https://afisha.yandex.ru", .night, 30),
-            ("u-yara", "Кофемолка", "https://www.ozon.ru", .coffee, 5),
-            ("u-ezh", "Поход в горы вместе", nil, .hills, 70),
-            ("u-ezh", "Наушники", "https://market.yandex.ru", nil, 20),
-            ("u-barsuk", "Подарочная карта App Store на $100 — на Apple Developer", nil, nil, 2),
-            ("u-barsuk", "Подарок с Яндекс Маркета", "https://market.yandex.ru/cc/BSbGMq", nil, 1),
-        ] as [(String, String, String?, DemoArt.Scene?, Double)] {
+        // Wishlists: everyone in the demo wishes for the same two things.
+        for (who, title, link, scene, hoursAgo) in ["u-yara", "u-ezh", "u-dobr", "u-barsuk"].flatMap({ who in
+            [
+                (who, "Подарочная карта App Store на $100 — на Apple Developer", nil, nil, 2.0),
+                (who, "Подарок с Яндекс Маркета", "https://market.yandex.ru/cc/BSbGMq", nil, 1.0),
+            ] as [(String, String, String?, DemoArt.Scene?, Double)]
+        }) {
             wishes.append(WishRecord(
                 id: UUID().uuidString.lowercased(), userId: who, title: title, url: link,
                 image: scene.map { saveMedia(art($0)) }, createdAt: now - hoursAgo * 3_600_000
