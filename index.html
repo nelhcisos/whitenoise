@@ -78,6 +78,8 @@
     line-height: 2;
     color: var(--dim);
   }
+  .footnote a { color: var(--gold); text-decoration: underline dotted; overflow-wrap: anywhere; }
+  .footnote a:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
   .footnote button {
     font: inherit;
     color: var(--gold);
@@ -946,15 +948,10 @@
     <h1>ДОБРО ПОЖАЛОВАТЬ<br>В СИМУЛЯТОР ОРТОДОНТА</h1>
     <p class="tagline">Научись зарабатывать миллиард денег на этой профессии</p>
     <p class="fine">
-      После прохождения симулятора ортодонта вы получаете сертификат о прохождении игры.
-      Он даёт преимущество в рабочих часах в реальной профессии ортодонта
-      и может расцениваться как подлинный сертификат в реальной врачебной деятельности<span class="star">*</span>
+      Это всего лишь симулятор. На основе информации из игры нельзя делать выводы о лечении реальных людей.
+      Это не официальное учебное пособие: ничему отсюда не верь без повторной проверки и всё проверяй сам.
     </p>
-    <p class="footnote"><span class="star">*</span> смотреть пункт <button type="button" id="condBtn">«Специальные условия»</button></p>
-    <p class="conditions" id="conditions" hidden>
-      Специальные условия: сертификат действителен только внутри игры.
-      Миллиард тоже игровой. Лечить людей он не разрешает.
-    </p>
+    <p class="footnote">Вопросы и пожелания:<br><a class="mail" href="mailto:nonmedicalorganization@gmail.com">nonmedicalorganization@gmail.com</a></p>
     <p class="blink">▶ НАЖМИ, ЧТОБЫ ПРОДОЛЖИТЬ</p>
   </div>
 </section>
@@ -5779,12 +5776,8 @@
   screens[1].addEventListener("click", () => { if (typer) finishTyping(); });
   assistBtn.addEventListener("click", e => { e.stopPropagation(); startAssist(); });
 
-  const condBtn = document.getElementById("condBtn");
-  condBtn.addEventListener("click", e => {
-    e.stopPropagation();
-    const c = document.getElementById("conditions");
-    c.hidden = !c.hidden;
-  });
+  // the mail link opens the mail app instead of starting the game
+  document.querySelector("#s1 .mail").addEventListener("click", e => e.stopPropagation());
 
   document.addEventListener("keydown", e => {
     if (current === 0 && e.target === document.body) show(11);
