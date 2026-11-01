@@ -1019,7 +1019,7 @@ actor DemoBackend {
             let parts = moscow.dateComponents([.month, .day], from: date)
             birthdays[who] = BirthdayRecord(month: parts.month, day: parts.day)
         }
-        // Wishlists: ярослава and ёжик have a few, барсук one.
+        // Wishlists: ярослава and ёжик have a few, барсук three.
         for (who, title, link, scene, hoursAgo) in [
             ("u-yara", "Плёночный фотоаппарат", nil, DemoArt.Scene.sunset, 50.0),
             ("u-yara", "Билеты на концерт", "https://afisha.yandex.ru", .night, 30),
@@ -1027,6 +1027,8 @@ actor DemoBackend {
             ("u-ezh", "Поход в горы вместе", nil, .hills, 70),
             ("u-ezh", "Наушники", "https://market.yandex.ru", nil, 20),
             ("u-barsuk", "Книга «Маленький принц»", nil, nil, 10),
+            ("u-barsuk", "Подарочная карта App Store на $100 — на Apple Developer", nil, nil, 2),
+            ("u-barsuk", "Подарок с Яндекс Маркета", "https://market.yandex.ru/cc/BSbGMq", nil, 1),
         ] as [(String, String, String?, DemoArt.Scene?, Double)] {
             wishes.append(WishRecord(
                 id: UUID().uuidString.lowercased(), userId: who, title: title, url: link,
