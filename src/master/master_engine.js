@@ -272,11 +272,29 @@
   function mNext() {
     if (!ms) return;
     ms.i++;
+    // after stepping back, questions already answered are skipped on the way forward
+    while (ms.maxI !== undefined && ms.i < ms.maxI && ms.steps[ms.i] && ms.steps[ms.i].s === undefined) ms.i++;
+    const fresh = ms.maxI === undefined || ms.i > ms.maxI;
+    ms.maxI = Math.max(ms.maxI === undefined ? -1 : ms.maxI, ms.i);
     mProgress();
     const st = ms.steps[ms.i];
     if (!st) return ms.onDone();
-    if (mMaybeGag(st)) return;
+    if (fresh && mMaybeGag(st)) return;
     mRender(st);
+  }
+  // one line back in a scroll (swipe left, ←): only while learning, only to the master's lines
+  function mStepBack() {
+    if (!ms || mBusy || ms.mode !== "chapter" || ms.phase !== "learn") return false;
+    // from an unanswered question too: it is asked again on the way forward, and counted once
+    let j = ms.i - 1;
+    while (j >= 0 && ms.steps[j].s === undefined) j--;
+    if (j < 0) return false;
+    clearInterval(mTyping && mTyping.timer); mTyping = null;
+    ms.i = j;
+    mProgress();
+    mRender(ms.steps[j]);
+    mSfx("click");
+    return true;
   }
   function mRender(st) {
     mClearChoices();
@@ -294,7 +312,7 @@
     }
     // A question. The board often shows the answer, so it appears only with the explanation.
     setBoard(null);
-    if (ms.counting) ms.total++;
+    if (ms.counting && !(ms.counted || (ms.counted = new Set())).has(ms.i)) { ms.total++; ms.counted.add(ms.i); }
     mEl.stage.classList.add("asking");
     if (!mCalm) mEl.stage.classList.add("pacing");
     setMood("think");
@@ -464,7 +482,7 @@
   }
   function mChapterDone() {
     if (ms.phase === "learn" && ms.wrong.length) {
-      ms.phase = "review"; ms.counting = false;
+      ms.phase = "review"; ms.counting = false; ms.maxI = undefined;
       ms.steps = [{ s: pick(["Повторим то, где ты ошибся.", "Теперь — работа над ошибками.", "Вернёмся к трудным местам."]), m: "stern" }, ...ms.wrong];
       ms.i = -1;
       mEl.prog.classList.add("review");
@@ -964,7 +982,22 @@
   if (SKIP_TO_DIAGNOSTICS) window.__master = { gag: id => { mLeaveLesson(); mGag(id, () => mMenu("Проверка окончена.")); }, spin: () => mSpin() };
 
   // ----- input -----
+  let mSwipe = null, mSwiped = 0;   // swipe left — a line back, swipe right — forward
+  mEl.stage.addEventListener("pointerdown", e => {
+    if (e.target.closest("button, input, .m-panel, .m-ad, .m-meme, .m-zoom")) return;
+    mSwipe = { x: e.clientX, y: e.clientY };
+  });
+  mEl.stage.addEventListener("pointerup", e => {
+    if (!mSwipe) return;
+    const dx = e.clientX - mSwipe.x, dy = e.clientY - mSwipe.y;
+    mSwipe = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    mSwiped = performance.now();
+    if (dx < 0) mStepBack(); else mTap();
+  });
+  mEl.stage.addEventListener("pointercancel", () => { mSwipe = null; });
   mEl.stage.addEventListener("click", e => {
+    if (performance.now() - mSwiped < 400) return;   // the click that ends a swipe
     if (e.target.closest("button, input, .m-panel, .m-ad, .m-meme, .m-zoom")) return;
     mTap();
   });
@@ -984,6 +1017,8 @@
     }
     const t = e.target;
     if (t && t.closest && t.closest("input, textarea")) return;
+    if (e.key === "ArrowLeft") { if (mStepBack()) e.preventDefault(); return; }
+    if (e.key === "ArrowRight") { e.preventDefault(); mTap(); return; }
     if (/^[1-9]$/.test(e.key)) {
       const b = [...mEl.choices.querySelectorAll("button.m-opt:not(:disabled)")][Number(e.key) - 1];
       if (b) { e.preventDefault(); b.click(); }
