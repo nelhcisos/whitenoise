@@ -330,7 +330,7 @@
   .master-stage.pacing .m-walker { animation: m-pace 9s linear infinite; transition: none; }
   .master-stage.pacing .m-sprite { animation: none; }
   .master-stage.pacing .m-vox i {
-    background-image: url("assets/master/master_walk.png"); background-size: 200% 100%;
+    background-image: var(--walk, url("assets/master/master_walk.png")); background-size: 200% 100%;
     animation: m-walk .56s steps(1) infinite;
   }
   @keyframes m-walk { 0% { background-position: 0 0; } 50% { background-position: 100% 0; } }
@@ -1156,7 +1156,7 @@
     <div class="m-zoom" id="mZoom" hidden>
       <div class="m-zoom-top"><b id="mZoomH"></b><button class="m-zoom-x" id="mZoomX" type="button" aria-label="Закрыть">✕</button></div>
       <div class="m-zoom-img" id="mZoomBox"><img id="mZoomImg" alt=""></div>
-      <div class="m-zoom-bar"><button class="m-zoom-btn" id="mZoomBig" type="button">Крупнее</button><span>рисунок из книги, перевод подписи — ниже</span></div>
+      <div class="m-zoom-bar"><button class="m-zoom-btn" id="mZoomBig" type="button">Крупнее</button><span id="mZoomSrc">рисунок из книги, перевод подписи — ниже</span></div>
       <p class="m-zoom-cap" id="mZoomCap"></p>
     </div>
     <div class="m-combo" id="mCombo" aria-hidden="true" hidden></div>
@@ -2952,13 +2952,19 @@
     { kind: "assist", level: 2, title: "пациент, экзамен: бот молчит" },
   ];
   let mini = null;   // { k, kind, level, title, dev }
+  // the practice after scroll k: the first eight in order, then the patient, the pliers and the causes in turn;
+  // after a scroll on bracket positioning — a patient, where you hand over the brackets
+  function miniFor(k) {
+    if (mBookOf(k) === "positioning") return { kind: "assist", level: 1, title: "пациент: клеим брекеты" };
+    return MINIS[k < MINIS.length ? k : 3 + (k - MINIS.length) % (MINIS.length - 3)];
+  }
   function newPracticeGame(level) {
     const pool = PATIENTS.map((_, i) => i).sort(() => Math.random() - 0.5);
     game = { idx: level || 0, next: 0, pool, hours: 0, money: 0, mistakesTotal: 0, mini: true };
   }
   function startMini(k, opts = {}) {
     // past the first eight, the practices cycle through the patient, the pliers and the causes again
-    mini = Object.assign({ k }, MINIS[k < MINIS.length ? k : 3 + (k - MINIS.length) % (MINIS.length - 3)], opts);
+    mini = Object.assign({ k }, miniFor(k), opts);
     if (mini.kind === "assist") return k === 0 || mini.dev ? show(1) : startAssist();   // the barin opens the very first one
     if (mini.kind === "pliers") { newPracticeGame(0); return show(4); }
     newPracticeGame(0);
@@ -3987,6 +3993,96 @@
     ["Начальный угол Фишера", "Медиотрузия и движение вперёд не совпадают с самого начала: мыщелок наезжает на толстый внутренний край диска."],
   );
 
+  // ---------- Book 2: «Позиционирование брекетов» ----------
+  // Retold from the webinar of orthodontist Mikhail Morozov «Позиционирование брекетов» (about 1 h 50 min).
+  // Each scroll covers a stretch of the lecture; its sections are subchapters. Step kinds as in the master's book.
+  const POS_INTRO = [
+    { s: "В дальнем углу двора стоит второе кресло. Рядом — монах помоложе, в синих одеждах и с тёмной бородой.", narr: true },
+    { s: "Я Сора. Мастер учит окклюзии. А я учу тому, с чего начинается любое лечение на брекетах: куда их приклеить.", m: "happy" },
+    { s: "Мои свитки — по лекции ортодонта Михаила Морозова «Позиционирование брекетов». Главное в ней — высота брекета.", m: "calm" },
+    { s: "Высота — это расстояние от режущего края или бугра до паза брекета. Ошибся на полмиллиметра — и после выравнивания зуб встанет выше или ниже соседей.", m: "think" },
+    { s: "Порядок как у мастера: после свитка — практика, ошибки повторим в конце. Начнём.", m: "calm" },
+  ];
+  MASTER_CHAPTERS.push(
+    {
+      book: "positioning", part: "Позиционирование по высоте",
+      title: "Цель — красивая улыбка",
+      sub: "арка улыбки, ступенька между резцами, высота клыка",
+      pages: "лекция М. Морозова · 4–26 мин",
+      steps: [
+        { s: "Первый свиток — о цели. Прежде чем клеить брекет, надо знать, какой улыбки мы хотим.", m: "calm" },
+        { sec: "1) Эстетика и функция", s: "Лектор хочет от позиционирования двух вещей сразу. Улыбка должна стать красивой, а зубные ряды — правильно смыкаться и работать.", b: "pz_params" },
+        { s: "Это не выбор между красной и синей таблеткой. Не «или эстетика, или функция», а и то и другое. И кроме механики и планирования огромную роль в этом играет позиционирование брекетов.", m: "think" },
+        { s: "В лекции речь в основном о вертикали — о высоте брекетов. Немного — об ангуляции и ротации. Сагиттальные и трансверзальные параметры не разбираются." },
+        { sec: "2) Два главных параметра", s: "Эстетических параметров много: наклон средней линии, обнажение десны, уровень десны, контактные пункты, ширина резцов и клыков в улыбке.", b: "pz_params" },
+        { s: "Но для высоты главных два: соотношение режущих краёв — центральных и боковых резцов, клыков, премоляров — и арка улыбки.", b: "pz_params", m: "stern" },
+        { sec: "3) Откуда взялась арка улыбки", s: "В 1958 году вышла статья Frush и Fisher. Они назвали это линией улыбки: режущие края от клыка до клыка должны подчёркивать линию нижней губы.", b: "pz_frush" },
+        { s: "Уже тогда заметили: у молодых линия улыбки выражена сильнее, у пожилых — слабее.", b: "pz_frush" },
+        { s: "Лектор говорит «арка», а не «дуга». Арка — понятный образ с изгибом, а «дуга» вызывает то электрическую дугу, то ортодонтическую. По-английски — smile arc.", m: "happy" },
+        { s: "В 2001 году Sarver ввёл сам термин smile arc. Арка улыбки — это соотношение кривой режущих краёв верхних центральных и боковых резцов с кривой нижней губы." },
+        { sec: "4) Расслабленная и акцентированная улыбка", s: "По Sarver улыбок две. Расслабленная, или «позированная», stage 1: человек улыбается по просьбе, без эмоций.", b: "pz_sarver" },
+        { s: "Акцентированная, stage 2: человеку смешно, он улыбается широко, видна десна, между губами появляется расстояние, иногда видны даже нижние зубы.", b: "pz_sarver" },
+        { s: "На приёме это знакомо: просишь улыбнуться — улыбки нет. Рассмешишь — появляется вторая, эмоциональная.", m: "happy" },
+        { s: "Арку улыбки оценивают в расслабленной улыбке. Человек улыбается, но без положительных эмоций.", b: "pz_sarver", m: "stern" },
+        { sec: "5) Гармоничная и плоская арка", s: "Гармоничная арка — режущие края центральных, боковых резцов и клыков повторяют форму нижней губы.", b: "pz_harm" },
+        { s: "Плоская, негармоничная — края не подчёркивают нижнюю губу. А бывает и обратная: края выгнуты в другую сторону.", b: "pz_harm" },
+        { s: "Одна из целей лечения — гармоничная арка. Люди с ней выглядят привлекательнее, чем с плоской или обратной.", m: "happy" },
+        { sec: "6) Как держать голову", s: "Оценка может обмануть. Запрокинул человек голову назад — арка выглядит плоской.", b: "pz_head" },
+        { s: "Наклонил чуть вперёд — и та же улыбка почти повторяет нижнюю губу.", b: "pz_head" },
+        { s: "Поэтому арку оценивают в естественном положении головы: человек смотрит прямо перед собой, будто себе в глаза.", b: "pz_head", m: "think" },
+        { sec: "7) Ступенька между центральным и боковым резцом", s: "Что ещё влияет на арку? Ступенька — насколько режущий край бокового резца выше центрального." },
+        { s: "Исследование из Бразилии, 2016 год. На фото мужской и женской улыбки в фотошопе меняли эту ступеньку — с открытой десной и без.", b: "pz_brazil" },
+        { s: "Улыбки показывали ортодонтам, стоматологам и обычным людям. Чаще всего выбирали ступеньку около 1 мм. Приемлемо — от 0,5 до 1,5 мм.", b: "pz_brazil" },
+        { s: "Если при улыбке видна десна, ступеньку лучше делать меньше. Если не видна — может быть больше.", b: "pz_brazil" },
+        { s: "И мужчинам и женщинам по-разному: мужчинам — поменьше, женщинам — побольше. У женщины с видной десной ступенька смотрится нормально, у мужчины — уже не очень.", m: "think" },
+        { sec: "8) Сколько резцов видно из-под губы", s: "Ещё Frush и Fisher писали: у молодых резцы видны из-под губы примерно на 3 мм, у взрослых — меньше." },
+        { s: "Лектор за обнажение около 3 мм, а при большом резце — и до 3,5. Мы бессознательно считываем, сколько видно зубов, когда человек говорит.", m: "calm" },
+        { s: "Видны верхние резцы — человек кажется моложе. Видны нижние — старше. А если из-под губы выглядывают ещё и клыки, лектор считает это избыточным.", m: "think" },
+        { sec: "9) Где должен стоять клык", s: "Исследование 2018 года, снова Бразилия. На фото мужчины клыки сдвигали вверх и вниз — с видной десной и без.", b: "pz_canine" },
+        { s: "Лучше всего — когда бугор клыка на уровне режущего края центрального резца или интрузирован до 0,5 мм.", b: "pz_canine", m: "stern" },
+        { s: "Интрузия больше 0,5 мм уже выглядела некрасиво. Экструзия на 0,5–1 мм тоже получала меньше баллов.", b: "pz_canine" },
+        { s: "Вот ещё один ориентир для фронтальной группы. Проверим.", m: "think" },
+        { mt: "Соедини понятие и смысл.", pairs: [["Расслабленная улыбка", "по просьбе, без эмоций — stage 1"], ["Акцентированная улыбка", "с эмоцией, видна десна — stage 2"], ["Гармоничная арка", "края повторяют нижнюю губу"]], b: "pz_sarver",
+          e: "Арку улыбки оценивают в расслабленной улыбке." },
+        { q: "Какие два параметра главные при позиционировании по высоте?", o: ["Соотношение режущих краёв и арка улыбки", "Цвет зубов и ширина дуги", "Торк и ротация", "Форма лица и рост пациента"],
+          why: [null, "Цвет и ширина дуги на высоту брекета не влияют.", "Торк и ротация — не про высоту.", "Форма лица важна, но главные здесь — края и арка."],
+          e: "Остальные эстетические параметры в лекции не разбираются.", b: "pz_params" },
+        { q: "Что такое арка улыбки по Sarver?", o: ["Соотношение кривой режущих краёв верхних резцов с кривой нижней губы", "Форма зубной дуги сверху", "Линия десны над резцами", "Дуга, которую вставляют в брекеты"],
+          why: [null, "Это форма дуги, а не арка улыбки.", "Уровень десны — другой параметр.", "Ортодонтическая дуга тут ни при чём — потому лектор и говорит «арка»."],
+          e: "Термин smile arc ввёл Sarver в 2001 году.", b: "pz_harm" },
+        { q: "В какой улыбке оценивают арку?", o: ["В расслабленной, без эмоций", "В самой широкой, когда смешно", "С закрытыми губами", "Не важно"],
+          why: [null, "В акцентированной улыбке видна десна и меняется всё соотношение.", "С закрытыми губами арку не увидеть.", "Важно: улыбки сильно отличаются."],
+          e: "Stage 1, posed smile.", b: "pz_sarver" },
+        { q: "Как держать голову пациента при оценке арки?", o: ["В естественном положении: смотрит прямо перед собой", "Запрокинутой назад", "Наклонённой к плечу", "Опущенной на грудь"],
+          why: [null, "Запрокинутая голова делает арку плоской.", "Наклон вбок исказит симметрию.", "Так улыбку вообще не видно."],
+          e: "Наклон головы меняет вид арки.", b: "pz_head" },
+        { q: "Какую ступеньку между центральным и боковым резцом чаще всего выбирали в исследовании 2016 года?", o: ["Около 1 мм", "Около 3 мм", "Ровно 0 — края на одном уровне", "Около 2,5 мм"],
+          why: [null, "3 мм — это обнажение резцов из-под губы, а не ступенька.", "Без ступеньки улыбка проигрывает.", "Слишком много: приемлемо до 1,5 мм."],
+          e: "Приемлемо от 0,5 до 1,5 мм.", b: "pz_brazil" },
+        { q: "Когда ступеньку между центральным и боковым резцом лучше сделать меньше?", o: ["Если при улыбке видна десна, особенно у мужчины", "Если пациентка — женщина", "Если резцы большие", "Никогда"],
+          why: [null, "Женщинам, наоборот, ступеньку можно больше.", "О размере резцов здесь речи нет.", "Есть ситуации, где меньше — лучше."],
+          e: "Мужчинам — поменьше, женщинам — побольше.", b: "pz_brazil" },
+        { tf: "Если из-под губы видны нижние резцы, человек подсознательно кажется моложе.", t: false,
+          e: "Наоборот: видны верхние резцы — моложе, нижние — старше." },
+        { q: "Где лучше всего стоит бугор клыка (исследование 2018 года)?", o: ["На уровне центрального резца или интрузирован до 0,5 мм", "Экструзирован на 1 мм", "Интрузирован на 1,5 мм", "Чем выше, тем лучше"],
+          why: [null, "Экструзия на 0,5–1 мм получала меньше баллов.", "Интрузия больше 0,5 мм уже некрасива.", "Нет: слишком интрузированный клык выглядит плохо."],
+          e: "Это ориентир для всей фронтальной группы.", b: "pz_canine" },
+      ],
+    },
+  );
+  const POS_GLOSSARY = [
+    ["Высота брекета", "Расстояние от режущего края или бугра до паза брекета. Определяет, на каком уровне окажется зуб после выравнивания."],
+    ["Арка улыбки", "Smile arc (Sarver, 2001): соотношение кривой режущих краёв верхних резцов (и клыков) с кривой нижней губы в расслабленной улыбке."],
+    ["Линия улыбки", "Так арку улыбки называли Frush и Fisher (1958): режущие края от клыка до клыка подчёркивают нижнюю губу."],
+    ["Расслабленная улыбка", "Posed smile, stage 1: человек улыбается по просьбе, без эмоций. В ней оценивают арку улыбки."],
+    ["Акцентированная улыбка", "Unposed smile, stage 2: эмоциональная, широкая, с обнажением десны."],
+    ["Гармоничная арка", "Режущие края центральных, боковых резцов и клыков повторяют форму нижней губы."],
+    ["Плоская · обратная арка", "Края не подчёркивают нижнюю губу · выгнуты в обратную сторону."],
+    ["Естественное положение головы", "Человек смотрит прямо перед собой; в нём оценивают арку улыбки."],
+    ["Ступенька 1–2", "Разница уровней режущих краёв центрального и бокового резца: оптимально около 1 мм, приемлемо 0,5–1,5 мм."],
+    ["Обнажение резцов", "Display: сколько верхних резцов видно из-под губы; у молодых около 3 мм."],
+  ];
+
   // ---------- BOARDS-START: the master's chalkboard ----------
   // Chalk diagrams for the master's lessons, drawn on a 640x400 canvas. Each board is a
   // function (c, t) where t is seconds since the board appeared, so some of them animate.
@@ -4329,7 +4425,7 @@
   // Flipbook figures show one frame at a time.
   bd.figure = function (c, id, t) {
     const f = BOOK[id], im = figImg(id);
-    bd.fit(c, `${f.n}, с. ${f.p} · ${f.t}`, 320, 22, CHALK.yellow, 616, 24, 800);
+    bd.fit(c, `${figSrc(f)} · ${f.t}`, 320, 22, CHALK.yellow, 616, 24, 800);
     if (!im.complete || !im.naturalWidth) { bd.text(c, "…", 320, 200, CHALK.dim, 28); return; }
     const W = im.naturalWidth, H = im.naturalHeight;
     let fr = [0, 0, 1, 1], k = -1;
@@ -4349,7 +4445,7 @@
       for (let i = 0; i < n; i++) bd.circle(c, 320 - (n - 1) * 13 + i * 26, 322, 7, CHALK.white, 2, i === k ? CHALK.yellow : null);
       bd.fit(c, f.fl ? f.fl[k] : "", 320, 350, CHALK.green, 616, 21, 800);
     } else bd.fit(c, f.s, 320, 350, CHALK.white, 616, 20, 700);
-    bd.text(c, "нажми на доску — увеличить и перевод подписи", 320, 384, CHALK.dim, 14, "center", 700);
+    bd.text(c, f.time ? "нажми на доску — увеличить и пояснение" : "нажми на доску — увеличить и перевод подписи", 320, 384, CHALK.dim, 14, "center", 700);
   };
 
   Object.assign(BOARDS, {
@@ -4575,6 +4671,38 @@
     f122_3: {"p": 122, "n": "Рис. 3", "t": "Движение Беннетта на записи", "s": "рабочий мыщелок уходит наружу (стрелки)", "cap": "Несимметричное движение влево на кондилограмме. Левый (рабочий) мыщелок при этом может сместиться наружу. Это и называют движением Беннетта (стрелки)."},
   });
 
+  // where a figure comes from: a page of the book, or a slide of the lecture (f.time)
+  function figSrc(f, long) {
+    if (f.time) return long ? `Слайд лекции, ${f.time}` : `Слайд, ${f.time}`;
+    return long ? `${f.n}, страница ${f.p}` : `${f.n}, с. ${f.p}`;
+  }
+  // Slides of the lecture «Позиционирование брекетов» (М. Морозов), cut from the video and pixelated.
+  // time: where in the lecture; t: title; s: one line under it; cap: what the slide shows, retold.
+  Object.assign(BOOK, {
+    pz_params: {"time": "5:30", "n": "Слайд", "t": "Два главных параметра", "s": "соотношение режущих краёв · арка улыбки", "cap": "Эстетические параметры, от которых лектор отталкивается при позиционировании по высоте: соотношение режущих краёв центральных и боковых резцов и клыков и арка улыбки. Остальные (наклон средней линии, обнажение десны, контактные пункты, ширина зубов) в этой лекции не разбираются."},
+    pz_frush: {"time": "8:20", "n": "Слайд", "t": "Frush и Fisher, 1958", "s": "«линия улыбки» — от клыка до клыка", "cap": "Статья Frush и Fisher (1958): то, что сейчас называют аркой улыбки, они называли линией улыбки. Режущие края от клыка до клыка должны подчёркивать линию нижней губы; у молодых людей эта линия выражена сильнее."},
+    pz_sarver: {"time": "10:40", "n": "Слайд", "t": "Sarver, 2001: две улыбки", "s": "расслабленная (stage 1) · акцентированная (stage 2)", "cap": "Sarver (2001): расслабленная, «позированная» улыбка — человек улыбается без эмоций (stage 1); акцентированная — с эмоцией, шире, видна десна (stage 2). Арку улыбки оценивают в расслабленной улыбке."},
+    pz_harm: {"time": "13:40", "n": "Слайд", "t": "Гармоничная и плоская арка", "s": "края резцов и клыков повторяют нижнюю губу — или нет", "cap": "По Sarver арка улыбки бывает гармоничной (режущие края центральных, боковых резцов и клыков повторяют кривую нижней губы) и плоской, негармоничной. Ещё говорят об обратной арке, когда края выгнуты в другую сторону."},
+    pz_head: {"time": "15:50", "n": "Слайд", "t": "Арка зависит от наклона головы", "s": "голова назад — плоская · чуть вперёд — гармоничная", "cap": "Один и тот же человек: с запрокинутой головой арка улыбки выглядит плоской, с головой, чуть наклонённой вперёд, — почти гармоничной. Поэтому арку оценивают в естественном положении головы: человек смотрит прямо перед собой."},
+    pz_brazil: {"time": "20:50", "n": "Слайд", "t": "Ступенька между резцами", "s": "исследование 2016 г.: оптимально около 1 мм", "cap": "Исследование из Бразилии (2016): в мужской и женской улыбке меняли ступеньку между центральным и боковым резцом, с обнажением десны и без. Ортодонты, стоматологи и обычные люди чаще всего выбирали ступеньку около 1 мм; приемлемо от 0,5 до 1,5 мм. Если видна десна, ступеньку лучше делать меньше; у мужчин — меньше, у женщин — больше."},
+    pz_canine: {"time": "23:20", "n": "Слайд", "t": "Высота клыка и восприятие улыбки", "s": "клык на уровне центрального резца или выше на 0,5 мм", "cap": "Исследование о вертикальном положении клыка (AJODO): улыбка воспринималась лучше всего, когда режущий бугор клыка был на уровне центрального резца или интрузирован на 0,5 мм."},
+    pz_mbt: {"time": "27:20", "n": "Слайд", "t": "Таблица высот MBT", "s": "средний ряд: 5,0 · 4,5 · 5,0 · 4,5 · 4,0 · 3,0 · 2,0", "cap": "MBT Versatile Appliance Bracket Placement Guide: высоты брекетов в миллиметрах от режущего края или бугра. Средний ряд (Average): 1 — 5,0; 2 — 4,5; 3 — 5,0; 4 — 4,5; 5 — 4,0; 6 — 3,0; 7 — 2,0. Есть ряды для больших (+0,5, +1,0) и маленьких (−0,5, −1,0) зубов. Пример: при высоте центрального резца 5 боковой будет 4,5 — ступенька 0,5 мм."},
+    pz_alex: {"time": "34:10", "n": "Слайд", "t": "Высоты по Alexander", "s": "X — высота центрального резца", "cap": "Схема Alexander: центральные резцы — X, боковые — X−0,5, клыки — X+0,5, премоляры — X, первые моляры — X−0,5, вторые моляры — X−1,0."},
+    pz_pitts: {"time": "37:00", "n": "Слайд", "t": "Позиционирование по Питтсу", "s": "высоты по таблице в зависимости от размера зубов", "cap": "Позиционирование по Питтсу (статья «Begin with the end in mind»): высоты брекетов задают по таблице в зависимости от размера центральных резцов, отдельно для резцов и премоляров, и сравнивают с традиционным позиционированием."},
+    pz_544: {"time": "43:20", "n": "Слайд", "t": "Резцы 5 · 4 · 4", "s": "высоты по линии паза, у клыка — ступенька", "cap": "Пример по таблице: центральный резец 5 мм, боковой 4, клык 4. Красные линии — линии пазов брекетов на одной высоте; разница высот определяет ступеньки между режущими краями."},
+    pz_planes: {"time": "45:00", "n": "Слайд", "t": "Плоскости", "s": "окклюзионная плоскость и линия пазов", "cap": "Ряд зубов сбоку: окклюзионная плоскость (зелёная) и линия пазов брекетов (красная). Позиционирование по высоте связано с тем, какую плоскость мы строим."},
+    pz_height: {"time": "49:10", "n": "Слайд", "t": "Высота и наклон", "s": "брекет выше или ниже — зуб выдвинется или погрузится", "cap": "Сагиттальный вид резцов с брекетом. Брекет, приклеенный ближе к режущему краю, после выравнивания экструзирует зуб, ближе к десне — интрузирует. Высота меняет и то, где по выпуклости коронки окажется паз."},
+    pz_protr: {"time": "53:20", "n": "Слайд", "t": "Протрузия на арку", "s": "как дуга ложится на ряд", "cap": "Вид на зубную дугу: положение брекетов по высоте и вестибулярная выпуклость зубов определяют, как дуга ложится на ряд и как наклонятся зубы."},
+    pz_indiv: {"time": "57:00", "n": "Слайд", "t": "Индивидуальное позиционирование по высоте", "s": "X2 = X1 − (0,5…1,5) · X3 = X2 + 0,5 · X4 = X3 − 0,5", "cap": "Схема лектора: X — высота центрального резца; боковой X2 = X1 минус 0,5…1,5 мм (по ступеньке, которую хотим получить); клык X3 = X2 + 0,5; первый премоляр X4 = X3 − 0,5. Дальше высоту не меряют от бугров, а переносят от контактных пунктов (красная — линия паза, зелёная — контактные пункты)."},
+    pz_ridges: {"time": "74:20", "n": "Слайд", "t": "Краевые гребни боковых зубов", "s": "выровнять гребни и контактные пункты", "cap": "Боковые зубы в брекетах: стрелками показаны краевые гребни. Цель позиционирования в боковых отделах — выровнять краевые гребни и контактные пункты верхних и нижних зубов, чтобы они правильно смыкались."},
+    pz_grind: {"time": "76:40", "n": "Слайд", "t": "Пришлифовка клыков", "s": "стёртый клык меряют иначе", "cap": "Клыки бывают острые и стёртые, пришлифованные. От этого зависит, от чего мерить высоту клыка: если клык не пришлифован, от его высоты отнимают миллиметр, если пришлифован — полмиллиметра."},
+    pz_guid: {"time": "80:30", "n": "Слайд", "t": "Клыковое ведение", "s": "как высота клыка влияет на ведение", "cap": "Верхний и нижний клык сбоку: высота брекета на клыке влияет на то, как клыки встретятся при боковом движении, — на клыковое ведение."},
+    pz_lower: {"time": "92:40", "n": "Слайд", "t": "Позиционирование на нижних зубах", "s": "высоты переносят от контактных пунктов", "cap": "Нижний зубной ряд: красная — линия пазов, зелёная — контактные пункты. Высоты на нижних зубах тоже находят относительно контактных пунктов, у клыка — с поправкой +0,5."},
+    pz_case: {"time": "95:30", "n": "Слайд", "t": "Клинический случай", "s": "результат позиционирования в улыбке", "cap": "Пример из практики лектора: брекеты, приклеенные по описанной схеме, и улыбка пациента."},
+    pz_ang1: {"time": "100:50", "n": "Слайд", "t": "Позиционирование по ангуляции", "s": "ось зуба по снимку и по коронке", "cap": "Позиционирование по ангуляции: брекет ставят по длинной оси зуба. Ось оценивают по коронке и по снимку (ОПТГ, КЛКТ), чтобы корень стоял правильно."},
+    pz_ang2: {"time": "103:20", "n": "Слайд", "t": "Ангуляция: вид сверху", "s": "синяя линия — ось, по ней брекет", "cap": "Окклюзионные фото с брекетами: синими линиями отмечены оси зубов, по которым выставляют брекеты по ангуляции."},
+  });
+
   // ---------- The master: lesson engine ----------
   // A menu of scrolls with stars (saved in localStorage), a lesson runner with a typewriter bubble,
   // four question types, a review round for mistakes, an exam with a certificate and a glossary.
@@ -4590,20 +4718,40 @@
   // ----- progress, saved between visits -----
   function mFresh() {
     const n = MASTER_CHAPTERS.length;
-    return { stars: Array(n).fill(0), done: Array(n).fill(false), minis: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, dayEnd: false, sound: true };
+    return { stars: Array(n).fill(0), done: Array(n).fill(false), minis: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, posMet: false, dayEnd: false, sound: true };
   }
   function mLoad() {
     const d = mFresh();
     try {
       const s = JSON.parse(localStorage.getItem(M_KEY) || "null");
       if (s && typeof s === "object") {
-        for (const k of ["exam", "passed", "name", "date", "met", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
+        for (const k of ["exam", "passed", "name", "date", "met", "posMet", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
         for (const k of ["stars", "done", "minis"]) if (Array.isArray(s[k])) d[k] = d[k].map((v, i) => (typeof s[k][i] === typeof v ? s[k][i] : v));
       }
     } catch (e) { /* no storage: play without saving */ }
     return d;
   }
   const mSave = mLoad();
+  // ----- books: each has its own teacher, its own scrolls and its own numbering -----
+  // A scroll belongs to the book named in its "book" field (Кондилография when there is none).
+  const M_BOOKS = {
+    condylography: { name: "Мастер", skin: "master", menu: "Свитки мастера", title: "Кондилография" },
+    positioning: { name: "Сора", skin: "sora", menu: "Свитки Соры", title: "Позиционирование брекетов" },
+  };
+  let mBook = "condylography";
+  const mBookOf = k => (MASTER_CHAPTERS[k] && MASTER_CHAPTERS[k].book) || "condylography";
+  const mKs = (book = mBook) => MASTER_CHAPTERS.map((_, k) => k).filter(k => mBookOf(k) === book);
+  const mNum = k => mKs(mBookOf(k)).indexOf(k) + 1;
+  const mNextK = (book = mBook) => { const k = mKs(book).find(j => !mSave.done[j]); return k === undefined ? -1 : k; };
+  const mT = () => M_BOOKS[mBook] || M_BOOKS.condylography;
+  const mGloss = () => (mBook === "positioning" && typeof POS_GLOSSARY !== "undefined" ? POS_GLOSSARY : MASTER_GLOSSARY);
+  function mSetBook(b) {
+    mBook = M_BOOKS[b] ? b : "condylography";
+    mEl.stage.dataset.book = mBook;
+    mEl.stage.style.setProperty("--walk", `url("${M_IMG}${mT().skin}_walk.png")`);
+    mEl.sprite.setAttribute("aria-label", mT().name);
+    setMood("calm");
+  }
   function mStore() { try { localStorage.setItem(M_KEY, JSON.stringify(mSave)); } catch (e) { /* ignore */ } }
   // practice after scroll k is done: the master picks up from there
   let mBack = false;
@@ -4687,16 +4835,16 @@
   }
 
   // ----- the master's sprite: moods and blinking -----
-  ["calm", "happy", "stern", "think", "blink", "shock", "walk"].forEach(m => { new Image().src = `${M_IMG}master_${m}.png`; });
+  ["calm", "happy", "stern", "think", "blink", "shock", "walk"].forEach(m => { for (const b of Object.values(M_BOOKS)) new Image().src = `${M_IMG}${b.skin}_${m}.png`; });
   ["barin", "patient", "courier"].forEach(g => { new Image().src = `${M_IMG}guest_${g}.png`; });
   let mMood = "calm";
   function setMood(m) {
     mMood = m || "calm";
-    mEl.vox.style.setProperty("--spr", `url("${M_IMG}master_${mMood}.png")`);
+    mEl.vox.style.setProperty("--spr", `url("${M_IMG}${mT().skin}_${mMood}.png")`);
   }
   setInterval(() => {
     if (current !== 11 || mMood !== "calm" || mCalm) return;
-    mEl.vox.style.setProperty("--spr", `url("${M_IMG}master_blink.png")`);
+    mEl.vox.style.setProperty("--spr", `url("${M_IMG}${mT().skin}_blink.png")`);
     setTimeout(() => { if (mMood === "calm") setMood("calm"); }, 150);
   }, 3700);
   // 3D in pixel style: the master's sprite, stacked in layers, turns around once
@@ -4732,7 +4880,7 @@
     const book = !!(id && BOOK[id]);
     mEl.stage.classList.toggle("has-figure", book);
     mEl.board.classList.toggle("zoomable", book);
-    mEl.board.setAttribute("aria-label", book ? `${BOOK[id].n}, страница ${BOOK[id].p}: ${BOOK[id].t}. Нажми, чтобы увеличить` : "Доска мастера");
+    mEl.board.setAttribute("aria-label", book ? `${figSrc(BOOK[id], true)}: ${BOOK[id].t}. Нажми, чтобы увеличить` : "Доска мастера");
     if (id !== mBoardId) { mBoardId = id; mBoardT0 = performance.now(); }
     if (id && !mRaf) mRaf = requestAnimationFrame(mBoardLoop);
   }
@@ -4756,7 +4904,7 @@
     mEl.box.classList.toggle("narration", narr);
     mEl.box.classList.toggle("guest", !!opts.guest);
     mEl.name.hidden = narr;
-    mEl.name.textContent = opts.name || "Мастер";
+    mEl.name.textContent = opts.name || mT().name;
     mOnNext = opts.next || null;
     mEl.more.hidden = true;
     const shown = mNode("span"), ghost = mNode("span", "m-ghost");
@@ -5054,8 +5202,8 @@
   // ----- chapters, results, the end of the day -----
   function mStartChapter(k) {
     const ch = MASTER_CHAPTERS[k];
-    mRun(ch.steps, { mode: "chapter", k, title: `Свиток ${k + 1}. ${ch.title}`, onDone: mChapterDone });
-    mTitleCard(`Свиток ${k + 1}`, ch.title, ch.pages);
+    mRun(ch.steps, { mode: "chapter", k, title: `Свиток ${mNum(k)}. ${ch.title}`, onDone: mChapterDone });
+    mTitleCard(`Свиток ${mNum(k)}`, ch.title, ch.pages);
   }
   function mChapterDone() {
     if (ms.phase === "learn" && ms.wrong.length) {
@@ -5072,15 +5220,16 @@
     mSave.done[k] = true;
     mStore();
     // the day ends after two scrolls (or four scored tasks): the master sends you home
-    dayLog("scroll", `Свиток ${k + 1}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
+    dayLog("scroll", `Свиток ${mNum(k)}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
+    const nk = mKs(mBookOf(k)).find(j => j > k);
     const over = dayFull(), practice = !mSave.minis[k];
     const words = ["Не спеши. Пройди свиток ещё раз.", "Ты ступил на путь. Перечитай свиток.", "Хорошо. Но путь ещё не окончен.", "Безупречно. Ты понял суть."];
     mResults({
-      title: `Свиток ${k + 1} пройден`, stars, score: `С первого раза: ${ms.right} из ${ms.total}`,
+      title: `Свиток ${mNum(k)} пройден`, stars, score: `С первого раза: ${ms.right} из ${ms.total}`,
       line: practice ? `${words[stars]} А теперь — практика в клинике.` : over ? `${words[stars]} А на сегодня — хватит.` : words[stars],
-      buttons: practice ? [[`Практика: ${MINIS[Math.min(k, MINIS.length - 1)].title}`, () => startMini(k), "main"]]
+      buttons: practice ? [[`Практика: ${miniFor(k).title}`, () => startMini(k), "main"]]
         : over ? [["Закончить день", () => mGoHome(), "main"]] : [
-        ...(k + 1 < MASTER_CHAPTERS.length ? [["Следующий свиток", () => mStartChapter(k + 1), "main"]] : []),
+        ...(nk !== undefined ? [["Следующий свиток", () => mStartChapter(nk), "main"]] : []),
         ["Пройти ещё раз", () => mStartChapter(k)],
         ["К свиткам", () => mMenu()],
       ],
@@ -5109,19 +5258,19 @@
     mLeaveLesson();
     mEl.stage.classList.add("dusk");
     mSfx("gong");
-    const allNow = mSave.done.every(Boolean) && !mSave.dayEnd;
+    const allNow = mBook === "condylography" && mKs("condylography").every(k => mSave.done[k]) && !mSave.dayEnd;
     if (allNow) { mSave.dayEnd = true; mStore(); }
     mLines([
       first ? { text: first, mood: "happy" } : null,
       { text: "Солнце садится за крышу храма. Во дворе зажигаются фонари.", narr: true },
       { text: pick(["На сегодня хватит, ученик. Иди отдыхай.", "Два свитка за день — достаточно. Голова не бездонная.", "Всё. Остальное — завтра. Иди спать."]), mood: "calm" },
-      allNow ? { text: "Все восемь свитков позади. Завтра можешь сдать экзамен.", mood: "happy" } : null,
+      allNow ? { text: "Все свитки позади. Завтра можешь сдать экзамен.", mood: "happy" } : null,
     ], () => endDay({ onDone: goMorning }));
   }
 
   // ----- exam, certificate, glossary -----
   function mStartExam() {
-    const pools = mShuffle(MASTER_CHAPTERS.map(ch => mShuffle(ch.steps.filter(st => st.q || st.tf))));
+    const pools = mShuffle(mKs("condylography").map(k => mShuffle(MASTER_CHAPTERS[k].steps.filter(st => st.q || st.tf))));
     const qs = [];
     pools.forEach(p => { if (p.length && qs.length < M_EXAM) qs.push(p.shift()); });
     const rest = mShuffle(pools.filter(p => p.length));
@@ -5168,10 +5317,10 @@
     name.setAttribute("aria-label", "Имя ученика");
     name.addEventListener("input", () => { mSave.name = name.value.trim(); mStore(); });
     name.addEventListener("click", e => e.stopPropagation());
-    const stars = mSave.stars.reduce((a, b) => a + b, 0);
+    const ks = mKs("condylography"), stars = ks.reduce((a, k) => a + mSave.stars[k], 0);
     w.append(name,
       mNode("p", null, `прошёл(а) восемь свитков мастера окклюзии и выдержал(а) экзамен: ${mSave.exam} из ${M_EXAM}.`),
-      mNode("p", null, `Звёзд за свитки: ${stars} из ${mSave.stars.length * 3}.`),
+      mNode("p", null, `Звёзд за свитки: ${stars} из ${ks.length * 3}.`),
       mNode("p", "m-cert-date", mSave.date || new Date().toLocaleDateString("ru-RU")),
       mNode("div", "m-seal", "МАСТЕР"),
       mNode("p", "m-cert-fn", "* Свиток действителен в стенах храма. Смотреть пункт «Специальные условия»."),
@@ -5188,7 +5337,7 @@
     q.type = "search"; q.placeholder = "Найти термин…"; q.setAttribute("aria-label", "Найти термин");
     q.addEventListener("click", e => e.stopPropagation());
     const dl = mNode("dl", "m-dl");
-    const rows = MASTER_GLOSSARY.map(([t, d]) => {
+    const rows = mGloss().map(([t, d]) => {
       const dt = mNode("dt", null, t), dd = mNode("dd", null, d);
       dl.append(dt, dd);
       return [`${t} ${d}`.toLowerCase(), dt, dd];
@@ -5213,16 +5362,18 @@
     mEl.meme.hidden = true;
     mLeaveLesson();
     mEl.stage.classList.remove("dusk");
-    const list = [mNode("h2", "m-h", `Свитки мастера · день ${day}`)];
-    const nextK = mSave.done.indexOf(false);
-    MASTER_CHAPTERS.forEach((ch, k) => {
-      if (ch.part && (k === 0 || MASTER_CHAPTERS[k - 1].part !== ch.part)) list.push(mNode("p", "m-part", ch.part));
-      list.push(mItem(`${k + 1}. ${ch.title}`, ch.sub, mStars(mSave.stars[k]), () => mStartChapter(k), k === nextK ? "next" : ""));
+    const condy = mBook === "condylography";
+    const list = [mNode("h2", "m-h", condy ? `${mT().menu} · день ${day}` : `${mT().menu} · ${mT().title}`)];
+    const nextK = mNextK();
+    mKs().forEach((k, n) => {
+      const ch = MASTER_CHAPTERS[k];
+      if (ch.part && (n === 0 || MASTER_CHAPTERS[mKs()[n - 1]].part !== ch.part)) list.push(mNode("p", "m-part", ch.part));
+      list.push(mItem(`${n + 1}. ${ch.title}`, ch.sub, mStars(mSave.stars[k]), () => mStartChapter(k), k === nextK ? "next" : ""));
     });
-    list.push(mItem("Экзамен мастера", mSave.exam ? `лучший результат: ${mSave.exam} из ${M_EXAM}` : `${M_EXAM} вопросов из всех свитков, нужно ${M_PASS}`,
+    if (condy) list.push(mItem("Экзамен мастера", mSave.exam ? `лучший результат: ${mSave.exam} из ${M_EXAM}` : `${M_EXAM} вопросов из всех свитков, нужно ${M_PASS}`,
       null, () => (nextK === -1 || mSave.passed ? mStartExam() : mConfirmExam()), "exam"));
-    list.push(mItem("Свиток терминов", `${MASTER_GLOSSARY.length} понятий с объяснениями`, null, mGlossary));
-    if (mSave.passed) list.push(mItem("Свиток ученика", "твой сертификат", null, mCertificate, "cert"));
+    list.push(mItem("Свиток терминов", `${mGloss().length} понятий с объяснениями`, null, mGlossary));
+    if (condy && mSave.passed) list.push(mItem("Свиток ученика", "твой сертификат", null, mCertificate, "cert"));
     list.push(mItem(`Звук: ${mSave.sound ? "вкл" : "выкл"}`, null, null, () => {
       mSave.sound = !mSave.sound; mStore(); mMenu(mSave.sound ? "Пусть звенит." : "Тишина — тоже учитель.");
     }, "small"));
@@ -5249,28 +5400,31 @@
     mEl.ad.hidden = true;
     mEl.meme.hidden = true;
     mEl.card.hidden = true;
-    if (mSave.met) {
+    const condy = mBook === "condylography", met = condy ? mSave.met : mSave.posMet;
+    if (met) {
       const back = mBack, morning = mMorning;
       mBack = false; mMorning = false;
-      const next = mSave.done.indexOf(false);
+      const next = mNextK();
       if (back && dayFull()) return mGoHome(pick(["Руки поработали — молодец.", "Практика засчитана.", "С возвращением. Руки помнят — голова учит."]));
       if (back || morning) {
         const greet = morning
           ? pick([`Утро, ученик. День ${day}.`, `Новый день — новые свитки. День ${day}.`, `День ${day}. Чай остыл, свитки ждут.`])
           : pick(["Руки поработали — теперь голова.", "С возвращением. Руки помнят — голова учит.", "Практика — хорошо. Теперь теория."]);
-        if (next < 0) return mMenu(`${greet} Все свитки пройдены — экзамен ждёт.`);
+        if (next < 0) return mMenu(condy ? `${greet} Все свитки пройдены — экзамен ждёт.` : `${greet} Все свитки пройдены.`);
         ms = null;
         mLeaveLesson();
         setMood(morning ? "calm" : "happy");
-        return mLines([{ text: `${greet} Свиток ${next + 1}: «${MASTER_CHAPTERS[next].title}».` }], () => mStartChapter(next));
+        return mLines([{ text: `${greet} Свиток ${mNum(next)}: «${MASTER_CHAPTERS[next].title}».` }], () => mStartChapter(next));
       }
       return mMenu(pick(["С возвращением, ученик.", "Ты вернулся. Хорошо.", "Свитки ждут."]));
     }
-    mSave.met = true; mStore();
+    if (condy) mSave.met = true; else mSave.posMet = true;
+    mStore();
     ms = null;
     mLeaveLesson();
     setMood("calm");
-    mLines(MASTER_INTRO.map((st, i) => ({ text: st.s, narr: st.narr, mood: st.m, fn: i === 1 ? mSpin : null })), () => mStartChapter(0));
+    const intro = condy ? MASTER_INTRO : POS_INTRO;
+    mLines(intro.map((st, i) => ({ text: st.s, narr: st.narr, mood: st.m, fn: i === 1 ? mSpin : null })), () => mStartChapter(mKs()[0]));
   }
 
   // ----- small animations -----
@@ -5440,7 +5594,8 @@
     if (ms.gags >= (ms.steps.length > 40 ? 3 : 2) || ms.sinceGag < 7 || ms.i < 3 || ms.i > ms.steps.length - 3) return false;
     const forced = !ms.gags && ms.i >= Math.floor(ms.steps.length * 0.55);
     if (!forced && Math.random() > 0.15) return false;
-    if (!mGagBag.length) mGagBag = mShuffle([...Object.keys(M_GAGS), "meme"]);   // memes come up twice as often
+    // memes are pictures from the master's textbook, so they belong to his book
+    if (!mGagBag.length) mGagBag = mShuffle([...Object.keys(M_GAGS), ...(mBook === "condylography" ? ["meme"] : [])]);
     ms.gags++; ms.sinceGag = 0;
     mGag(mGagBag.pop(), () => mRender(st));
     return true;
@@ -5462,8 +5617,10 @@
       mEl.stage.classList.remove("shake"); void mEl.stage.offsetWidth; mEl.stage.classList.add("shake");
       setTimeout(() => mEl.stage.classList.remove("shake"), 1300);
     }
+    // in another book the guests talk to that book's teacher
+    const who2 = t => (mBook === "condylography" ? t : t.replace(/Мастер/g, mT().name).replace("дед в оранжевом", "монах в синем"));
     mLines(g.lines.map(([who, text, mood, sfx, fx]) => ({
-      text, narr: who === "n", guest: who === "g", name: who === "g" ? g.name : "Мастер",
+      text: who2(text), narr: who === "n", guest: who === "g", name: who === "g" ? g.name : mT().name,
       mood: who === "m" ? mood || "calm" : undefined,
       fn: sfx || fx ? () => { if (sfx) mSfx(sfx); if (fx === "spin") mSpin(); } : null,
     })), () => { mHideGuest(); setTimeout(done, mCalm ? 0 : 420); });
@@ -5483,9 +5640,9 @@
     if (!mMemeBag.length) mMemeBag = mShuffle([...M_MEMES]);
     const mm = mMemeBag.pop(), f = BOOK[mm.id], img = $("mMemeImg");
     img.src = `assets/master/fig/${mm.id}.png`;
-    img.alt = `${f.n}, страница ${f.p}: ${f.t}`;
+    img.alt = `${figSrc(f, true)}: ${f.t}`;
     $("mMemeCap").textContent = mm.cap;
-    $("mMemeSrc").textContent = `${f.n}, с. ${f.p} · ${f.t}`;
+    $("mMemeSrc").textContent = `${figSrc(f)} · ${f.t}`;
     mBusy = true;
     mEl.meme.hidden = false;
     mSfx("ding");
@@ -5530,8 +5687,9 @@
     mZoom.el.classList.remove("big");
     mZoom.big.textContent = "Крупнее";
     mZoom.img.src = `assets/master/fig/${id}_z.webp`;
-    mZoom.img.alt = `${f.n}, страница ${f.p}: ${f.t}`;
-    mZoom.h.textContent = `${f.n}, с. ${f.p} · ${f.t}`;
+    mZoom.img.alt = `${figSrc(f, true)}: ${f.t}`;
+    mZoom.h.textContent = `${figSrc(f)} · ${f.t}`;
+    $("mZoomSrc").textContent = f.time ? "слайд из лекции, пояснение — ниже" : "рисунок из книги, перевод подписи — ниже";
     mZoom.cap.textContent = f.cap;
     mZoom.el.hidden = false;
     mZoom.box.scrollTop = 0; mZoom.box.scrollLeft = 0;
@@ -6013,7 +6171,7 @@
     for (const [k, v] of [["Пациент", c.name], ["Возраст", `${c.age}`], ["Профессия", c.job]]) { const r = el("div", "ca-kv"); r.append(el("span", null, k), el("b", null, v)); info.append(r); }
     const fig = el("figure", "ca-fig");
     const img = el("img"); img.src = `assets/master/fig/${c.fig}_z.webp`; img.alt = f ? `${f.n}: ${f.t}` : "";
-    fig.append(img, el("figcaption", null, f ? `${f.n}, с. ${f.p} · ${f.t}` : ""));
+    fig.append(img, el("figcaption", null, f ? `${figSrc(f)} · ${f.t}` : ""));
     const sign = el("button", "ca-sign", "Подписать карту"); sign.type = "button"; sign.disabled = true;
     const fieldEls = c.fields.map((fd, i) => {
       const g = el("div", "ca-group ca-opts");
@@ -6310,7 +6468,8 @@
   // material; for now there is one. Tapping it opens the game; the bar at the bottom brings you back,
   // and the game keeps its place, like an app left in the background.
   const BOOKS = [
-    { id: "condylography", title: "Кондилография", icon: "assets/books/condylography.webp", big: true },
+    { id: "condylography", title: "Кондилография", icon: "assets/books/condylography.webp", big: true, folder: true },
+    { id: "positioning", title: "Позиционирование", icon: "assets/books/positioning.png" },
   ];
   // every book lives in its own folder: the book itself and its patient cards
   const CARD_APP = { id: "cards", title: "Карта пациента", icon: "assets/books/patient_card.png" };
@@ -6327,7 +6486,7 @@
   function gameInert(on) {
     for (const el of document.querySelectorAll("section.screen, #latestBtn")) el.inert = on;
   }
-  const unreadScrolls = () => (mSave && Array.isArray(mSave.done) ? mSave.done.filter(d => !d).length : 0);
+  const unreadScrolls = (book = "condylography") => (mSave && Array.isArray(mSave.done) ? mKs(book).filter(k => !mSave.done[k]).length : 0);
   const folder = $("homeFolder");
   function appButton(app, cls, badgeN, onClick) {
     const btn = document.createElement("button");
@@ -6345,7 +6504,7 @@
   }
   function renderHome() {
     const left = unreadScrolls(), cards = cardsLeft();
-    $("homeGrid").replaceChildren(...BOOKS.map(b => {
+    $("homeGrid").replaceChildren(...BOOKS.filter(b => b.folder).map(b => {
       const btn = document.createElement("button");
       btn.type = "button"; btn.className = "home-app big folder"; btn.dataset.book = b.id;
       btn.setAttribute("aria-label", `Папка ${b.title}: книга и карты пациентов`);
@@ -6354,8 +6513,8 @@
       const m1 = document.createElement("span"); m1.className = "home-mini"; m1.style.backgroundImage = `url("${b.icon}")`;
       const m2 = document.createElement("span"); m2.className = "home-mini"; m2.style.backgroundImage = `url("${CARD_APP.icon}")`;
       const stat = document.createElement("span"); stat.className = "home-fstat";
-      const done = MASTER_CHAPTERS.length - left, cdone = CARD_CASES.length - cards;
-      stat.innerHTML = `Свитки ${done}/${MASTER_CHAPTERS.length}<br><i>Карты ${cdone}/${CARD_CASES.length}</i>`;
+      const total = mKs(b.id).length, done = total - left, cdone = CARD_CASES.length - cards;
+      stat.innerHTML = `Свитки ${done}/${total}<br><i>Карты ${cdone}/${CARD_CASES.length}</i>`;
       icon.append(m1, m2, stat);
       if (left + cards) { const badge = document.createElement("span"); badge.className = "home-badge"; badge.textContent = left + cards; icon.append(badge); }
       const name = document.createElement("span");
@@ -6378,7 +6537,11 @@
       btn.append(icon, name);
       btn.addEventListener("click", () => doctorOpen());
       return btn;
-    })());
+    })(), ...BOOKS.filter(b => !b.folder).map(b => {
+      const btn = appButton(b, "home-app", unreadScrolls(b.id), icon => openBook(b, icon));
+      btn.dataset.book = b.id;
+      return btn;
+    }));
   }
   function doctorOpen() {
     if (!homeOpen || homeBusy) return;
@@ -6392,7 +6555,7 @@
     if (!homeOpen || homeBusy) return;
     $("homeFolderName").textContent = b.title;
     $("homeFolderBox").replaceChildren(
-      appButton(b, "home-app", unreadScrolls(), icon => { folder.hidden = true; openBook(b, icon); }),
+      appButton(b, "home-app", unreadScrolls(b.id), icon => { folder.hidden = true; openBook(b, icon); }),
       appButton(CARD_APP, "home-app", cardsLeft(), icon => { folder.hidden = true; openCards(icon); }));
     folder.hidden = false;
     if (!homeCalm()) folder.animate([{ opacity: 0, transform: "scale(0.9)" }, { opacity: 1, transform: "scale(1)" }], { duration: 220, easing: "ease-out" });
@@ -6433,6 +6596,10 @@
     if (!homeOpen || homeBusy) return;
     homeBusy = true;
     spot.hidden = true;
+    if (b.id !== mBook) {   // another book: its own teacher and scrolls; the master's book starts at its title the first time
+      mSetBook(b.id);
+      show(b.id === "condylography" && !mSave.met ? 0 : 11);
+    }
     $("appSplashImg").src = b.icon;
     $("appSplashName").textContent = b.title.toUpperCase();
     splash.classList.remove("full");
@@ -6628,7 +6795,7 @@
   }
   function spotOpenBook(b) {
     spot.hidden = true;
-    const tile = home.querySelector(`.home-app[data-book="${b.id}"] .home-icon`);
+    const tile = home.querySelector(`.home-app[data-book="${b.id}"] .home-icon`);   // a folder tile or a plain icon
     folder.hidden = true;
     if (tile) openBook(b, tile);
   }
@@ -6639,7 +6806,7 @@
     const cardHit = !q || "карта пациента карты пациентов".includes(q) || CARD_CASES.some(c => spotNorm(c.name).includes(q));
     if (books.length) out.push(...spotGroup(q ? "Книги" : "Предложения", books.map(b => {
       const img = document.createElement("img"); img.src = b.icon; img.alt = "";
-      return spotRow(img, b.title, `Книга · свитков: ${MASTER_CHAPTERS.length}, не прочитано: ${unreadScrolls()}`, q, () => spotOpenBook(b));
+      return spotRow(img, b.title, `Книга · свитков: ${mKs(b.id).length}, не прочитано: ${unreadScrolls(b.id)}`, q, () => spotOpenBook(b));
     })));
     if (!q || "осмотр врач приём пациент".includes(q)) out.push(...spotGroup("Врач", [(() => {
       const img = document.createElement("img"); img.src = EXAM_APP.icon; img.alt = "";
@@ -6664,15 +6831,24 @@
       out.push(h, chips);
     } else {
       const scrolls = MASTER_CHAPTERS.map((ch, k) => ({ ch, k })).filter(({ ch }) => spotNorm(ch.title).includes(q) || spotNorm(ch.sub || "").includes(q));
-      if (scrolls.length) out.push(...spotGroup("Свитки · Кондилография", scrolls.map(({ ch, k }) => {
-        const n = document.createElement("span"); n.className = "home-spot-num" + (mSave.done[k] ? " done" : ""); n.textContent = k + 1;
-        return spotRow(n, ch.title, `${ch.sub ? ch.sub + " · " : ""}${mSave.done[k] ? "пройден" : "ещё не пройден"}`, q, () => spotOpenBook(BOOKS[0]));
-      })));
+      for (const bk of BOOKS) {
+        const mine = scrolls.filter(({ k }) => mBookOf(k) === bk.id);
+        if (mine.length) out.push(...spotGroup(`Свитки · ${bk.title}`, mine.map(({ ch, k }) => {
+          const n = document.createElement("span"); n.className = "home-spot-num" + (mSave.done[k] ? " done" : ""); n.textContent = mNum(k);
+          return spotRow(n, ch.title, `${ch.sub ? ch.sub + " · " : ""}${mSave.done[k] ? "пройден" : "ещё не пройден"}`, q, () => spotOpenBook(bk));
+        })));
+      }
       const terms = MASTER_GLOSSARY.map(([t, d]) => {
         const nt = spotNorm(t);
         return { t, d, rank: nt.startsWith(q) ? 0 : nt.includes(q) ? 1 : spotNorm(d).includes(q) ? 2 : 9 };
       }).filter(x => x.rank < 9).sort((a, b) => a.rank - b.rank).slice(0, 30);
       if (terms.length) out.push(...spotGroup("Термины · Кондилография", terms.map(x => spotRow(null, x.t, x.d, q, row => row.classList.toggle("open")))));
+      const pterms = (typeof POS_GLOSSARY !== "undefined" ? POS_GLOSSARY : []).map(([t, d]) => {
+        const nt = spotNorm(t);
+        return { t, d, rank: nt.startsWith(q) ? 0 : nt.includes(q) ? 1 : spotNorm(d).includes(q) ? 2 : 9 };
+      }).filter(x => x.rank < 9).sort((a, b) => a.rank - b.rank).slice(0, 30);
+      if (pterms.length) out.push(...spotGroup("Термины · Позиционирование", pterms.map(x => spotRow(null, x.t, x.d, q, row => row.classList.toggle("open")))));
+      terms.push(...pterms);
       if (!books.length && !scrolls.length && !terms.length && !cardHit) {
         const e = document.createElement("p"); e.className = "home-spot-empty"; e.textContent = `Ничего не нашлось: «${spotInput.value.trim()}»`;
         out.push(e);

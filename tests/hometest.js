@@ -20,7 +20,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   ok(await p.isVisible('#home'), 'home screen is up on start');
   ok(await p.evaluate(() => window.__home.open()), 'home state is open');
   ok((await p.$eval('.home-name', e => e.textContent)) === 'Кондилография', 'one app: Кондилография');
-  ok((await p.$$('.home-app')).length === 2, 'two tiles: book folder and doctor folder');
+  ok((await p.$$('#homeGrid > .home-app')).length === 3, 'three on the home screen: book folder, doctor folder, positioning book');
   ok((await p.$eval('.home-badge', e => e.textContent)) === '25', 'badge: 17 scrolls + 8 cards');
   ok(await p.$eval('#s1', e => e.inert), 'the game is inert under the home screen');
   await p.screenshot({ path: `${out}/home_phone.png` });

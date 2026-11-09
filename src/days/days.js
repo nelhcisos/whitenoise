@@ -534,13 +534,19 @@
     { kind: "assist", level: 2, title: "пациент, экзамен: бот молчит" },
   ];
   let mini = null;   // { k, kind, level, title, dev }
+  // the practice after scroll k: the first eight in order, then the patient, the pliers and the causes in turn;
+  // after a scroll on bracket positioning — a patient, where you hand over the brackets
+  function miniFor(k) {
+    if (mBookOf(k) === "positioning") return { kind: "assist", level: 1, title: "пациент: клеим брекеты" };
+    return MINIS[k < MINIS.length ? k : 3 + (k - MINIS.length) % (MINIS.length - 3)];
+  }
   function newPracticeGame(level) {
     const pool = PATIENTS.map((_, i) => i).sort(() => Math.random() - 0.5);
     game = { idx: level || 0, next: 0, pool, hours: 0, money: 0, mistakesTotal: 0, mini: true };
   }
   function startMini(k, opts = {}) {
     // past the first eight, the practices cycle through the patient, the pliers and the causes again
-    mini = Object.assign({ k }, MINIS[k < MINIS.length ? k : 3 + (k - MINIS.length) % (MINIS.length - 3)], opts);
+    mini = Object.assign({ k }, miniFor(k), opts);
     if (mini.kind === "assist") return k === 0 || mini.dev ? show(1) : startAssist();   // the barin opens the very first one
     if (mini.kind === "pliers") { newPracticeGame(0); return show(4); }
     newPracticeGame(0);

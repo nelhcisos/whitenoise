@@ -160,7 +160,7 @@
     for (const [k, v] of [["Пациент", c.name], ["Возраст", `${c.age}`], ["Профессия", c.job]]) { const r = el("div", "ca-kv"); r.append(el("span", null, k), el("b", null, v)); info.append(r); }
     const fig = el("figure", "ca-fig");
     const img = el("img"); img.src = `assets/master/fig/${c.fig}_z.webp`; img.alt = f ? `${f.n}: ${f.t}` : "";
-    fig.append(img, el("figcaption", null, f ? `${f.n}, с. ${f.p} · ${f.t}` : ""));
+    fig.append(img, el("figcaption", null, f ? `${figSrc(f)} · ${f.t}` : ""));
     const sign = el("button", "ca-sign", "Подписать карту"); sign.type = "button"; sign.disabled = true;
     const fieldEls = c.fields.map((fd, i) => {
       const g = el("div", "ca-group ca-opts");

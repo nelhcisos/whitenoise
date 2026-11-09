@@ -13,20 +13,40 @@
   // ----- progress, saved between visits -----
   function mFresh() {
     const n = MASTER_CHAPTERS.length;
-    return { stars: Array(n).fill(0), done: Array(n).fill(false), minis: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, dayEnd: false, sound: true };
+    return { stars: Array(n).fill(0), done: Array(n).fill(false), minis: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, posMet: false, dayEnd: false, sound: true };
   }
   function mLoad() {
     const d = mFresh();
     try {
       const s = JSON.parse(localStorage.getItem(M_KEY) || "null");
       if (s && typeof s === "object") {
-        for (const k of ["exam", "passed", "name", "date", "met", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
+        for (const k of ["exam", "passed", "name", "date", "met", "posMet", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
         for (const k of ["stars", "done", "minis"]) if (Array.isArray(s[k])) d[k] = d[k].map((v, i) => (typeof s[k][i] === typeof v ? s[k][i] : v));
       }
     } catch (e) { /* no storage: play without saving */ }
     return d;
   }
   const mSave = mLoad();
+  // ----- books: each has its own teacher, its own scrolls and its own numbering -----
+  // A scroll belongs to the book named in its "book" field (Кондилография when there is none).
+  const M_BOOKS = {
+    condylography: { name: "Мастер", skin: "master", menu: "Свитки мастера", title: "Кондилография" },
+    positioning: { name: "Сора", skin: "sora", menu: "Свитки Соры", title: "Позиционирование брекетов" },
+  };
+  let mBook = "condylography";
+  const mBookOf = k => (MASTER_CHAPTERS[k] && MASTER_CHAPTERS[k].book) || "condylography";
+  const mKs = (book = mBook) => MASTER_CHAPTERS.map((_, k) => k).filter(k => mBookOf(k) === book);
+  const mNum = k => mKs(mBookOf(k)).indexOf(k) + 1;
+  const mNextK = (book = mBook) => { const k = mKs(book).find(j => !mSave.done[j]); return k === undefined ? -1 : k; };
+  const mT = () => M_BOOKS[mBook] || M_BOOKS.condylography;
+  const mGloss = () => (mBook === "positioning" && typeof POS_GLOSSARY !== "undefined" ? POS_GLOSSARY : MASTER_GLOSSARY);
+  function mSetBook(b) {
+    mBook = M_BOOKS[b] ? b : "condylography";
+    mEl.stage.dataset.book = mBook;
+    mEl.stage.style.setProperty("--walk", `url("${M_IMG}${mT().skin}_walk.png")`);
+    mEl.sprite.setAttribute("aria-label", mT().name);
+    setMood("calm");
+  }
   function mStore() { try { localStorage.setItem(M_KEY, JSON.stringify(mSave)); } catch (e) { /* ignore */ } }
   // practice after scroll k is done: the master picks up from there
   let mBack = false;
@@ -110,16 +130,16 @@
   }
 
   // ----- the master's sprite: moods and blinking -----
-  ["calm", "happy", "stern", "think", "blink", "shock", "walk"].forEach(m => { new Image().src = `${M_IMG}master_${m}.png`; });
+  ["calm", "happy", "stern", "think", "blink", "shock", "walk"].forEach(m => { for (const b of Object.values(M_BOOKS)) new Image().src = `${M_IMG}${b.skin}_${m}.png`; });
   ["barin", "patient", "courier"].forEach(g => { new Image().src = `${M_IMG}guest_${g}.png`; });
   let mMood = "calm";
   function setMood(m) {
     mMood = m || "calm";
-    mEl.vox.style.setProperty("--spr", `url("${M_IMG}master_${mMood}.png")`);
+    mEl.vox.style.setProperty("--spr", `url("${M_IMG}${mT().skin}_${mMood}.png")`);
   }
   setInterval(() => {
     if (current !== 11 || mMood !== "calm" || mCalm) return;
-    mEl.vox.style.setProperty("--spr", `url("${M_IMG}master_blink.png")`);
+    mEl.vox.style.setProperty("--spr", `url("${M_IMG}${mT().skin}_blink.png")`);
     setTimeout(() => { if (mMood === "calm") setMood("calm"); }, 150);
   }, 3700);
   // 3D in pixel style: the master's sprite, stacked in layers, turns around once
@@ -155,7 +175,7 @@
     const book = !!(id && BOOK[id]);
     mEl.stage.classList.toggle("has-figure", book);
     mEl.board.classList.toggle("zoomable", book);
-    mEl.board.setAttribute("aria-label", book ? `${BOOK[id].n}, страница ${BOOK[id].p}: ${BOOK[id].t}. Нажми, чтобы увеличить` : "Доска мастера");
+    mEl.board.setAttribute("aria-label", book ? `${figSrc(BOOK[id], true)}: ${BOOK[id].t}. Нажми, чтобы увеличить` : "Доска мастера");
     if (id !== mBoardId) { mBoardId = id; mBoardT0 = performance.now(); }
     if (id && !mRaf) mRaf = requestAnimationFrame(mBoardLoop);
   }
@@ -179,7 +199,7 @@
     mEl.box.classList.toggle("narration", narr);
     mEl.box.classList.toggle("guest", !!opts.guest);
     mEl.name.hidden = narr;
-    mEl.name.textContent = opts.name || "Мастер";
+    mEl.name.textContent = opts.name || mT().name;
     mOnNext = opts.next || null;
     mEl.more.hidden = true;
     const shown = mNode("span"), ghost = mNode("span", "m-ghost");
@@ -477,8 +497,8 @@
   // ----- chapters, results, the end of the day -----
   function mStartChapter(k) {
     const ch = MASTER_CHAPTERS[k];
-    mRun(ch.steps, { mode: "chapter", k, title: `Свиток ${k + 1}. ${ch.title}`, onDone: mChapterDone });
-    mTitleCard(`Свиток ${k + 1}`, ch.title, ch.pages);
+    mRun(ch.steps, { mode: "chapter", k, title: `Свиток ${mNum(k)}. ${ch.title}`, onDone: mChapterDone });
+    mTitleCard(`Свиток ${mNum(k)}`, ch.title, ch.pages);
   }
   function mChapterDone() {
     if (ms.phase === "learn" && ms.wrong.length) {
@@ -495,15 +515,16 @@
     mSave.done[k] = true;
     mStore();
     // the day ends after two scrolls (or four scored tasks): the master sends you home
-    dayLog("scroll", `Свиток ${k + 1}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
+    dayLog("scroll", `Свиток ${mNum(k)}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
+    const nk = mKs(mBookOf(k)).find(j => j > k);
     const over = dayFull(), practice = !mSave.minis[k];
     const words = ["Не спеши. Пройди свиток ещё раз.", "Ты ступил на путь. Перечитай свиток.", "Хорошо. Но путь ещё не окончен.", "Безупречно. Ты понял суть."];
     mResults({
-      title: `Свиток ${k + 1} пройден`, stars, score: `С первого раза: ${ms.right} из ${ms.total}`,
+      title: `Свиток ${mNum(k)} пройден`, stars, score: `С первого раза: ${ms.right} из ${ms.total}`,
       line: practice ? `${words[stars]} А теперь — практика в клинике.` : over ? `${words[stars]} А на сегодня — хватит.` : words[stars],
-      buttons: practice ? [[`Практика: ${MINIS[Math.min(k, MINIS.length - 1)].title}`, () => startMini(k), "main"]]
+      buttons: practice ? [[`Практика: ${miniFor(k).title}`, () => startMini(k), "main"]]
         : over ? [["Закончить день", () => mGoHome(), "main"]] : [
-        ...(k + 1 < MASTER_CHAPTERS.length ? [["Следующий свиток", () => mStartChapter(k + 1), "main"]] : []),
+        ...(nk !== undefined ? [["Следующий свиток", () => mStartChapter(nk), "main"]] : []),
         ["Пройти ещё раз", () => mStartChapter(k)],
         ["К свиткам", () => mMenu()],
       ],
@@ -532,19 +553,19 @@
     mLeaveLesson();
     mEl.stage.classList.add("dusk");
     mSfx("gong");
-    const allNow = mSave.done.every(Boolean) && !mSave.dayEnd;
+    const allNow = mBook === "condylography" && mKs("condylography").every(k => mSave.done[k]) && !mSave.dayEnd;
     if (allNow) { mSave.dayEnd = true; mStore(); }
     mLines([
       first ? { text: first, mood: "happy" } : null,
       { text: "Солнце садится за крышу храма. Во дворе зажигаются фонари.", narr: true },
       { text: pick(["На сегодня хватит, ученик. Иди отдыхай.", "Два свитка за день — достаточно. Голова не бездонная.", "Всё. Остальное — завтра. Иди спать."]), mood: "calm" },
-      allNow ? { text: "Все восемь свитков позади. Завтра можешь сдать экзамен.", mood: "happy" } : null,
+      allNow ? { text: "Все свитки позади. Завтра можешь сдать экзамен.", mood: "happy" } : null,
     ], () => endDay({ onDone: goMorning }));
   }
 
   // ----- exam, certificate, glossary -----
   function mStartExam() {
-    const pools = mShuffle(MASTER_CHAPTERS.map(ch => mShuffle(ch.steps.filter(st => st.q || st.tf))));
+    const pools = mShuffle(mKs("condylography").map(k => mShuffle(MASTER_CHAPTERS[k].steps.filter(st => st.q || st.tf))));
     const qs = [];
     pools.forEach(p => { if (p.length && qs.length < M_EXAM) qs.push(p.shift()); });
     const rest = mShuffle(pools.filter(p => p.length));
@@ -591,10 +612,10 @@
     name.setAttribute("aria-label", "Имя ученика");
     name.addEventListener("input", () => { mSave.name = name.value.trim(); mStore(); });
     name.addEventListener("click", e => e.stopPropagation());
-    const stars = mSave.stars.reduce((a, b) => a + b, 0);
+    const ks = mKs("condylography"), stars = ks.reduce((a, k) => a + mSave.stars[k], 0);
     w.append(name,
       mNode("p", null, `прошёл(а) восемь свитков мастера окклюзии и выдержал(а) экзамен: ${mSave.exam} из ${M_EXAM}.`),
-      mNode("p", null, `Звёзд за свитки: ${stars} из ${mSave.stars.length * 3}.`),
+      mNode("p", null, `Звёзд за свитки: ${stars} из ${ks.length * 3}.`),
       mNode("p", "m-cert-date", mSave.date || new Date().toLocaleDateString("ru-RU")),
       mNode("div", "m-seal", "МАСТЕР"),
       mNode("p", "m-cert-fn", "* Свиток действителен в стенах храма. Смотреть пункт «Специальные условия»."),
@@ -611,7 +632,7 @@
     q.type = "search"; q.placeholder = "Найти термин…"; q.setAttribute("aria-label", "Найти термин");
     q.addEventListener("click", e => e.stopPropagation());
     const dl = mNode("dl", "m-dl");
-    const rows = MASTER_GLOSSARY.map(([t, d]) => {
+    const rows = mGloss().map(([t, d]) => {
       const dt = mNode("dt", null, t), dd = mNode("dd", null, d);
       dl.append(dt, dd);
       return [`${t} ${d}`.toLowerCase(), dt, dd];
@@ -636,16 +657,18 @@
     mEl.meme.hidden = true;
     mLeaveLesson();
     mEl.stage.classList.remove("dusk");
-    const list = [mNode("h2", "m-h", `Свитки мастера · день ${day}`)];
-    const nextK = mSave.done.indexOf(false);
-    MASTER_CHAPTERS.forEach((ch, k) => {
-      if (ch.part && (k === 0 || MASTER_CHAPTERS[k - 1].part !== ch.part)) list.push(mNode("p", "m-part", ch.part));
-      list.push(mItem(`${k + 1}. ${ch.title}`, ch.sub, mStars(mSave.stars[k]), () => mStartChapter(k), k === nextK ? "next" : ""));
+    const condy = mBook === "condylography";
+    const list = [mNode("h2", "m-h", condy ? `${mT().menu} · день ${day}` : `${mT().menu} · ${mT().title}`)];
+    const nextK = mNextK();
+    mKs().forEach((k, n) => {
+      const ch = MASTER_CHAPTERS[k];
+      if (ch.part && (n === 0 || MASTER_CHAPTERS[mKs()[n - 1]].part !== ch.part)) list.push(mNode("p", "m-part", ch.part));
+      list.push(mItem(`${n + 1}. ${ch.title}`, ch.sub, mStars(mSave.stars[k]), () => mStartChapter(k), k === nextK ? "next" : ""));
     });
-    list.push(mItem("Экзамен мастера", mSave.exam ? `лучший результат: ${mSave.exam} из ${M_EXAM}` : `${M_EXAM} вопросов из всех свитков, нужно ${M_PASS}`,
+    if (condy) list.push(mItem("Экзамен мастера", mSave.exam ? `лучший результат: ${mSave.exam} из ${M_EXAM}` : `${M_EXAM} вопросов из всех свитков, нужно ${M_PASS}`,
       null, () => (nextK === -1 || mSave.passed ? mStartExam() : mConfirmExam()), "exam"));
-    list.push(mItem("Свиток терминов", `${MASTER_GLOSSARY.length} понятий с объяснениями`, null, mGlossary));
-    if (mSave.passed) list.push(mItem("Свиток ученика", "твой сертификат", null, mCertificate, "cert"));
+    list.push(mItem("Свиток терминов", `${mGloss().length} понятий с объяснениями`, null, mGlossary));
+    if (condy && mSave.passed) list.push(mItem("Свиток ученика", "твой сертификат", null, mCertificate, "cert"));
     list.push(mItem(`Звук: ${mSave.sound ? "вкл" : "выкл"}`, null, null, () => {
       mSave.sound = !mSave.sound; mStore(); mMenu(mSave.sound ? "Пусть звенит." : "Тишина — тоже учитель.");
     }, "small"));
@@ -672,28 +695,31 @@
     mEl.ad.hidden = true;
     mEl.meme.hidden = true;
     mEl.card.hidden = true;
-    if (mSave.met) {
+    const condy = mBook === "condylography", met = condy ? mSave.met : mSave.posMet;
+    if (met) {
       const back = mBack, morning = mMorning;
       mBack = false; mMorning = false;
-      const next = mSave.done.indexOf(false);
+      const next = mNextK();
       if (back && dayFull()) return mGoHome(pick(["Руки поработали — молодец.", "Практика засчитана.", "С возвращением. Руки помнят — голова учит."]));
       if (back || morning) {
         const greet = morning
           ? pick([`Утро, ученик. День ${day}.`, `Новый день — новые свитки. День ${day}.`, `День ${day}. Чай остыл, свитки ждут.`])
           : pick(["Руки поработали — теперь голова.", "С возвращением. Руки помнят — голова учит.", "Практика — хорошо. Теперь теория."]);
-        if (next < 0) return mMenu(`${greet} Все свитки пройдены — экзамен ждёт.`);
+        if (next < 0) return mMenu(condy ? `${greet} Все свитки пройдены — экзамен ждёт.` : `${greet} Все свитки пройдены.`);
         ms = null;
         mLeaveLesson();
         setMood(morning ? "calm" : "happy");
-        return mLines([{ text: `${greet} Свиток ${next + 1}: «${MASTER_CHAPTERS[next].title}».` }], () => mStartChapter(next));
+        return mLines([{ text: `${greet} Свиток ${mNum(next)}: «${MASTER_CHAPTERS[next].title}».` }], () => mStartChapter(next));
       }
       return mMenu(pick(["С возвращением, ученик.", "Ты вернулся. Хорошо.", "Свитки ждут."]));
     }
-    mSave.met = true; mStore();
+    if (condy) mSave.met = true; else mSave.posMet = true;
+    mStore();
     ms = null;
     mLeaveLesson();
     setMood("calm");
-    mLines(MASTER_INTRO.map((st, i) => ({ text: st.s, narr: st.narr, mood: st.m, fn: i === 1 ? mSpin : null })), () => mStartChapter(0));
+    const intro = condy ? MASTER_INTRO : POS_INTRO;
+    mLines(intro.map((st, i) => ({ text: st.s, narr: st.narr, mood: st.m, fn: i === 1 ? mSpin : null })), () => mStartChapter(mKs()[0]));
   }
 
   // ----- small animations -----
@@ -863,7 +889,8 @@
     if (ms.gags >= (ms.steps.length > 40 ? 3 : 2) || ms.sinceGag < 7 || ms.i < 3 || ms.i > ms.steps.length - 3) return false;
     const forced = !ms.gags && ms.i >= Math.floor(ms.steps.length * 0.55);
     if (!forced && Math.random() > 0.15) return false;
-    if (!mGagBag.length) mGagBag = mShuffle([...Object.keys(M_GAGS), "meme"]);   // memes come up twice as often
+    // memes are pictures from the master's textbook, so they belong to his book
+    if (!mGagBag.length) mGagBag = mShuffle([...Object.keys(M_GAGS), ...(mBook === "condylography" ? ["meme"] : [])]);
     ms.gags++; ms.sinceGag = 0;
     mGag(mGagBag.pop(), () => mRender(st));
     return true;
@@ -885,8 +912,10 @@
       mEl.stage.classList.remove("shake"); void mEl.stage.offsetWidth; mEl.stage.classList.add("shake");
       setTimeout(() => mEl.stage.classList.remove("shake"), 1300);
     }
+    // in another book the guests talk to that book's teacher
+    const who2 = t => (mBook === "condylography" ? t : t.replace(/Мастер/g, mT().name).replace("дед в оранжевом", "монах в синем"));
     mLines(g.lines.map(([who, text, mood, sfx, fx]) => ({
-      text, narr: who === "n", guest: who === "g", name: who === "g" ? g.name : "Мастер",
+      text: who2(text), narr: who === "n", guest: who === "g", name: who === "g" ? g.name : mT().name,
       mood: who === "m" ? mood || "calm" : undefined,
       fn: sfx || fx ? () => { if (sfx) mSfx(sfx); if (fx === "spin") mSpin(); } : null,
     })), () => { mHideGuest(); setTimeout(done, mCalm ? 0 : 420); });
@@ -906,9 +935,9 @@
     if (!mMemeBag.length) mMemeBag = mShuffle([...M_MEMES]);
     const mm = mMemeBag.pop(), f = BOOK[mm.id], img = $("mMemeImg");
     img.src = `assets/master/fig/${mm.id}.png`;
-    img.alt = `${f.n}, страница ${f.p}: ${f.t}`;
+    img.alt = `${figSrc(f, true)}: ${f.t}`;
     $("mMemeCap").textContent = mm.cap;
-    $("mMemeSrc").textContent = `${f.n}, с. ${f.p} · ${f.t}`;
+    $("mMemeSrc").textContent = `${figSrc(f)} · ${f.t}`;
     mBusy = true;
     mEl.meme.hidden = false;
     mSfx("ding");
@@ -953,8 +982,9 @@
     mZoom.el.classList.remove("big");
     mZoom.big.textContent = "Крупнее";
     mZoom.img.src = `assets/master/fig/${id}_z.webp`;
-    mZoom.img.alt = `${f.n}, страница ${f.p}: ${f.t}`;
-    mZoom.h.textContent = `${f.n}, с. ${f.p} · ${f.t}`;
+    mZoom.img.alt = `${figSrc(f, true)}: ${f.t}`;
+    mZoom.h.textContent = `${figSrc(f)} · ${f.t}`;
+    $("mZoomSrc").textContent = f.time ? "слайд из лекции, пояснение — ниже" : "рисунок из книги, перевод подписи — ниже";
     mZoom.cap.textContent = f.cap;
     mZoom.el.hidden = false;
     mZoom.box.scrollTop = 0; mZoom.box.scrollLeft = 0;

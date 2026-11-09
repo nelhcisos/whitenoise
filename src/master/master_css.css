@@ -61,7 +61,7 @@
   .master-stage.pacing .m-walker { animation: m-pace 9s linear infinite; transition: none; }
   .master-stage.pacing .m-sprite { animation: none; }
   .master-stage.pacing .m-vox i {
-    background-image: url("assets/master/master_walk.png"); background-size: 200% 100%;
+    background-image: var(--walk, url("assets/master/master_walk.png")); background-size: 200% 100%;
     animation: m-walk .56s steps(1) infinite;
   }
   @keyframes m-walk { 0% { background-position: 0 0; } 50% { background-position: 100% 0; } }
