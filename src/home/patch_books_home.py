@@ -70,5 +70,6 @@ rep('''      if (terms.length) out.push(...spotGroup("Термины · Конд
 # the search tile for a plain book icon
 rep('''    const tile = home.querySelector(`.home-app[data-book="${b.id}"] .home-icon`);''',
     '''    const tile = home.querySelector(`.home-app[data-book="${b.id}"] .home-icon`);   // a folder tile or a plain icon''')
+rep("  /* a book with a cover: a big 2x2 tile, like a widget */", "  /* a single book icon: its name may run a little past the cell, like a long app name with room around it */\n  #homeGrid > .home-app:not(.big) .home-name { max-width: 118px; }\n  /* a book with a cover: a big 2x2 tile, like a widget */")
 open(path, "w", encoding="utf-8").write(s)
 print("ok", len(s))

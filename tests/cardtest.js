@@ -51,7 +51,7 @@ const ok = (c, m) => console.log((c ? 'PASS ' : 'FAIL ') + m);
   ok((await p.$eval('.home-app.folder >> nth=0 >> .home-badge', e => e.textContent)) === '23', 'badge now 23');
   ok(/Карты 2\/8/.test(await p.$eval('.home-app.folder >> nth=0 >> .home-fstat', e => e.textContent)), 'tile shows Карты 2/8');
   // saved across reloads; the day log counts the cards
-  await p.reload(); await p.waitForTimeout(600);
+  await p.reload(); await p.waitForSelector('.home-app.folder .home-fstat'); await p.waitForTimeout(800);
   ok(/Карты 2\/8/.test(await p.$eval('.home-app.folder >> nth=0 >> .home-fstat', e => e.textContent)), 'cards saved after reload');
   ok(/Карта пациента: Анна/.test(await p.evaluate(() => localStorage.getItem('ortho-days-v1'))), 'card logged in the day');
   // the book still opens from the folder
