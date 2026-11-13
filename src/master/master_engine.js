@@ -897,8 +897,10 @@
       fine: "* Шесть записывающих пластин в стоимость не входят." },
   ];
   let mGagBag = [];
+  // The inserts (guests, ads, textbook memes) are switched off at the owner's request; set to true to bring them back.
+  const M_GAGS_ON = false;
   function mMaybeGag(st) {
-    if (!ms || ms.mode !== "chapter" || ms.phase !== "learn" || mSolo()) return false;
+    if (!M_GAGS_ON || !ms || ms.mode !== "chapter" || ms.phase !== "learn" || mSolo()) return false;
     ms.sinceGag++;
     if (ms.gags >= (ms.steps.length > 40 ? 3 : 2) || ms.sinceGag < 7 || ms.i < 3 || ms.i > ms.steps.length - 3) return false;
     const forced = !ms.gags && ms.i >= Math.floor(ms.steps.length * 0.55);
