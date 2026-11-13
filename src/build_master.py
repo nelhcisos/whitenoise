@@ -36,8 +36,12 @@ try:
     js += rd("pos_content.js") + "\n"
 except FileNotFoundError:
     pass
+try:
+    js += rd("al_content.js") + "\n"
+except FileNotFoundError:
+    pass
 js += rd("boards.js") + "\n"
-for extra in ("boards2.js", "book_data2.js", "pos_figs.js", "voxel.js"):
+for extra in ("boards2.js", "book_data2.js", "pos_figs.js", "al_figs.js", "voxel.js"):
     try:
         js += rd(extra) + "\n"
     except FileNotFoundError:

@@ -60,6 +60,9 @@
   @keyframes m-spin { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
   .master-stage.pacing .m-walker { animation: m-pace 9s linear infinite; transition: none; }
   .master-stage.pacing .m-sprite { animation: none; }
+  /* a book without a teacher: nobody stands in the yard */
+  .master-stage.solo .m-walker { display: none; }
+  .master-stage.solo .m-box::before { display: none; }   /* and the text box points at nobody */
   .master-stage.pacing .m-vox i {
     background-image: var(--walk, url("assets/master/master_walk.png")); background-size: 200% 100%;
     animation: m-walk .56s steps(1) infinite;

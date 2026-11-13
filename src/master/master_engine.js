@@ -13,14 +13,14 @@
   // ----- progress, saved between visits -----
   function mFresh() {
     const n = MASTER_CHAPTERS.length;
-    return { stars: Array(n).fill(0), done: Array(n).fill(false), minis: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, posMet: false, dayEnd: false, sound: true };
+    return { stars: Array(n).fill(0), done: Array(n).fill(false), minis: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, posMet: false, alMet: false, dayEnd: false, sound: true };
   }
   function mLoad() {
     const d = mFresh();
     try {
       const s = JSON.parse(localStorage.getItem(M_KEY) || "null");
       if (s && typeof s === "object") {
-        for (const k of ["exam", "passed", "name", "date", "met", "posMet", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
+        for (const k of ["exam", "passed", "name", "date", "met", "posMet", "alMet", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
         for (const k of ["stars", "done", "minis"]) if (Array.isArray(s[k])) d[k] = d[k].map((v, i) => (typeof s[k][i] === typeof v ? s[k][i] : v));
       }
     } catch (e) { /* no storage: play without saving */ }
@@ -32,6 +32,8 @@
   const M_BOOKS = {
     condylography: { name: "Мастер", skin: "master", menu: "Свитки мастера", title: "Кондилография" },
     positioning: { name: "Сора", skin: "sora", menu: "Свитки Соры", title: "Позиционирование брекетов" },
+    // a book without a teacher (solo): only the text, the questions and the results; no sprite, no practice, no jokes
+    aligners: { name: "", skin: "", solo: true, menu: "Свитки", title: "Элайнеры с нуля" },
   };
   let mBook = "condylography";
   const mBookOf = k => (MASTER_CHAPTERS[k] && MASTER_CHAPTERS[k].book) || "condylography";
@@ -39,11 +41,14 @@
   const mNum = k => mKs(mBookOf(k)).indexOf(k) + 1;
   const mNextK = (book = mBook) => { const k = mKs(book).find(j => !mSave.done[j]); return k === undefined ? -1 : k; };
   const mT = () => M_BOOKS[mBook] || M_BOOKS.condylography;
-  const mGloss = () => (mBook === "positioning" && typeof POS_GLOSSARY !== "undefined" ? POS_GLOSSARY : MASTER_GLOSSARY);
+  const mGloss = () => (mBook === "positioning" && typeof POS_GLOSSARY !== "undefined" ? POS_GLOSSARY
+    : mBook === "aligners" && typeof AL_GLOSSARY !== "undefined" ? AL_GLOSSARY : MASTER_GLOSSARY);
+  const mSolo = () => !!mT().solo;
   function mSetBook(b) {
     mBook = M_BOOKS[b] ? b : "condylography";
     mEl.stage.dataset.book = mBook;
-    mEl.stage.style.setProperty("--walk", `url("${M_IMG}${mT().skin}_walk.png")`);
+    mEl.stage.classList.toggle("solo", mSolo());
+    if (!mSolo()) mEl.stage.style.setProperty("--walk", `url("${M_IMG}${mT().skin}_walk.png")`);
     mEl.sprite.setAttribute("aria-label", mT().name);
     setMood("calm");
   }
@@ -130,15 +135,16 @@
   }
 
   // ----- the master's sprite: moods and blinking -----
-  ["calm", "happy", "stern", "think", "blink", "shock", "walk"].forEach(m => { for (const b of Object.values(M_BOOKS)) new Image().src = `${M_IMG}${b.skin}_${m}.png`; });
+  ["calm", "happy", "stern", "think", "blink", "shock", "walk"].forEach(m => { for (const b of Object.values(M_BOOKS)) if (b.skin) new Image().src = `${M_IMG}${b.skin}_${m}.png`; });
   ["barin", "patient", "courier"].forEach(g => { new Image().src = `${M_IMG}guest_${g}.png`; });
   let mMood = "calm";
   function setMood(m) {
     mMood = m || "calm";
+    if (mSolo()) return;
     mEl.vox.style.setProperty("--spr", `url("${M_IMG}${mT().skin}_${mMood}.png")`);
   }
   setInterval(() => {
-    if (current !== 11 || mMood !== "calm" || mCalm) return;
+    if (current !== 11 || mMood !== "calm" || mCalm || mSolo()) return;
     mEl.vox.style.setProperty("--spr", `url("${M_IMG}${mT().skin}_blink.png")`);
     setTimeout(() => { if (mMood === "calm") setMood("calm"); }, 150);
   }, 3700);
@@ -198,7 +204,7 @@
     const narr = !!opts.narr;
     mEl.box.classList.toggle("narration", narr);
     mEl.box.classList.toggle("guest", !!opts.guest);
-    mEl.name.hidden = narr;
+    mEl.name.hidden = narr || (mSolo() && !opts.name);   // a book without a teacher: no name over the text
     mEl.name.textContent = opts.name || mT().name;
     mOnNext = opts.next || null;
     mEl.more.hidden = true;
@@ -318,6 +324,7 @@
   }
   function mRender(st) {
     mClearChoices();
+    bd.quiz = false;
     mEl.stage.classList.remove("asking", "answered", "pacing");
     if (st.sec && ms) {   // a subchapter of the book's chapter: a card and the name in the top bar
       mEl.chapter.textContent = `${ms.title} · ${st.sec}`;
@@ -331,7 +338,9 @@
       return;
     }
     // A question. The board often shows the answer, so it appears only with the explanation.
-    setBoard(null);
+    // A question about a picture (st.show) keeps the picture up, without its title, caption or zoom.
+    bd.quiz = !!(st.show && st.b);
+    setBoard(st.show ? st.b : null);
     if (ms.counting && !(ms.counted || (ms.counted = new Set())).has(ms.i)) { ms.total++; ms.counted.add(ms.i); }
     mEl.stage.classList.add("asking");
     if (!mCalm) mEl.stage.classList.add("pacing");
@@ -347,6 +356,7 @@
   function mAnswer(st, ok, lines) {
     mEl.stage.classList.add("answered");
     mEl.stage.classList.remove("pacing");
+    bd.quiz = false;   // the answer is given: the picture gets its title and caption back
     if (ms.counting) { if (ok) ms.right++; else ms.wrong.push(st); }
     ms.streak = ok ? (ms.streak || 0) + 1 : 0;
     if (ms.streak >= 3 && ms.streak % 3 === 0) setTimeout(() => mComboFlash(ms ? ms.streak : 3), 250);
@@ -515,10 +525,13 @@
     mSave.done[k] = true;
     mStore();
     // the day ends after two scrolls (or four scored tasks): the master sends you home
-    dayLog("scroll", `Свиток ${mNum(k)}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
+    // a book without a teacher keeps out of the days: no pay, no practice, no going home
+    const solo = mSolo();
+    if (!solo) dayLog("scroll", `Свиток ${mNum(k)}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
     const nk = mKs(mBookOf(k)).find(j => j > k);
-    const over = dayFull(), practice = !mSave.minis[k];
-    const words = ["Не спеши. Пройди свиток ещё раз.", "Ты ступил на путь. Перечитай свиток.", "Хорошо. Но путь ещё не окончен.", "Безупречно. Ты понял суть."];
+    const over = !solo && dayFull(), practice = !solo && !mSave.minis[k];
+    const words = solo ? ["Пройди свиток ещё раз.", "Начало есть. Перечитай свиток.", "Хорошо. Почти без ошибок.", "Безупречно."]
+      : ["Не спеши. Пройди свиток ещё раз.", "Ты ступил на путь. Перечитай свиток.", "Хорошо. Но путь ещё не окончен.", "Безупречно. Ты понял суть."];
     mResults({
       title: `Свиток ${mNum(k)} пройден`, stars, score: `С первого раза: ${ms.right} из ${ms.total}`,
       line: practice ? `${words[stars]} А теперь — практика в клинике.` : over ? `${words[stars]} А на сегодня — хватит.` : words[stars],
@@ -683,7 +696,7 @@
     list.push(reset);
     mPanel(list, { fig: true });
     setMood("calm");
-    mSay(greet || pick(["Какой свиток откроем?", "Выбирай свиток, ученик.", "Знание любит порядок. Но выбор за тобой."]));
+    mSay(greet || (mSolo() ? "Выбери свиток." : pick(["Какой свиток откроем?", "Выбирай свиток, ученик.", "Знание любит порядок. Но выбор за тобой."])));
   }
 
   function startMaster() {
@@ -695,7 +708,8 @@
     mEl.ad.hidden = true;
     mEl.meme.hidden = true;
     mEl.card.hidden = true;
-    const condy = mBook === "condylography", met = condy ? mSave.met : mSave.posMet;
+    const condy = mBook === "condylography", metKey = condy ? "met" : mBook === "aligners" ? "alMet" : "posMet", met = mSave[metKey];
+    if (met && mSolo()) { mBack = false; return mMenu(mNextK() < 0 ? "Все свитки пройдены." : "Выбери свиток."); }
     if (met) {
       const back = mBack, morning = mMorning;
       mBack = false; mMorning = false;
@@ -713,12 +727,12 @@
       }
       return mMenu(pick(["С возвращением, ученик.", "Ты вернулся. Хорошо.", "Свитки ждут."]));
     }
-    if (condy) mSave.met = true; else mSave.posMet = true;
+    mSave[metKey] = true;
     mStore();
     ms = null;
     mLeaveLesson();
     setMood("calm");
-    const intro = condy ? MASTER_INTRO : POS_INTRO;
+    const intro = condy ? MASTER_INTRO : mBook === "aligners" ? AL_INTRO : POS_INTRO;
     mLines(intro.map((st, i) => ({ text: st.s, narr: st.narr, mood: st.m, fn: i === 1 ? mSpin : null })), () => mStartChapter(mKs()[0]));
   }
 
@@ -884,7 +898,7 @@
   ];
   let mGagBag = [];
   function mMaybeGag(st) {
-    if (!ms || ms.mode !== "chapter" || ms.phase !== "learn") return false;
+    if (!ms || ms.mode !== "chapter" || ms.phase !== "learn" || mSolo()) return false;
     ms.sinceGag++;
     if (ms.gags >= (ms.steps.length > 40 ? 3 : 2) || ms.sinceGag < 7 || ms.i < 3 || ms.i > ms.steps.length - 3) return false;
     const forced = !ms.gags && ms.i >= Math.floor(ms.steps.length * 0.55);
@@ -984,7 +998,7 @@
     mZoom.img.src = `assets/master/fig/${id}_z.webp`;
     mZoom.img.alt = `${figSrc(f, true)}: ${f.t}`;
     mZoom.h.textContent = `${figSrc(f)} · ${f.t}`;
-    $("mZoomSrc").textContent = f.time ? "слайд из лекции, пояснение — ниже" : "рисунок из книги, перевод подписи — ниже";
+    $("mZoomSrc").textContent = f.src ? "кадр из урока, пояснение — ниже" : f.time ? "слайд из лекции, пояснение — ниже" : "рисунок из книги, перевод подписи — ниже";
     mZoom.cap.textContent = f.cap;
     mZoom.el.hidden = false;
     mZoom.box.scrollTop = 0; mZoom.box.scrollLeft = 0;
@@ -1005,6 +1019,7 @@
   mEl.board.addEventListener("click", e => {
     if (!BOOK[mBoardId]) return;
     e.stopPropagation();
+    if (bd.quiz) return;   // the zoom names the picture, so not while it is being asked about
     mZoomOpen(mBoardId);
   });
 

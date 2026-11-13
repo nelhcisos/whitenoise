@@ -92,7 +92,8 @@
   // Flipbook figures show one frame at a time.
   bd.figure = function (c, id, t) {
     const f = BOOK[id], im = figImg(id);
-    bd.fit(c, `${figSrc(f)} · ${f.t}`, 320, 22, CHALK.yellow, 616, 24, 800);
+    const quiz = !!bd.quiz;   // the picture is being asked about: no title, no caption
+    bd.fit(c, quiz ? (f.src ? "Кадр из урока" : "Что на рисунке?") : `${figSrc(f)} · ${f.t}`, 320, 22, CHALK.yellow, 616, 24, 800);
     if (!im.complete || !im.naturalWidth) { bd.text(c, "…", 320, 200, CHALK.dim, 28); return; }
     const W = im.naturalWidth, H = im.naturalHeight;
     let fr = [0, 0, 1, 1], k = -1;
@@ -111,7 +112,8 @@
       const n = f.frames.length;
       for (let i = 0; i < n; i++) bd.circle(c, 320 - (n - 1) * 13 + i * 26, 322, 7, CHALK.white, 2, i === k ? CHALK.yellow : null);
       bd.fit(c, f.fl ? f.fl[k] : "", 320, 350, CHALK.green, 616, 21, 800);
-    } else bd.fit(c, f.s, 320, 350, CHALK.white, 616, 20, 700);
+    } else if (!quiz) bd.fit(c, f.s, 320, 350, CHALK.white, 616, 20, 700);
+    if (quiz) return;
     bd.text(c, f.time ? "нажми на доску — увеличить и пояснение" : "нажми на доску — увеличить и перевод подписи", 320, 384, CHALK.dim, 14, "center", 700);
   };
 
