@@ -65,7 +65,11 @@
     if (!FIG[name]) {
       const im = new Image();
       im.onload = () => { if (typeof mRedrawBoard === "function") mRedrawBoard(); };
-      im.src = `assets/master/fig/${name}.png`;
+      // a figure kept on a sheet (f.at: file, place and size on it) shares the sheet's image
+      const at = BOOK[name] && BOOK[name].at;
+      if (at && FIG["@" + at.f]) return (FIG[name] = FIG["@" + at.f]);
+      if (at) FIG["@" + at.f] = im;
+      im.src = at ? `assets/master/fig/${at.f}.webp` : `assets/master/fig/${name}.png`;
       FIG[name] = im;
     }
     return FIG[name];
@@ -93,10 +97,10 @@
   bd.figure = function (c, id, t) {
     const f = BOOK[id], im = figImg(id);
     const quiz = !!bd.quiz;   // the picture is being asked about: no title, no caption
-    bd.fit(c, quiz ? (f.src ? "Кадр из урока" : "Что на рисунке?") : `${figSrc(f)} · ${f.t}`, 320, 22, CHALK.yellow, 616, 24, 800);
+    bd.fit(c, quiz ? (f.n === "Слайд" ? "Слайд лекции" : f.src ? "Кадр из урока" : "Что на рисунке?") : `${figSrc(f)} · ${f.t}`, 320, 22, CHALK.yellow, 616, 24, 800);
     if (!im.complete || !im.naturalWidth) { bd.text(c, "…", 320, 200, CHALK.dim, 28); return; }
     const W = im.naturalWidth, H = im.naturalHeight;
-    let fr = [0, 0, 1, 1], k = -1;
+    let fr = f.at ? [f.at.x / W, f.at.y / H, f.at.w / W, f.at.h / H] : [0, 0, 1, 1], k = -1;
     // t can dip below zero: the frame's timestamp may come a moment before the board was set
     if (f.frames) { k = Math.floor(Math.max(0, t) / 2.6) % f.frames.length; fr = f.frames[k]; }
     const sw = fr[2] * W, sh = fr[3] * H, boxH = f.frames ? 262 : 284;
@@ -105,7 +109,8 @@
     c.save();
     c.fillStyle = "#fbf8f0";
     c.fillRect(x - 5, y - 5, w + 10, h + 10);
-    c.imageSmoothingEnabled = false;
+    c.imageSmoothingEnabled = !!f.at;   // a slide from a sheet is a photo, not pixel art
+    if (f.at) c.imageSmoothingQuality = "high";
     c.drawImage(im, fr[0] * W, fr[1] * H, sw, sh, x, y, w, h);
     c.restore();
     if (f.frames) {

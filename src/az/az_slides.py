@@ -1,10 +1,10 @@
-# Cut slides of the webinars «Элайнеры от А до Я» out of the video frames: a pixelated board picture and a
-# clear zoom. The lecturer's webcam box is painted over with the colour around it; faces of patients are not used.
+# Cut slides of the webinars «Элайнеры от А до Я» out of the video frames and lay them on one sheet per
+# webinar (the artifact that hosts the game holds a limited number of files). The lecturer's webcam box is painted over with the colour around it; faces of patients are not used.
 #   python3 az_slides.py FRAMES_DIR FIG_DIR [ids...]
 # FRAMES_DIR/<w01..w11>/f_NNNN.jpg: a 1280x720 frame every 30 s (frame N is second 30*N - 15).
 # Each slide: id, webinar, "m:ss" of the frame, crop box or None (whole frame), boxes to paint over.
 import sys
-from PIL import Image, ImageDraw, ImageEnhance
+from PIL import Image, ImageDraw
 FR, OUT = sys.argv[1], sys.argv[2]
 K = 1280 / 384   # boxes below are measured on 384x216 thumbnails
 W2 = (0, 19, 288, 182)
@@ -88,7 +88,7 @@ SLIDES = [
     ("az4_wilson", "w04", "74:15", (0, 0, 290, 216), [(0, 138, 46, 204)]),
     ("az4_apex", "w04", "79:15", (0, 0, 290, 216), []),
 ]
-BOX_W, BOX_H, PIX, COLORS, ZOOM_W = 616, 300, 1.4, 56, 960
+CW, CH, COLS = 800, 450, 4   # a sheet's cell; each slide sits in the top left corner of its cell
 
 def paint(im, box):
     """Fill the box with the median colour of a thin frame around it."""
@@ -106,20 +106,26 @@ def paint(im, box):
     ImageDraw.Draw(im).rectangle([x0, y0, x1, y1], fill=ring[len(ring) // 2])
 
 if __name__ == "__main__":
+    # one sheet per webinar: FIG_DIR/az_wNN.webp, and FIG_DIR/az_atlas.json with each slide's place on it
+    import json, os
     only = set(sys.argv[3:])
-    n = 0
-    for sid, w, t, box, cams in SLIDES:
-        if only and sid not in only and w not in only: continue
-        m, s = t.split(":"); k = (int(m) * 60 + int(s) - 15) // 30 + 1
-        im = Image.open(f"{FR}/{w}/f_{k:04d}.jpg").convert("RGB")
-        for c in cams: paint(im, c)
-        crop = im.crop([round(v * K) for v in box]) if box else im
-        cw, ch = crop.size
-        sc = min(BOX_W / cw, BOX_H / ch)
-        bw, bh = max(1, round(cw * sc / PIX)), max(1, round(ch * sc / PIX))
-        board = ImageEnhance.Contrast(crop.resize((bw, bh), Image.LANCZOS)).enhance(1.06)
-        board.quantize(colors=COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB").save(f"{OUT}/{sid}.png", optimize=True)
-        zw = min(ZOOM_W, cw)
-        crop.resize((zw, round(ch * zw / cw)), Image.LANCZOS).save(f"{OUT}/{sid}_z.webp", quality=78, method=6)
-        n += 1
-    print(n, "slides")
+    man_path = f"{OUT}/az_atlas.json"
+    man = json.load(open(man_path)) if os.path.exists(man_path) else {}
+    for w in sorted({x[1] for x in SLIDES}):
+        if only and w not in only: continue
+        mine = [x for x in SLIDES if x[1] == w]
+        rows = (len(mine) + COLS - 1) // COLS
+        sheet = Image.new("RGB", (CW * COLS, CH * rows), (0, 0, 0))
+        for n, (sid, _, t, box, cams) in enumerate(mine):
+            m, s = t.split(":"); k = (int(m) * 60 + int(s) - 15) // 30 + 1
+            im = Image.open(f"{FR}/{w}/f_{k:04d}.jpg").convert("RGB")
+            for c in cams: paint(im, c)
+            crop = im.crop([round(v * K) for v in box]) if box else im
+            sc = min(CW / crop.width, CH / crop.height)
+            tw, th = round(crop.width * sc), round(crop.height * sc)
+            x, y = (n % COLS) * CW, (n // COLS) * CH
+            sheet.paste(crop.resize((tw, th), Image.LANCZOS), (x, y))
+            man[sid] = {"f": f"az_{w}", "x": x, "y": y, "w": tw, "h": th, "W": sheet.width, "H": sheet.height}
+        sheet.save(f"{OUT}/az_{w}.webp", quality=76, method=6)
+        print(w, len(mine), "slides", sheet.size, os.path.getsize(f"{OUT}/az_{w}.webp") // 1024, "KB")
+    json.dump(man, open(man_path, "w"), indent=0)

@@ -999,10 +999,17 @@
     if (!f) return;
     mZoom.el.classList.remove("big");
     mZoom.big.textContent = "Крупнее";
-    mZoom.img.src = `assets/master/fig/${id}_z.webp`;
+    if (f.at) {   // a slide from a sheet: an empty picture of the slide's shape with the sheet behind it
+      const a = f.at, pos = (v, full, part) => (full > part ? (100 * v) / (full - part) : 0);
+      mZoom.img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${a.w} ${a.h}'/%3E`;
+      mZoom.img.style.background = `url("assets/master/fig/${a.f}.webp") ${pos(a.x, a.W, a.w)}% ${pos(a.y, a.H, a.h)}% / ${(100 * a.W) / a.w}% ${(100 * a.H) / a.h}% no-repeat`;
+    } else {
+      mZoom.img.style.background = "";
+      mZoom.img.src = `assets/master/fig/${id}_z.webp`;
+    }
     mZoom.img.alt = `${figSrc(f, true)}: ${f.t}`;
     mZoom.h.textContent = `${figSrc(f)} · ${f.t}`;
-    $("mZoomSrc").textContent = f.src ? "кадр из урока, пояснение — ниже" : f.time ? "слайд из лекции, пояснение — ниже" : "рисунок из книги, перевод подписи — ниже";
+    $("mZoomSrc").textContent = f.src && f.n !== "Слайд" ? "кадр из урока, пояснение — ниже" : f.time ? "слайд из лекции, пояснение — ниже" : "рисунок из книги, перевод подписи — ниже";
     mZoom.cap.textContent = f.cap;
     mZoom.el.hidden = false;
     mZoom.box.scrollTop = 0; mZoom.box.scrollLeft = 0;

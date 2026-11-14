@@ -82,11 +82,12 @@ CAPS = {
 "az4_apex": ("Apex Revolution Spring", "регулируемый ретейнер-пружина", "Пружинящий ретейнер из бета-титана на нижней челюсти: до и через месяц. Изгибами на дуге закладывают гиперкоррекцию отдельного зуба."),
 }
 if __name__ == "__main__":
+    ATLAS = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "az_atlas.json")))
     out = ["  // Slides of the webinars «Элайнеры от А до Я», cut from the videos (see src/az/az_slides.py).",
            "  // src: which webinar; time: where in it; t: title; s: one line under it; cap: what the slide shows, retold.",
            "  Object.assign(BOOK, {"]
     for sid, w, t, box, cams in SLIDES:
         c = CAPS[sid]
-        out.append(f"    {sid}: " + json.dumps({"src": f"Вебинар {int(w[1:])}", "time": t, "n": "Слайд", "t": c[0], "s": c[1], "cap": c[2]}, ensure_ascii=False) + ",")
+        out.append(f"    {sid}: " + json.dumps({"src": f"Вебинар {int(w[1:])}", "time": t, "n": "Слайд", "t": c[0], "s": c[1], "cap": c[2], "at": ATLAS[sid]}, ensure_ascii=False) + ",")
     out.append("  });")
     print("\n".join(out))

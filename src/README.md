@@ -12,3 +12,7 @@ checks: `e2e.js` plays the whole game, `hometest.js` checks the home screen.
 The aligners book (`aligners/`) has no teacher: `al_content.js` holds its scrolls and glossary, `al_figs.js` the
 captions of its pictures, `al_slides.py` cuts those pictures out of the course videos' frames. Copy both `.js`
 files into the flattened folder before running `build_master.py`.
+
+The book «Элайнеры от А до Я» (`az/`) keeps its slides on one sheet per webinar (`assets/master/fig/az_wNN.webp`;
+`az_atlas.json` says where each slide sits), because the artifact that hosts the game holds at most 511 files.
+`az_slides.py` cuts the sheets, `az_caps.py` writes `az_figs.js` from the captions and the atlas.
