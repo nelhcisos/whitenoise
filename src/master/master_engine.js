@@ -13,14 +13,14 @@
   // ----- progress, saved between visits -----
   function mFresh() {
     const n = MASTER_CHAPTERS.length;
-    return { stars: Array(n).fill(0), done: Array(n).fill(false), minis: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, posMet: false, alMet: false, dayEnd: false, sound: true };
+    return { stars: Array(n).fill(0), done: Array(n).fill(false), minis: Array(n).fill(false), exam: 0, passed: false, name: "", date: "", met: false, posMet: false, alMet: false, azMet: false, dayEnd: false, sound: true };
   }
   function mLoad() {
     const d = mFresh();
     try {
       const s = JSON.parse(localStorage.getItem(M_KEY) || "null");
       if (s && typeof s === "object") {
-        for (const k of ["exam", "passed", "name", "date", "met", "posMet", "alMet", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
+        for (const k of ["exam", "passed", "name", "date", "met", "posMet", "alMet", "azMet", "dayEnd", "sound"]) if (typeof s[k] === typeof d[k]) d[k] = s[k];
         for (const k of ["stars", "done", "minis"]) if (Array.isArray(s[k])) d[k] = d[k].map((v, i) => (typeof s[k][i] === typeof v ? s[k][i] : v));
       }
     } catch (e) { /* no storage: play without saving */ }
@@ -33,7 +33,8 @@
     condylography: { name: "Мастер", skin: "master", menu: "Свитки мастера", title: "Кондилография" },
     positioning: { name: "Сора", skin: "sora", menu: "Свитки Соры", title: "Позиционирование брекетов" },
     // a book without a teacher (solo): only the text, the questions and the results; no sprite, no practice, no jokes
-    aligners: { name: "", skin: "", solo: true, menu: "Свитки", title: "Элайнеры с нуля" },
+    aligners: { name: "", skin: "", solo: true, menu: "Свитки", title: "Элайнеры с нуля", met: "alMet" },
+    az: { name: "", skin: "", solo: true, menu: "Свитки", title: "Элайнеры от А до Я", met: "azMet" },
   };
   let mBook = "condylography";
   const mBookOf = k => (MASTER_CHAPTERS[k] && MASTER_CHAPTERS[k].book) || "condylography";
@@ -42,7 +43,8 @@
   const mNextK = (book = mBook) => { const k = mKs(book).find(j => !mSave.done[j]); return k === undefined ? -1 : k; };
   const mT = () => M_BOOKS[mBook] || M_BOOKS.condylography;
   const mGloss = () => (mBook === "positioning" && typeof POS_GLOSSARY !== "undefined" ? POS_GLOSSARY
-    : mBook === "aligners" && typeof AL_GLOSSARY !== "undefined" ? AL_GLOSSARY : MASTER_GLOSSARY);
+    : mBook === "aligners" && typeof AL_GLOSSARY !== "undefined" ? AL_GLOSSARY
+    : mBook === "az" && typeof AZ_GLOSSARY !== "undefined" ? AZ_GLOSSARY : MASTER_GLOSSARY);
   const mSolo = () => !!mT().solo;
   function mSetBook(b) {
     mBook = M_BOOKS[b] ? b : "condylography";
@@ -708,7 +710,7 @@
     mEl.ad.hidden = true;
     mEl.meme.hidden = true;
     mEl.card.hidden = true;
-    const condy = mBook === "condylography", metKey = condy ? "met" : mBook === "aligners" ? "alMet" : "posMet", met = mSave[metKey];
+    const condy = mBook === "condylography", metKey = condy ? "met" : mT().met || "posMet", met = mSave[metKey];
     if (met && mSolo()) { mBack = false; return mMenu(mNextK() < 0 ? "Все свитки пройдены." : "Выбери свиток."); }
     if (met) {
       const back = mBack, morning = mMorning;
@@ -732,7 +734,7 @@
     ms = null;
     mLeaveLesson();
     setMood("calm");
-    const intro = condy ? MASTER_INTRO : mBook === "aligners" ? AL_INTRO : POS_INTRO;
+    const intro = condy ? MASTER_INTRO : mBook === "aligners" ? AL_INTRO : mBook === "az" ? AZ_INTRO : POS_INTRO;
     mLines(intro.map((st, i) => ({ text: st.s, narr: st.narr, mood: st.m, fn: i === 1 ? mSpin : null })), () => mStartChapter(mKs()[0]));
   }
 
