@@ -7,6 +7,7 @@ import sys
 from PIL import Image, ImageDraw, ImageEnhance
 FR, OUT = sys.argv[1], sys.argv[2]
 K = 1280 / 384   # boxes below are measured on 384x216 thumbnails
+W2 = (0, 19, 288, 182)
 SLIDES = [
     ("az1_keys", "w01", "1:15", None, [(311, 88, 384, 138)]),
     ("az1_shift", "w01", "6:15", None, [(311, 46, 384, 92)]),
@@ -29,6 +30,27 @@ SLIDES = [
     ("az1_intr", "w01", "86:15", None, []),
     ("az1_pref", "w01", "88:15", None, []),
     ("az1_tips", "w01", "92:15", None, []),
+    # webinar 2 (Diego Peydro): the slide fills the left three quarters, the webcam sits to the right of it
+    ("az2_dod", "w02", "11:15", W2, []),
+    ("az2_aurea", "w02", "12:15", W2, []),
+    ("az2_final", "w02", "14:15", W2, []),
+    ("az2_tri", "w02", "16:15", W2, []),
+    ("az2_class2", "w02", "19:15", W2, []),
+    ("az2_list", "w02", "21:15", W2, []),
+    ("az2_limit", "w02", "24:15", W2, []),
+    ("az2_exp", "w02", "26:15", W2, []),
+    ("az2_keys", "w02", "29:15", W2, []),
+    ("az2_unblock", "w02", "33:15", W2, []),
+    ("az2_seq", "w02", "34:15", W2, []),
+    ("az2_hgb", "w02", "41:15", W2, []),
+    ("az2_intr", "w02", "46:15", W2, []),
+    ("az2_ipr", "w02", "48:15", W2, []),
+    ("az2_iprp", "w02", "49:15", W2, []),
+    ("az2_case2", "w02", "62:15", W2, []),
+    ("az2_tmj", "w02", "64:15", W2, []),
+    ("az2_plan", "w02", "66:15", W2, []),
+    ("az2_comp", "w02", "67:15", W2, []),
+    ("az2_after", "w02", "78:15", W2, []),
 ]
 BOX_W, BOX_H, PIX, COLORS, ZOOM_W = 616, 300, 1.4, 56, 960
 
