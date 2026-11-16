@@ -31,10 +31,7 @@
   // A scroll belongs to the book named in its "book" field (Кондилография when there is none).
   const M_BOOKS = {
     condylography: { name: "Мастер", skin: "master", menu: "Свитки мастера", title: "Кондилография" },
-    positioning: { name: "Сора", skin: "sora", menu: "Свитки Соры", title: "Позиционирование брекетов" },
-    // a book without a teacher (solo): only the text, the questions and the results; no sprite, no practice, no jokes
-    aligners: { name: "", skin: "", solo: true, menu: "Свитки", title: "Элайнеры с нуля", met: "alMet" },
-    az: { name: "", skin: "", solo: true, menu: "Свитки", title: "Элайнеры от А до Я", met: "azMet" },
+    // the books retold from lectures (positioning, aligners, «от А до Я») live in lectures/ and are not built into the game
   };
   let mBook = "condylography";
   const mBookOf = k => (MASTER_CHAPTERS[k] && MASTER_CHAPTERS[k].book) || "condylography";
