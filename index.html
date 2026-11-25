@@ -2160,6 +2160,8 @@
   let aa = null; // { stage: "hello" | "thanked" | "quiz" | "done", q, right }
   // Dev build: shows the "★ НОВОЕ" button that jumps to whatever was added last.
   const SKIP_TO_DIAGNOSTICS = true;
+  // the «★ НОВОЕ» button led to the barin's practice; the game is only the book now
+  const DEV_LATEST_BTN = false;
 
   function startAssistant() {
     aa = { stage: "hello", q: 0, right: 0 };
@@ -5901,7 +5903,7 @@
     current = i;
     clearTimeout(pending);
     screens.forEach((s, j) => { s.hidden = j !== i; });
-    $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS || i >= 11;   // the temple and the end of the day: no dev button over the scene
+    $("latestBtn").hidden = !DEV_LATEST_BTN || i >= 11;   // the temple and the end of the day: no dev button over the scene
     if (i === 1) { startTyping(); requestAnimationFrame(frame); }
     if (i === 2) { if (resume) startPatient(); else startGame(); requestAnimationFrame(gameLoop); }
     if (i === 5) startCondy();
@@ -5951,7 +5953,7 @@
     // latest: practice between the master's scrolls, opened by the barin
     startMini(0, { dev: true });
   }
-  $("latestBtn").hidden = !SKIP_TO_DIAGNOSTICS;
+  $("latestBtn").hidden = !DEV_LATEST_BTN;
   $("latestBtn").addEventListener("click", e => { e.stopPropagation(); goToLatest(); });
 
   // ---------- «Карта пациента»: fill in a patient's record from what the scrolls taught ----------
