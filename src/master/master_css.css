@@ -12,13 +12,15 @@
     display: flex; flex-direction: column; gap: 8px; padding: 10px 3.5% 12px;
   }
   .m-top {
-    flex: none; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 10px;
+    flex: none; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 10px;
     padding: 6px 10px 8px; border-radius: 10px; background: rgba(20, 12, 24, .82);
   }
   .m-x {
     width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; cursor: pointer;
     background: rgba(255, 255, 255, .14); color: #fff; font: 800 15px "Nunito", system-ui, sans-serif;
   }
+  .m-back { grid-column: 3; grid-row: 1; font-size: 22px; line-height: 1; }
+  .m-back:disabled { opacity: .3; cursor: default; }
   .m-x:hover, .m-x:focus-visible { background: rgba(255, 255, 255, .28); outline: none; }
   .m-chapter { margin: 0; color: var(--gold); font: 800 14px/1.25 "Nunito", system-ui, sans-serif; text-align: left; }
   .m-prog { grid-column: 1 / -1; height: 6px; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, .15); }

@@ -7,7 +7,7 @@
   const M_EXAM = 15, M_PASS = 12;
   const mCalm = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const mEl = {};
-  for (const id of ["Stage", "Top", "Chapter", "Exit", "Prog", "ProgFill", "Board", "Fig", "Walker", "Sprite", "Vox", "Guest",
+  for (const id of ["Stage", "Top", "Chapter", "Exit", "BackBtn", "Prog", "ProgFill", "Board", "Fig", "Walker", "Sprite", "Vox", "Guest",
     "Panel", "Box", "Name", "Text", "More", "Choices", "Fx", "Ad", "Card", "Meme", "Combo"]) mEl[id[0].toLowerCase() + id.slice(1)] = $("m" + id);
 
   // ----- progress, saved between visits -----
@@ -33,6 +33,10 @@
     condylography: { name: "Мастер", skin: "master", menu: "Свитки мастера", title: "Кондилография" },
     // the books retold from lectures (positioning, aligners, «от А до Я») live in lectures/ and are not built into the game
   };
+  // the game is only the book: no practice in the clinic, no days and no pay after a scroll
+  const M_BOOK_ONLY = true;
+  // at most this many questions close a scroll (spread over the whole list); all of them stay in the exam
+  const M_QUIZ_MAX = 5;
   let mBook = "condylography";
   const mBookOf = k => (MASTER_CHAPTERS[k] && MASTER_CHAPTERS[k].book) || "condylography";
   const mKs = (book = mBook) => MASTER_CHAPTERS.map((_, k) => k).filter(k => mBookOf(k) === book);
@@ -302,6 +306,7 @@
     const fresh = ms.maxI === undefined || ms.i > ms.maxI;
     ms.maxI = Math.max(ms.maxI === undefined ? -1 : ms.maxI, ms.i);
     mProgress();
+    mBackState();
     const st = ms.steps[ms.i];
     if (!st) return ms.onDone();
     if (fresh && mMaybeGag(st)) return;
@@ -317,9 +322,17 @@
     clearInterval(mTyping && mTyping.timer); mTyping = null;
     ms.i = j;
     mProgress();
+    mBackState();
     mRender(ms.steps[j]);
     mSfx("click");
     return true;
+  }
+  // the ‹ button in the top bar: a line back, while there is one
+  function mBackState() {
+    let ok = !!ms && ms.mode === "chapter" && ms.phase === "learn";
+    if (ok) { let j = ms.i - 1; while (j >= 0 && ms.steps[j].s === undefined) j--; ok = j >= 0; }
+    mEl.backBtn.disabled = !ok;
+    mEl.backBtn.hidden = !ms || ms.mode !== "chapter";
   }
   function mRender(st) {
     mClearChoices();
@@ -506,8 +519,15 @@
   // ----- chapters, results, the end of the day -----
   function mStartChapter(k) {
     const ch = MASTER_CHAPTERS[k];
-    mRun(ch.steps, { mode: "chapter", k, title: `Свиток ${mNum(k)}. ${ch.title}`, onDone: mChapterDone });
+    mRun(mTrimQuiz(ch.steps), { mode: "chapter", k, title: `Свиток ${mNum(k)}. ${ch.title}`, onDone: mChapterDone });
     mTitleCard(`Свиток ${mNum(k)}`, ch.title, ch.pages);
+  }
+  // keep every line and at most M_QUIZ_MAX questions, evenly spread over them, in their order
+  function mTrimQuiz(steps) {
+    const qi = steps.map((st, i) => (st.s === undefined ? i : -1)).filter(i => i >= 0);
+    if (qi.length <= M_QUIZ_MAX) return steps;
+    const keep = new Set(Array.from({ length: M_QUIZ_MAX }, (_, n) => qi[Math.floor(((n + 0.5) * qi.length) / M_QUIZ_MAX)]));
+    return steps.filter((st, i) => st.s !== undefined || keep.has(i));
   }
   function mChapterDone() {
     if (ms.phase === "learn" && ms.wrong.length) {
@@ -525,10 +545,10 @@
     mStore();
     // the day ends after two scrolls (or four scored tasks): the master sends you home
     // a book without a teacher keeps out of the days: no pay, no practice, no going home
-    const solo = mSolo();
-    if (!solo) dayLog("scroll", `Свиток ${mNum(k)}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
+    const solo = mSolo(), days = !solo && !M_BOOK_ONLY;
+    if (days) dayLog("scroll", `Свиток ${mNum(k)}. ${MASTER_CHAPTERS[k].title}`, ms.right, ms.total, ms.right * payPerStep);
     const nk = mKs(mBookOf(k)).find(j => j > k);
-    const over = !solo && dayFull(), practice = !solo && !mSave.minis[k];
+    const over = days && dayFull(), practice = days && !mSave.minis[k];
     const words = solo ? ["Пройди свиток ещё раз.", "Начало есть. Перечитай свиток.", "Хорошо. Почти без ошибок.", "Безупречно."]
       : ["Не спеши. Пройди свиток ещё раз.", "Ты ступил на путь. Перечитай свиток.", "Хорошо. Но путь ещё не окончен.", "Безупречно. Ты понял суть."];
     mResults({
@@ -670,7 +690,7 @@
     mLeaveLesson();
     mEl.stage.classList.remove("dusk");
     const condy = mBook === "condylography";
-    const list = [mNode("h2", "m-h", condy ? `${mT().menu} · день ${day}` : `${mT().menu} · ${mT().title}`)];
+    const list = [mNode("h2", "m-h", condy && !M_BOOK_ONLY ? `${mT().menu} · день ${day}` : condy ? `${mT().menu} · ${mT().title}` : `${mT().menu} · ${mT().title}`)];
     const nextK = mNextK();
     mKs().forEach((k, n) => {
       const ch = MASTER_CHAPTERS[k];
@@ -686,7 +706,7 @@
     }, "small"));
     list.push(mItem("Главный экран", "книга запомнит, где ты остановился", null, () => goHome(), "small"));
     // start over: two taps, then the saved stars, days and pay are wiped and the game reloads
-    const reset = mItem("Начать игру заново", "сотрёт звёзды, дни и зарплату", null, () => {
+    const reset = mItem("Начать игру заново", M_BOOK_ONLY ? "сотрёт звёзды и экзамен" : "сотрёт звёзды, дни и зарплату", null, () => {
       if (!reset.dataset.sure) { reset.dataset.sure = "1"; reset.querySelector(".m-item-t").textContent = "Точно? Нажми ещё раз"; return; }
       try { localStorage.removeItem(M_KEY); localStorage.removeItem(DAY_KEY); localStorage.removeItem("ortho-cards-v1"); localStorage.removeItem("ortho-exam-v1"); } catch (e) { /* ignore */ }
       try { sessionStorage.setItem("ortho-reopen", "1"); } catch (e) { /* ignore */ }   // come back straight into the book
@@ -708,7 +728,7 @@
     mEl.meme.hidden = true;
     mEl.card.hidden = true;
     const condy = mBook === "condylography", metKey = condy ? "met" : mT().met || "posMet", met = mSave[metKey];
-    if (met && mSolo()) { mBack = false; return mMenu(mNextK() < 0 ? "Все свитки пройдены." : "Выбери свиток."); }
+    if (met && (mSolo() || M_BOOK_ONLY)) { mBack = false; return mMenu(mNextK() < 0 ? "Все свитки пройдены." : "Выбери свиток."); }
     if (met) {
       const back = mBack, morning = mMorning;
       mBack = false; mMorning = false;
@@ -1057,6 +1077,7 @@
   mEl.box.addEventListener("keydown", e => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mTap(); }
   });
+  mEl.backBtn.addEventListener("click", e => { e.stopPropagation(); mStepBack(); });
   mEl.exit.addEventListener("click", e => {
     e.stopPropagation();
     clearInterval(mAdBreak.t);
